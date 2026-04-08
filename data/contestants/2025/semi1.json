@@ -1,0 +1,17 @@
+[
+  { "country": "Albania", "artist": "Shkodra Elektronike", "song": "Zjerm", "runningOrder": 1 },
+  { "country": "Lithuania", "artist": "Katarsis", "song": "Tavo Akys", "runningOrder": 2 },
+  { "country": "Netherlands", "artist": "Claude", "song": ""; DROP TABLE hearts;--", "runningOrder": 3 },
+  { "country": "Moldova", "artist": "Tatiana Camelia & Bogdan Ciolacu", "song": "Fight", "runningOrder": 4 },
+  { "country": "Luxembourg", "artist": "Laura Music", "song": "Concrete Jungle", "runningOrder": 5 },
+  { "country": "Israel", "artist": "Yuval Raphael", "song": "New Day Will Rise", "runningOrder": 6 },
+  { "country": "Denmark", "artist": "Sissal", "song": "Hallucination", "runningOrder": 7 },
+  { "country": "Greece", "artist": "Klavdia", "song": "Asteromata", "runningOrder": 8 },
+  { "country": "Croatia", "artist": "Marko Bošnjak", "song": "Lying To Myself", "runningOrder": 9 },
+  { "country": "Ireland", "artist": "Emmy", "song": "Eyes Wide Open", "runningOrder": 10 },
+  { "country": "Portugal", "artist": "Non Sirvo", "song": "Deslocado", "runningOrder": 11 },
+  { "country": "Armenia", "artist": "Parg", "song": "Survivor", "runningOrder": 12 },
+  { "country": "Norway", "artist": "Gåte", "song": "Ulveham", "runningOrder": 13 },
+  { "country": "Cyprus", "artist": "Theo Evan", "song": "Breaking My Heart", "runningOrder": 14 },
+  { "country": "Serbia", "artist": "Breskvica", "song": "Kiselo", "runningOrder": 15 }
+]

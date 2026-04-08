@@ -1,0 +1,16 @@
+node_modules/
+.next/
+.git/
+dist/
+build/
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+coverage/
+.turbo/
+.vercel/
+public/manifest.json
+data/
+supabase/schema.sql

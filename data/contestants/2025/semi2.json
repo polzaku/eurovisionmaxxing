@@ -1,0 +1,18 @@
+[
+  { "country": "Malta", "artist": "Miriana Conte", "song": "Serving", "runningOrder": 1 },
+  { "country": "Australia", "artist": "Go-Jo", "song": "Futuristico", "runningOrder": 2 },
+  { "country": "Montenegro", "artist": "Nina Žižić", "song": "Dobrodošli", "runningOrder": 3 },
+  { "country": "Estonia", "artist": "Tommy Cash", "song": "Espresso Macchiato", "runningOrder": 4 },
+  { "country": "Iceland", "artist": "VÆB", "song": "Róa", "runningOrder": 5 },
+  { "country": "San Marino", "artist": "Gabry Ponte", "song": "Feeling Down", "runningOrder": 6 },
+  { "country": "Georgia", "artist": "Mariam Bigvava", "song": "Ertad Miyvarxar", "runningOrder": 7 },
+  { "country": "Finland", "artist": "Erika Vikman", "song": "Ich Komme", "runningOrder": 8 },
+  { "country": "Austria", "artist": "JJ", "song": "Wasted Love", "runningOrder": 9 },
+  { "country": "Azerbaijan", "artist": "Mamagama", "song": "Run", "runningOrder": 10 },
+  { "country": "Belgium", "artist": "Red Sebastian", "song": "Strobe Lights", "runningOrder": 11 },
+  { "country": "Sweden", "artist": "KAJ", "song": "Bara Bansen", "runningOrder": 12 },
+  { "country": "Poland", "artist": "Justyna Steczkowska", "song": "Gaja", "runningOrder": 13 },
+  { "country": "Czech Republic", "artist": "Adonxs", "song": "Kiss Kiss Goodbye", "runningOrder": 14 },
+  { "country": "Ukraine", "artist": "Ziferblat", "song": "Bird of Pray", "runningOrder": 15 },
+  { "country": "Slovenia", "artist": "Astrid & The Scandals", "song": "Touché", "runningOrder": 16 }
+]

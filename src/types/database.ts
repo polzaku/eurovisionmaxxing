@@ -1,0 +1,176 @@
+/**
+ * Supabase database types — mirrors the SQL schema.
+ * These are the raw row shapes returned by Supabase queries.
+ * Use the domain types in ./index.ts for app-level logic.
+ */
+
+export interface Database {
+  public: {
+    Tables: {
+      users: {
+        Row: {
+          id: string;
+          display_name: string;
+          avatar_seed: string;
+          rejoin_token_hash: string;
+          created_at: string;
+          last_seen_at: string;
+        };
+        Insert: {
+          id?: string;
+          display_name: string;
+          avatar_seed: string;
+          rejoin_token_hash: string;
+          created_at?: string;
+          last_seen_at?: string;
+        };
+        Update: {
+          display_name?: string;
+          avatar_seed?: string;
+          rejoin_token_hash?: string;
+          last_seen_at?: string;
+        };
+      };
+      rooms: {
+        Row: {
+          id: string;
+          pin: string;
+          year: number;
+          event: string;
+          categories: Array<{ name: string; weight: number; hint?: string }>;
+          owner_user_id: string;
+          status: string;
+          announcement_mode: string;
+          announcement_order: string[] | null;
+          announcing_user_id: string | null;
+          current_announce_idx: number;
+          now_performing_id: string | null;
+          allow_now_performing: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          pin: string;
+          year: number;
+          event: string;
+          categories: Array<{ name: string; weight: number; hint?: string }>;
+          owner_user_id: string;
+          status?: string;
+          announcement_mode?: string;
+          announcement_order?: string[] | null;
+          announcing_user_id?: string | null;
+          current_announce_idx?: number;
+          now_performing_id?: string | null;
+          allow_now_performing?: boolean;
+        };
+        Update: {
+          pin?: string;
+          year?: number;
+          event?: string;
+          categories?: Array<{ name: string; weight: number; hint?: string }>;
+          status?: string;
+          announcement_mode?: string;
+          announcement_order?: string[] | null;
+          announcing_user_id?: string | null;
+          current_announce_idx?: number;
+          now_performing_id?: string | null;
+          allow_now_performing?: boolean;
+        };
+      };
+      room_memberships: {
+        Row: {
+          room_id: string;
+          user_id: string;
+          joined_at: string;
+          is_ready: boolean;
+        };
+        Insert: {
+          room_id: string;
+          user_id: string;
+          joined_at?: string;
+          is_ready?: boolean;
+        };
+        Update: {
+          is_ready?: boolean;
+        };
+      };
+      votes: {
+        Row: {
+          id: string;
+          room_id: string;
+          user_id: string;
+          contestant_id: string;
+          scores: Record<string, number> | null;
+          missed: boolean;
+          hot_take: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          room_id: string;
+          user_id: string;
+          contestant_id: string;
+          scores?: Record<string, number> | null;
+          missed?: boolean;
+          hot_take?: string | null;
+        };
+        Update: {
+          scores?: Record<string, number> | null;
+          missed?: boolean;
+          hot_take?: string | null;
+          updated_at?: string;
+        };
+      };
+      results: {
+        Row: {
+          room_id: string;
+          user_id: string;
+          contestant_id: string;
+          weighted_score: number;
+          rank: number;
+          points_awarded: number;
+          announced: boolean;
+        };
+        Insert: {
+          room_id: string;
+          user_id: string;
+          contestant_id: string;
+          weighted_score: number;
+          rank: number;
+          points_awarded: number;
+          announced?: boolean;
+        };
+        Update: {
+          announced?: boolean;
+        };
+      };
+      room_awards: {
+        Row: {
+          room_id: string;
+          award_key: string;
+          award_name: string;
+          winner_user_id: string | null;
+          winner_contestant_id: string | null;
+          stat_value: number | null;
+          stat_label: string | null;
+        };
+        Insert: {
+          room_id: string;
+          award_key: string;
+          award_name: string;
+          winner_user_id?: string | null;
+          winner_contestant_id?: string | null;
+          stat_value?: number | null;
+          stat_label?: string | null;
+        };
+        Update: {
+          award_name?: string;
+          winner_user_id?: string | null;
+          winner_contestant_id?: string | null;
+          stat_value?: number | null;
+          stat_label?: string | null;
+        };
+      };
+    };
+  };
+}
