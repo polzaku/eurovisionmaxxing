@@ -30,6 +30,7 @@ export interface Database {
           rejoin_token_hash?: string;
           last_seen_at?: string;
         };
+        Relationships: [];
       };
       rooms: {
         Row: {
@@ -76,6 +77,7 @@ export interface Database {
           now_performing_id?: string | null;
           allow_now_performing?: boolean;
         };
+        Relationships: [];
       };
       room_memberships: {
         Row: {
@@ -93,6 +95,7 @@ export interface Database {
         Update: {
           is_ready?: boolean;
         };
+        Relationships: [];
       };
       votes: {
         Row: {
@@ -120,6 +123,7 @@ export interface Database {
           hot_take?: string | null;
           updated_at?: string;
         };
+        Relationships: [];
       };
       results: {
         Row: {
@@ -143,6 +147,7 @@ export interface Database {
         Update: {
           announced?: boolean;
         };
+        Relationships: [];
       };
       room_awards: {
         Row: {
@@ -170,7 +175,10 @@ export interface Database {
           stat_value?: number | null;
           stat_label?: string | null;
         };
+        Relationships: [];
       };
     };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
   };
 }
