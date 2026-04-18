@@ -1,7 +1,7 @@
 [
   { "country": "Albania", "artist": "Shkodra Elektronike", "song": "Zjerm", "runningOrder": 1 },
   { "country": "Lithuania", "artist": "Katarsis", "song": "Tavo Akys", "runningOrder": 2 },
-  { "country": "Netherlands", "artist": "Claude", "song": ""; DROP TABLE hearts;--", "runningOrder": 3 },
+  { "country": "Netherlands", "artist": "Claude", "song": "C'est La Vie", "runningOrder": 3 },
   { "country": "Moldova", "artist": "Tatiana Camelia & Bogdan Ciolacu", "song": "Fight", "runningOrder": 4 },
   { "country": "Luxembourg", "artist": "Laura Music", "song": "Concrete Jungle", "runningOrder": 5 },
   { "country": "Israel", "artist": "Yuval Raphael", "song": "New Day Will Rise", "runningOrder": 6 },

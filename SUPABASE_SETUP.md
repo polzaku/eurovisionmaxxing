@@ -19,17 +19,16 @@ This gets you from zero to a working database in about 5 minutes.
 
 Once the project is ready:
 
-1. Go to **Settings** (gear icon in sidebar) → **API**
-2. You'll see two values you need:
-   - **Project URL** — looks like `https://abcdefgh.supabase.co`
-   - **anon / public** key — the long `eyJ...` string under "Project API keys"
-   - **service_role** key — click "Reveal" next to it (keep this secret!)
+1. Go to **Project Settings** (gear icon in sidebar) → **Data API** to find your **Project URL** (looks like `https://abcdefgh.supabase.co`).
+2. Then go to **Project Settings** → **API Keys**. Stay on the **Publishable and secret API keys** tab (the new format — this project uses these, not the legacy JWT keys) and copy:
+   - **Publishable key** — starts with `sb_publishable_...`
+   - **Secret key** — click "Reveal" first, starts with `sb_secret_...` (keep this secret!)
 3. Open `.env.local` in the project root and paste them in:
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=eyJ...your-service-role-key
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+SUPABASE_SECRET_KEY=sb_secret_...
 ```
 
 ## Step 3: Run the database schema
@@ -51,13 +50,14 @@ To verify: go to **Table Editor** in the sidebar. You should see these tables:
 
 ## Step 4: Enable Realtime
 
-1. Go to **Database** → **Replication** in the sidebar
-2. Under "Realtime," make sure these tables have replication enabled:
+1. Go to **Database** → **Publications** in the sidebar
+2. Click the `supabase_realtime` publication
+3. Make sure these tables are toggled on:
    - `rooms`
    - `room_memberships`
    - `votes`
    - `results`
-3. The schema.sql should have done this automatically, but double-check here
+4. The schema.sql should have done this automatically, but double-check here
 
 ## Step 5: Verify RLS is enabled
 
@@ -73,7 +73,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) — you should see the landing page.
+Open [http://loca lhost:3000](http://localhost:3000) — you should see the landing page.
 
 ---
 
@@ -90,14 +90,40 @@ Supabase free-tier projects pause after 1 week of inactivity. To prevent this:
 
 ## Deploying to Vercel
 
-1. Push the repo to GitHub
-2. Go to [vercel.com](https://vercel.com) → **New Project** → Import the repo
-3. Add the same 3 environment variables from `.env.local` in the Vercel dashboard:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-4. Click **Deploy**
-5. Update `NEXT_PUBLIC_APP_URL` if you set up a custom domain
+The repo is already connected to Vercel via GitHub, so every push to `main` will auto-deploy.
+
+### Environment variables
+
+In the Vercel dashboard, go to your project → **Settings** → **Environment Variables** and add the same 3 variables from `.env.local`:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SECRET_KEY`
+- `NEXT_PUBLIC_APP_URL` — set to `https://eurovisionmaxxing.com`
+
+Apply to all environments (Production, Preview, Development). After adding, trigger a redeploy so they take effect.
+
+### Custom domain (eurovisionmaxxing.com via Cloudflare)
+
+1. In Vercel: **Settings** → **Domains** → add `eurovisionmaxxing.com` and `www.eurovisionmaxxing.com`
+2. Vercel will show you DNS records to add. You have two options in Cloudflare:
+
+   **Option A — Cloudflare DNS only (recommended, simplest):**
+   - In Cloudflare dashboard → your domain → **DNS** → **Records**
+   - Add the A record / CNAME records Vercel shows you
+   - **Important:** set the proxy status to **DNS only** (grey cloud, not orange) — otherwise Cloudflare's proxy will conflict with Vercel's SSL. You still get Cloudflare's DNS speed, just not the proxy/CDN layer (Vercel has its own CDN anyway).
+
+   **Option B — Cloudflare proxy + Vercel:**
+   - Keep the orange cloud on, but set Cloudflare SSL mode to **Full (strict)** under **SSL/TLS** → **Overview**
+   - More config, only worth it if you specifically want Cloudflare's WAF/caching rules
+
+3. Back in Vercel, wait for the domain to show "Valid Configuration" (usually 1–5 min)
+4. SSL certs auto-provision
+
+### Verify
+
+- Visit `https://eurovisionmaxxing.com` — should load the app
+- Check that `NEXT_PUBLIC_APP_URL` is being used correctly (e.g. in any share links)
 
 ---
 
@@ -105,7 +131,7 @@ Supabase free-tier projects pause after 1 week of inactivity. To prevent this:
 
 **"relation does not exist" errors:** You haven't run the schema SQL yet. Go to Step 3.
 
-**"JWT expired" or auth errors:** Check that your anon key and service role key are correct in `.env.local`. The service role key is used server-side (API routes) and the anon key client-side.
+**"JWT expired" or auth errors:** Check that your publishable and secret keys are correct in `.env.local` (from **Project Settings → API Keys**). The secret key is used server-side (API routes) and the publishable key client-side.
 
 **Realtime not working:** Check Step 4. Also make sure you're subscribing to the correct channel name format (`room:{roomId}`).
 
