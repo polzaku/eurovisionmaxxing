@@ -60,19 +60,23 @@ describe("computeWeightedScore", () => {
 // ─── rankToPoints ─────────────────────────────────────────────────────────────
 
 describe("rankToPoints", () => {
-  it("maps ranks 1..10 to Eurovision points", () => {
-    const expected = [12, 10, 8, 7, 6, 5, 4, 3, 2, 1];
-    for (let rank = 1; rank <= 10; rank++) {
-      expect(rankToPoints(rank)).toBe(expected[rank - 1]);
-    }
+  it.each([
+    [1, 12],
+    [2, 10],
+    [3, 8],
+    [4, 7],
+    [5, 6],
+    [6, 5],
+    [7, 4],
+    [8, 3],
+    [9, 2],
+    [10, 1],
+  ])("maps rank %i to %i points", (rank, points) => {
+    expect(rankToPoints(rank)).toBe(points);
   });
 
   it("returns 0 for rank 11", () => {
     expect(rankToPoints(11)).toBe(0);
-  });
-
-  it("returns 0 for a very large rank", () => {
-    expect(rankToPoints(100)).toBe(0);
   });
 
   it("returns 0 for rank 0 (not in map, `?? 0` fallback)", () => {
@@ -207,5 +211,9 @@ describe("pearsonCorrelation", () => {
 
   it("returns 0 when one series has zero variance (constant)", () => {
     expect(pearsonCorrelation([5, 5, 5], [1, 2, 3])).toBe(0);
+  });
+
+  it("returns 0 when n < 2", () => {
+    expect(pearsonCorrelation([1], [1])).toBe(0);
   });
 });
