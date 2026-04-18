@@ -59,8 +59,20 @@
   }
 
   body {
-    background-color: var(--background);
+    /*
+     * Stage-light backdrop: soft gold glow from top-left, hot-pink from
+     * bottom-right, navy pool in the middle. All derived from palette
+     * tokens via color-mix, so the effect auto-adapts in light/dark mode
+     * and respects any future palette change in SPEC §3.1.
+     */
+    background:
+      radial-gradient(60vw 70vh at 10% -10%, color-mix(in oklab, var(--gold) 14%, transparent) 0%, transparent 60%),
+      radial-gradient(70vw 70vh at 110% 110%, color-mix(in oklab, var(--hot-pink) 14%, transparent) 0%, transparent 60%),
+      radial-gradient(90vw 60vh at 50% 50%, color-mix(in oklab, var(--navy) 30%, transparent) 0%, transparent 75%),
+      var(--background);
+    background-attachment: fixed;
     color: var(--foreground);
+    min-height: 100vh;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -109,5 +121,31 @@
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  /*
+   * Brand wordmark gradient — gold → hot-pink, clipped to text.
+   * Use on the "eurovisionmaxxing" title across pages.
+   */
+  .emx-wordmark {
+    background-image: linear-gradient(
+      90deg,
+      var(--gold) 0%,
+      var(--hot-pink) 100%
+    );
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Soft gold stage-light halo around an element (use sparingly). */
+  .emx-glow-gold {
+    filter: drop-shadow(0 0 18px color-mix(in oklab, var(--gold) 45%, transparent));
+  }
+
+  /* Soft hot-pink halo. */
+  .emx-glow-pink {
+    filter: drop-shadow(0 0 16px color-mix(in oklab, var(--hot-pink) 45%, transparent));
   }
 }

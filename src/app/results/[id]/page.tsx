@@ -9,10 +9,9 @@
 export default function PublicResultsPage({ params }: { params: { id: string } }) {
   return (
     <main className="flex min-h-screen flex-col items-center px-6 py-12">
-      <div className="max-w-2xl w-full space-y-6">
-        <h1 className="text-2xl font-bold text-center">
-          <span className="text-primary">eurovision</span>
-          <span className="text-accent">maxxing</span>
+      <div className="max-w-2xl w-full space-y-6 animate-fade-in">
+        <h1 className="text-3xl font-bold text-center tracking-tight">
+          <span className="emx-wordmark">eurovisionmaxxing</span>
           <span className="text-muted-foreground"> results</span>
         </h1>
         <p className="text-muted-foreground text-center">
