@@ -82,9 +82,9 @@ Open [http://loca lhost:3000](http://localhost:3000) — you should see the land
 Supabase free-tier projects pause after 1 week of inactivity. To prevent this:
 
 1. Set up a free [UptimeRobot](https://uptimerobot.com) monitor
-2. Point it at your deployed app URL (e.g. `https://eurovisionmaxxing.vercel.app`)
+2. Point it at `https://eurovisionmaxxing.com/api/health` — this endpoint runs a trivial Supabase query on every request, guaranteeing the DB is poked (monitoring just the homepage would only keep Vercel warm, not Supabase)
 3. Set check interval to 5 minutes
-4. This keeps the Supabase project active by generating regular API calls
+4. UptimeRobot expects a 2xx response — `/api/health` returns `{ "ok": true }` on success or `503` if Supabase is unreachable
 
 ---
 
