@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import type { ApiErrorCode } from "@/lib/api-errors";
 
-const DISPLAY_NAME_REGEX = /^[A-Za-z0-9 \-]{2,24}$/;
+export const DISPLAY_NAME_REGEX = /^[A-Za-z0-9 \-]{2,24}$/;
 const AVATAR_SEED_MAX_LEN = 64;
 
 export interface OnboardInput {
