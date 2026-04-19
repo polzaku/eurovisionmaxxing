@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from "vitest";
 import {
   updateRoomStatus,
   type UpdateStatusDeps,
-  type RoomEventPayload,
 } from "@/lib/rooms/updateStatus";
 
 const VALID_ROOM_ID = "11111111-2222-4333-8444-555555555555";

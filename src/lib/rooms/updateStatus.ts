@@ -2,11 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import type { Room } from "@/types";
 import type { ApiErrorCode } from "@/lib/api-errors";
-
-export interface RoomEventPayload {
-  type: "status_changed";
-  status: string;
-}
+import { mapRoom, type RoomEventPayload } from "@/lib/rooms/shared";
 
 export interface UpdateStatusInput {
   roomId: unknown;
@@ -55,25 +51,6 @@ function fail(
 }
 
 type RoomRow = Database["public"]["Tables"]["rooms"]["Row"];
-
-function mapRoom(row: RoomRow): Room {
-  return {
-    id: row.id,
-    pin: row.pin,
-    year: row.year,
-    event: row.event as Room["event"],
-    categories: row.categories,
-    ownerUserId: row.owner_user_id,
-    status: row.status as Room["status"],
-    announcementMode: row.announcement_mode as Room["announcementMode"],
-    announcementOrder: row.announcement_order,
-    announcingUserId: row.announcing_user_id,
-    currentAnnounceIdx: row.current_announce_idx,
-    nowPerformingId: row.now_performing_id,
-    allowNowPerforming: row.allow_now_performing,
-    createdAt: row.created_at,
-  };
-}
 
 export async function updateRoomStatus(
   input: UpdateStatusInput,

@@ -1,24 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateRoomStatus, type RoomEventPayload } from "@/lib/rooms/updateStatus";
+import { updateRoomStatus } from "@/lib/rooms/updateStatus";
+import { defaultBroadcastRoomEvent } from "@/lib/rooms/shared";
 import { apiError } from "@/lib/api-errors";
 import { createServiceClient } from "@/lib/supabase/server";
-
-async function defaultBroadcastRoomEvent(
-  roomId: string,
-  event: RoomEventPayload
-): Promise<void> {
-  const supabase = createServiceClient();
-  const channel = supabase.channel(`room:${roomId}`);
-  try {
-    await channel.send({
-      type: "broadcast",
-      event: "room_event",
-      payload: event,
-    });
-  } finally {
-    await supabase.removeChannel(channel);
-  }
-}
 
 /**
  * PATCH /api/rooms/{id}/status
