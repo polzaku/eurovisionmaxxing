@@ -17,4 +17,24 @@ describe("apiFetch", () => {
     expect(result).toBe(response);
     expect(refreshExpiry).toHaveBeenCalledTimes(1);
   });
+
+  it("refreshes session expiry on a 201 response", async () => {
+    const refreshExpiry = vi.fn();
+    const fetchImpl = vi.fn().mockResolvedValue(makeResponse(201));
+    const apiFetch = __makeApiFetch({ fetchImpl, refreshExpiry });
+
+    await apiFetch("/x");
+
+    expect(refreshExpiry).toHaveBeenCalledTimes(1);
+  });
+
+  it("refreshes session expiry on a 299 response (upper 2xx boundary)", async () => {
+    const refreshExpiry = vi.fn();
+    const fetchImpl = vi.fn().mockResolvedValue(makeResponse(299));
+    const apiFetch = __makeApiFetch({ fetchImpl, refreshExpiry });
+
+    await apiFetch("/x");
+
+    expect(refreshExpiry).toHaveBeenCalledTimes(1);
+  });
 });
