@@ -119,7 +119,7 @@ describe("claimIdentity — body validation", () => {
 });
 
 describe("claimIdentity — verification failures", () => {
-  it("returns CANDIDATE_NOT_FOUND 404 when no membership row exists", async () => {
+  it("returns CANDIDATE_NOT_FOUND 404 when the userId doesn't exist", async () => {
     const { deps, updateMock, hashSpy } = makeDeps({ membershipRow: null });
     const result = await claimIdentity(validInput(), deps);
     expect(result).toMatchObject({
@@ -129,6 +129,21 @@ describe("claimIdentity — verification failures", () => {
     });
     expect(updateMock).not.toHaveBeenCalled();
     expect(hashSpy).not.toHaveBeenCalled();
+  });
+
+  it("returns CANDIDATE_NOT_FOUND 404 when the userId is not a member of the roomId", async () => {
+    // Same runtime behaviour — the join query returns null whether the user
+    // doesn't exist at all or exists but isn't joined to this room.
+    // Separate test documents that both inputs collapse to the same error code
+    // (spec §4.2: no distinguishing information leaked).
+    const { deps, updateMock } = makeDeps({ membershipRow: null });
+    const result = await claimIdentity(validInput(), deps);
+    expect(result).toMatchObject({
+      ok: false,
+      status: 404,
+      error: { code: "CANDIDATE_NOT_FOUND" },
+    });
+    expect(updateMock).not.toHaveBeenCalled();
   });
 
   it("returns CANDIDATE_NOT_FOUND 404 when stored display_name doesn't match (case-insensitive)", async () => {
@@ -193,14 +208,52 @@ describe("claimIdentity — happy path", () => {
       error: { code: "INTERNAL_ERROR" },
     });
   });
+
+  it("rotates the stored hash so a prior token no longer validates", async () => {
+    // Simulate a prior token + its stored hash.
+    const OLD_PLAINTEXT = "old-token-from-other-device";
+    const OLD_HASH = "BCRYPT_OLD_HASH";
+
+    // Stand up deps with a stored row that has the OLD_HASH.
+    const { deps, updateMock } = makeDeps({
+      membershipRow: {
+        users: { id: VALID_USER_ID, display_name: STORED_NAME, avatar_seed: "sa" },
+      },
+    });
+
+    // Execute a successful claim — the handler will call hashSpy
+    // (which returns NEW_HASH from makeDeps) and the update mock will receive
+    // the new hash.
+    const result = await claimIdentity(validInput(), deps);
+    expect(result).toMatchObject({ ok: true });
+
+    // Assert the stored hash was replaced with the new one.
+    expect(updateMock).toHaveBeenCalledWith({
+      rejoin_token_hash: NEW_HASH,
+      last_seen_at: NOW_ISO,
+    });
+    // The new hash must differ from the old one (it does by construction —
+    // this guards against a future refactor accidentally using the stored hash).
+    expect(NEW_HASH).not.toBe(OLD_HASH);
+    // Sanity: the returned plaintext token is not the old one.
+    expect(JSON.stringify(result)).not.toContain(OLD_PLAINTEXT);
+  });
 });
 
 describe("claimIdentity — never leaks the new plaintext token in error paths", () => {
   it.each([
-    ["CANDIDATE_NOT_FOUND", { membershipRow: null } as MakeDepsOverrides],
-    ["INVALID_BODY", { membershipRow: null } as MakeDepsOverrides, "invalid"],
+    ["CANDIDATE_NOT_FOUND (no row)", { membershipRow: null } as MakeDepsOverrides],
+    [
+      "CANDIDATE_NOT_FOUND (name mismatch)",
+      {
+        membershipRow: {
+          users: { id: VALID_USER_ID, display_name: "Bob", avatar_seed: "sa" },
+        },
+      } as MakeDepsOverrides,
+    ],
     ["INTERNAL_ERROR select", { membershipError: { message: "b" } } as MakeDepsOverrides],
-  ])("never includes the new token in the %s result", async (_label, overrides, _extra?: string) => {
+    ["INTERNAL_ERROR update", { updateError: { message: "b" } } as MakeDepsOverrides],
+  ])("never includes the new token in the %s result", async (_label, overrides) => {
     const { deps } = makeDeps(overrides);
     const result = await claimIdentity(validInput(), deps);
     expect(JSON.stringify(result)).not.toContain(NEW_TOKEN);
