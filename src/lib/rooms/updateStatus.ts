@@ -40,6 +40,11 @@ const ALLOWED_REQUESTED_STATUSES: ReadonlySet<string> = new Set([
   "done",
 ]);
 
+const ALLOWED_TRANSITIONS: Record<string, readonly string[]> = {
+  lobby: ["voting"],
+  announcing: ["done"],
+};
+
 function fail(
   code: ApiErrorCode,
   message: string,
@@ -112,6 +117,15 @@ export async function updateRoomStatus(
       "FORBIDDEN",
       "Only the room owner can change the room's status.",
       403
+    );
+  }
+
+  const allowed = ALLOWED_TRANSITIONS[row.status] ?? [];
+  if (!allowed.includes(status)) {
+    return fail(
+      "INVALID_TRANSITION",
+      `Cannot transition from '${row.status}' to '${status}'.`,
+      409
     );
   }
 

@@ -234,3 +234,72 @@ describe("updateRoomStatus — admin authorization", () => {
     expect(broadcastSpy).not.toHaveBeenCalled();
   });
 });
+
+describe("updateRoomStatus — transition matrix", () => {
+  // Allowed edges: lobby->voting and announcing->done. All others should 409.
+  const allowed: Array<[string, string]> = [
+    ["lobby", "voting"],
+    ["announcing", "done"],
+  ];
+  const allStatuses = ["lobby", "voting", "scoring", "announcing", "done"];
+  const requested = ["voting", "done"];
+
+  for (const current of allStatuses) {
+    for (const req of requested) {
+      const isAllowed = allowed.some(
+        ([from, to]) => from === current && to === req
+      );
+      const label = `${current} -> ${req}`;
+      if (isAllowed) {
+        it(`allows ${label}`, async () => {
+          const mock = makeSupabaseMock({
+            roomSelectResult: {
+              data: {
+                id: VALID_ROOM_ID,
+                status: current,
+                owner_user_id: VALID_USER_ID,
+              },
+              error: null,
+            },
+            roomUpdateResult: {
+              data: { ...defaultUpdatedRow, status: req },
+              error: null,
+            },
+          });
+          const broadcastSpy = vi.fn().mockResolvedValue(undefined);
+          const result = await updateRoomStatus(
+            { roomId: VALID_ROOM_ID, status: req, userId: VALID_USER_ID },
+            makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
+          );
+          expect(result).toMatchObject({ ok: true, room: { status: req } });
+          expect(broadcastSpy).toHaveBeenCalledTimes(1);
+        });
+      } else {
+        it(`rejects ${label} with 409 INVALID_TRANSITION`, async () => {
+          const mock = makeSupabaseMock({
+            roomSelectResult: {
+              data: {
+                id: VALID_ROOM_ID,
+                status: current,
+                owner_user_id: VALID_USER_ID,
+              },
+              error: null,
+            },
+          });
+          const broadcastSpy = vi.fn();
+          const result = await updateRoomStatus(
+            { roomId: VALID_ROOM_ID, status: req, userId: VALID_USER_ID },
+            makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
+          );
+          expect(result).toMatchObject({
+            ok: false,
+            status: 409,
+            error: { code: "INVALID_TRANSITION" },
+          });
+          expect(mock.updatePatches).toEqual([]);
+          expect(broadcastSpy).not.toHaveBeenCalled();
+        });
+      }
+    }
+  }
+});
