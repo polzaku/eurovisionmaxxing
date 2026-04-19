@@ -928,6 +928,15 @@ Everything else is V2.
 
 ## 21. Localization
 
+### 21.0 Implementation phasing
+
+The work in this section ships in two phases:
+
+- **Phase A — Infrastructure + extraction of currently-built surfaces.** Wires `next-intl` into the App Router via cookie-based locale resolution (so the very first server render is in the user's locale — no English flash), populates `en.json` for the screens that exist today (landing, root layout, onboarding flow, auth API errors, voting templates), and additively extends the `apiError` helper with an optional `params` field for parameterized error messages. **No non-English copy and no language switcher UI ship in Phase A** — the goal is to make `t()` the load-bearing convention before Phases 2–6 build their first screens. Detailed design: [docs/superpowers/specs/2026-04-19-i18n-phase-a-design.md](docs/superpowers/specs/2026-04-19-i18n-phase-a-design.md). Implementation plan: [docs/superpowers/plans/2026-04-19-i18n-phase-a.md](docs/superpowers/plans/2026-04-19-i18n-phase-a.md). Tracked under TODO.md "Phase 1.5".
+- **Phase B+ — Switcher, non-`en` copy, present-screen locale resolution, plural smoke test.** Picks up after the core product loop (Phases 2–6) is functional and there are real user-facing surfaces to switch between. Tracked under TODO.md "Phase L".
+
+The remainder of this section (§21.1–§21.9) is the canonical design that both phases implement.
+
 ### 21.1 Supported locales
 
 | Code | Language | Notes |
