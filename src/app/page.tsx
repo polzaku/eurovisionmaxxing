@@ -11,7 +11,15 @@ export default function HomePage() {
             <Logo size={112} className="emx-glow-pink" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-5xl font-extrabold tracking-tight emx-wordmark text-balance leading-tight">
+            {/*
+              Mobile-first responsive sizing: "eurovisionmaxxing" is a single
+              17-char unbreakable word, so at text-5xl extrabold (~48px) it
+              overflows iPhone SE's ~327px usable width. Scale up with the
+              viewport. `break-words` is a safety net for edge-case narrow
+              screens — the gradient will clip to each resulting line if it
+              ever needs to wrap.
+            */}
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight emx-wordmark text-balance leading-tight break-words">
               eurovisionmaxxing
             </h1>
             <p className="text-muted-foreground text-lg">
