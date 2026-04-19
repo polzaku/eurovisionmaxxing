@@ -58,6 +58,18 @@ describe("POST /api/auth/candidates (route adapter)", () => {
     expect(body.error.code).toBe("INVALID_BODY");
   });
 
+  it("returns 400 INVALID_BODY when the body is a JSON non-object (null)", async () => {
+    const req = new NextRequest("http://localhost/api/auth/candidates", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "null",
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("INVALID_BODY");
+  });
+
   it("returns 400 INVALID_ROOM_ID when roomId is malformed", async () => {
     const res = await POST(
       makeRequest({ displayName: "Alice", roomId: "not-a-uuid" }),
