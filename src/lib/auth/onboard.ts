@@ -48,7 +48,7 @@ function fail(
   };
 }
 
-function normalizeDisplayName(raw: string): string {
+export function normalizeDisplayName(raw: string): string {
   return raw.trim().replace(/\s+/g, " ");
 }
 

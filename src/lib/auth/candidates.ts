@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import type { ApiErrorCode } from "@/lib/api-errors";
-import { DISPLAY_NAME_REGEX } from "@/lib/auth/onboard";
+import { DISPLAY_NAME_REGEX, normalizeDisplayName } from "@/lib/auth/onboard";
 
 const UUID_V4_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -39,10 +39,6 @@ function fail(
     error: field ? { code, message, field } : { code, message },
     status,
   };
-}
-
-function normalizeDisplayName(raw: string): string {
-  return raw.trim().replace(/\s+/g, " ");
 }
 
 export async function listCandidates(
