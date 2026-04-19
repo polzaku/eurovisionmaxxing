@@ -56,7 +56,15 @@ export async function joinByPin(
       "pin"
     );
   }
-  const userId = input.userId as string;
+  if (typeof input.userId !== "string" || input.userId.length === 0) {
+    return fail(
+      "INVALID_USER_ID",
+      "userId must be a non-empty string.",
+      400,
+      "userId"
+    );
+  }
+  const userId = input.userId;
 
   const roomQuery = await deps.supabase
     .from("rooms")

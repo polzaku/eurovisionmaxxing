@@ -154,3 +154,54 @@ describe("joinByPin — PIN validation", () => {
     expect(mock.roomEqArgs).toEqual([]);
   });
 });
+
+describe("joinByPin — userId validation", () => {
+  it.each([undefined, null, 42, ""])(
+    "rejects missing/empty/non-string userId (%s) with INVALID_USER_ID",
+    async (userId) => {
+      const mock = makeSupabaseMock();
+      const result = await joinByPin(
+        { pin: "ABCDEF", userId },
+        makeDeps(mock)
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        status: 400,
+        error: { code: "INVALID_USER_ID", field: "userId" },
+      });
+      expect(mock.roomEqArgs).toEqual([]);
+    }
+  );
+});
+
+describe("joinByPin — room not found", () => {
+  it("returns 404 ROOM_NOT_FOUND when no room matches the PIN", async () => {
+    const mock = makeSupabaseMock({
+      roomSelectResult: { data: null, error: null },
+    });
+    const result = await joinByPin(
+      { pin: "ABCDEF", userId: VALID_USER_ID },
+      makeDeps(mock)
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 404,
+      error: { code: "ROOM_NOT_FOUND" },
+    });
+    expect(mock.membershipUpsertSpy).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 ROOM_NOT_FOUND on room SELECT error (no row either way)", async () => {
+    const mock = makeSupabaseMock({
+      roomSelectResult: { data: null, error: { message: "boom" } },
+    });
+    const result = await joinByPin(
+      { pin: "ABCDEF", userId: VALID_USER_ID },
+      makeDeps(mock)
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "ROOM_NOT_FOUND" },
+    });
+  });
+});
