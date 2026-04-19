@@ -11,11 +11,24 @@ export default function HomePage() {
             <Logo size={112} className="emx-glow-pink" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-5xl font-extrabold tracking-tight emx-wordmark text-balance leading-tight">
+            {/*
+              Mobile-first responsive sizing: "eurovisionmaxxing" is a single
+              17-char unbreakable word, so at text-5xl extrabold (~48px) it
+              overflows iPhone SE's ~327px usable width. Scale up with the
+              viewport. `break-words` is a safety net for edge-case narrow
+              screens — the gradient will clip to each resulting line if it
+              ever needs to wrap.
+            */}
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight emx-wordmark text-balance leading-tight break-words">
               eurovisionmaxxing
             </h1>
-            <p className="text-muted-foreground text-lg">
-              Vote with your friends. Announce like it&apos;s real.
+            <p className="text-lg sm:text-xl font-semibold text-foreground text-balance">
+              The group-chat way to watch Eurovision.
+            </p>
+            <p className="text-muted-foreground text-base sm:text-lg leading-relaxed text-balance pt-1">
+              Turn the contest into your own voting game. Rate every country,
+              stir up the group chat live, and end the night with a proper
+              12-points announcement.
             </p>
           </div>
         </div>
@@ -26,19 +39,19 @@ export default function HomePage() {
             href="/create"
             className="block w-full rounded-xl bg-primary px-6 py-4 text-lg font-semibold text-primary-foreground text-center transition-all duration-200 hover:scale-[1.02] hover:emx-glow-gold active:scale-[0.98]"
           >
-            Create a room
+            Start a room
           </Link>
           <Link
             href="/join"
             className="block w-full rounded-xl border-2 border-border px-6 py-4 text-lg font-semibold text-foreground text-center transition-all duration-200 hover:scale-[1.02] hover:border-accent hover:emx-glow-pink active:scale-[0.98]"
           >
-            Join with PIN
+            Join a room
           </Link>
         </div>
 
-        {/* Fun fact */}
+        {/* Micro-meta strip */}
         <p className="text-sm text-muted-foreground">
-          Did you know? Eurovision has been running since 1956.
+          Vote live · Any device · Jury-style reveal
         </p>
       </div>
     </main>
