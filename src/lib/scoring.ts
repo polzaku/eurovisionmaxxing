@@ -166,27 +166,22 @@ export function scoreRoom(input: ScoreRoomInput): ScoreRoomOutput {
   for (const uid of userIds) rawByUser.set(uid, []);
   for (const v of votes) rawByUser.get(v.userId)?.push(v);
 
-  // Step 1: missed-fill. Produce a new Vote array with filled scores.
+  // Step 1: missed-fill. Produce filledVotes and filledByUser in one pass.
   const filledVotes: Vote[] = [];
+  const filledByUser = new Map<string, Vote[]>();
   for (const uid of userIds) {
     const userVotes = rawByUser.get(uid) ?? [];
     const fillValues = computeMissedFill(userVotes, categories);
+    const userFilled: Vote[] = [];
     for (const v of userVotes) {
-      if (v.missed) {
-        filledVotes.push({ ...v, scores: { ...fillValues } });
-      } else {
-        filledVotes.push({
-          ...v,
-          scores: v.scores ? { ...v.scores } : null,
-        });
-      }
+      const filled: Vote = v.missed
+        ? { ...v, scores: { ...fillValues } }
+        : { ...v, scores: v.scores ? { ...v.scores } : null };
+      userFilled.push(filled);
+      filledVotes.push(filled);
     }
+    filledByUser.set(uid, userFilled);
   }
-
-  // Group filled votes by user for scoring.
-  const filledByUser = new Map<string, Vote[]>();
-  for (const uid of userIds) filledByUser.set(uid, []);
-  for (const v of filledVotes) filledByUser.get(v.userId)?.push(v);
 
   // Step 2 + 3 + 4: per-user weighted score, rank, points.
   const results: UserResult[] = [];
@@ -194,15 +189,15 @@ export function scoreRoom(input: ScoreRoomInput): ScoreRoomOutput {
     const userVotes = filledByUser.get(uid) ?? [];
     const scored = userVotes.filter((v) => v.scores !== null);
 
-    const entries = scored.map((v) => ({
-      contestantId: v.contestantId,
-      scores: v.scores as Record<string, number>,
-      country: countryById.get(v.contestantId) ?? "",
-      weightedScore: computeWeightedScore(
-        v.scores as Record<string, number>,
-        categories
-      ),
-    }));
+    const entries = scored.map((v) => {
+      const scores = v.scores as Record<string, number>;
+      return {
+        contestantId: v.contestantId,
+        scores,
+        country: countryById.get(v.contestantId) ?? "",
+        weightedScore: computeWeightedScore(scores, categories),
+      };
+    });
 
     entries.sort((a, b) => {
       if (a.weightedScore !== b.weightedScore) {
@@ -238,6 +233,7 @@ export function scoreRoom(input: ScoreRoomInput): ScoreRoomOutput {
     .map(([contestantId, totalPoints]) => ({ contestantId, totalPoints }))
     .sort((a, b) => {
       if (a.totalPoints !== b.totalPoints) return b.totalPoints - a.totalPoints;
+      // Deterministic tiebreak by contestant id (format "{year}-{countryCode}").
       return a.contestantId.localeCompare(b.contestantId);
     });
 
