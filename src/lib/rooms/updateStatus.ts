@@ -89,7 +89,31 @@ export async function updateRoomStatus(
     );
   }
   const roomId = input.roomId;
+  const userId = input.userId;
   const status = input.status;
+
+  const roomQuery = await deps.supabase
+    .from("rooms")
+    .select("id, status, owner_user_id")
+    .eq("id", roomId)
+    .maybeSingle();
+
+  if (roomQuery.error || !roomQuery.data) {
+    return fail("ROOM_NOT_FOUND", "Room not found.", 404);
+  }
+  const row = roomQuery.data as {
+    id: string;
+    status: string;
+    owner_user_id: string;
+  };
+
+  if (row.owner_user_id !== userId) {
+    return fail(
+      "FORBIDDEN",
+      "Only the room owner can change the room's status.",
+      403
+    );
+  }
 
   const { data: updated } = await deps.supabase
     .from("rooms")
