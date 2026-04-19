@@ -22,8 +22,10 @@ interface MakeDepsOverrides {
 }
 
 function makeDeps(o: MakeDepsOverrides = {}) {
-  const row =
-    o.row === undefined
+  const selectError = o.selectError ?? null;
+  const row = selectError
+    ? null
+    : o.row === undefined
       ? {
           id: VALID_USER_ID,
           display_name: "Lia Bear",
@@ -31,7 +33,6 @@ function makeDeps(o: MakeDepsOverrides = {}) {
           rejoin_token_hash: FAKE_HASH,
         }
       : o.row;
-  const selectError = o.selectError ?? null;
   const compareResult = o.compareResult ?? true;
   const updateError = o.updateError ?? null;
 
@@ -111,6 +112,7 @@ describe("rejoinUser — happy path", () => {
     const result = await rejoinUser(validInput({ roomId: VALID_ROOM_ID }), deps);
     expect(result).toMatchObject({ ok: true });
     const tablesTouched = fromMock.mock.calls.map((c) => c[0]);
+    expect(tablesTouched).toHaveLength(2);
     expect(tablesTouched.every((t) => t === "users")).toBe(true);
     expect(tablesTouched).not.toContain("rooms");
     expect(tablesTouched).not.toContain("room_memberships");
