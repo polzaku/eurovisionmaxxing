@@ -4,28 +4,31 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Avatar from "@/components/ui/Avatar";
 import AvatarCarousel from "@/components/onboarding/AvatarCarousel";
+import CandidatePicker from "@/components/onboarding/CandidatePicker";
 import { useDebouncedValue } from "@/lib/hooks/useDebouncedValue";
 import { generateCarouselSeeds } from "@/lib/onboarding/seeds";
 import { sanitizeNextPath } from "@/lib/onboarding/safeNext";
-import { DISPLAY_NAME_REGEX } from "@/lib/auth/onboard";
+import { extractRoomId } from "@/lib/onboarding/extractRoomId";
+import { DISPLAY_NAME_REGEX, normalizeDisplayName } from "@/lib/auth/onboard";
 import { createExpiryDate, getSession, setSession } from "@/lib/session";
 import { apiFetch } from "@/lib/api/fetch";
 
 const DEFAULT_SEED = "emx-default";
 const NAME_DEBOUNCE_MS = 300;
 
-function normalizeName(raw: string): string {
-  return raw.trim().replace(/\s+/g, " ");
-}
-
 function browserRng(): number {
   return Math.random();
 }
 
-interface OnboardResponse {
+interface UserResponse {
   userId: string;
   rejoinToken: string;
   displayName: string;
+  avatarSeed: string;
+}
+
+interface Candidate {
+  userId: string;
   avatarSeed: string;
 }
 
@@ -40,6 +43,7 @@ export default function OnboardingForm() {
     () => sanitizeNextPath(searchParams.get("next")),
     [searchParams],
   );
+  const roomId = useMemo(() => extractRoomId(nextPath), [nextPath]);
 
   const [redirectChecked, setRedirectChecked] = useState(false);
   useEffect(() => {
@@ -50,6 +54,7 @@ export default function OnboardingForm() {
     setRedirectChecked(true);
   }, [router, nextPath]);
 
+  const [step, setStep] = useState<"form" | "picker">("form");
   const [name, setName] = useState("");
   const debouncedName = useDebouncedValue(name, NAME_DEBOUNCE_MS);
 
@@ -58,13 +63,14 @@ export default function OnboardingForm() {
   const [selectedSeed, setSelectedSeed] = useState<string | null>(null);
   const [previewSeed, setPreviewSeed] = useState<string>(DEFAULT_SEED);
 
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [generalError, setGeneralError] = useState<string | null>(null);
 
   useEffect(() => {
     if (carouselOpen) return;
-    const normalized = normalizeName(debouncedName);
+    const normalized = normalizeDisplayName(debouncedName);
     setPreviewSeed(normalized.length > 0 ? normalized : DEFAULT_SEED);
   }, [debouncedName, carouselOpen]);
 
@@ -81,8 +87,59 @@ export default function OnboardingForm() {
     setSelectedSeed(seed);
   }
 
-  const normalized = normalizeName(name);
+  const normalized = normalizeDisplayName(name);
   const nameValid = DISPLAY_NAME_REGEX.test(normalized);
+
+  async function createNewIdentity(displayName: string, avatarSeed: string) {
+    const res = await apiFetch("/api/auth/onboard", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ displayName, avatarSeed }),
+    });
+    if (res.status === 201) {
+      const data = (await res.json()) as UserResponse;
+      setSession({
+        userId: data.userId,
+        rejoinToken: data.rejoinToken,
+        displayName: data.displayName,
+        avatarSeed: data.avatarSeed,
+        expiresAt: createExpiryDate(),
+      });
+      router.push(nextPath);
+      return;
+    }
+    const body = (await res.json().catch(() => null)) as ApiErrorShape | null;
+    if (res.status === 400 && body?.error?.code === "INVALID_DISPLAY_NAME") {
+      setFieldError(body.error.message);
+    } else {
+      setGeneralError("Couldn't create your identity. Try again.");
+    }
+  }
+
+  async function fetchCandidates(displayName: string): Promise<Candidate[] | null> {
+    if (!roomId) return [];
+    try {
+      const res = await apiFetch("/api/auth/candidates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ displayName, roomId }),
+      });
+      if (res.status === 200) {
+        const data = (await res.json()) as { candidates: Candidate[] };
+        return data.candidates;
+      }
+      const body = (await res.json().catch(() => null)) as ApiErrorShape | null;
+      if (res.status === 400 && body?.error?.code === "INVALID_DISPLAY_NAME") {
+        setFieldError(body.error.message);
+        return null;
+      }
+      setGeneralError("Couldn't check the room. Try again.");
+      return null;
+    } catch {
+      setGeneralError("Couldn't check the room. Try again.");
+      return null;
+    }
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -94,16 +151,37 @@ export default function OnboardingForm() {
     }
     setSubmitting(true);
     try {
-      const res = await apiFetch("/api/auth/onboard", {
+      const matches = await fetchCandidates(normalized);
+      if (matches === null) return; // error already surfaced
+      if (matches.length > 0) {
+        setCandidates(matches);
+        setStep("picker");
+        return;
+      }
+      await createNewIdentity(normalized, effectiveSeed);
+    } catch {
+      setGeneralError("Couldn't create your identity. Try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function onPickCandidate(candidate: Candidate) {
+    if (!roomId) return;
+    setGeneralError(null);
+    setSubmitting(true);
+    try {
+      const res = await apiFetch("/api/auth/claim", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          userId: candidate.userId,
+          roomId,
           displayName: normalized,
-          avatarSeed: effectiveSeed,
         }),
       });
-      if (res.status === 201) {
-        const data = (await res.json()) as OnboardResponse;
+      if (res.status === 200) {
+        const data = (await res.json()) as UserResponse;
         setSession({
           userId: data.userId,
           rejoinToken: data.rejoinToken,
@@ -115,11 +193,29 @@ export default function OnboardingForm() {
         return;
       }
       const body = (await res.json().catch(() => null)) as ApiErrorShape | null;
-      if (res.status === 400 && body?.error?.code === "INVALID_DISPLAY_NAME") {
-        setFieldError(body.error.message);
-      } else {
-        setGeneralError("Couldn't create your identity. Try again.");
+      if (res.status === 404 && body?.error?.code === "CANDIDATE_NOT_FOUND") {
+        const refreshed = await fetchCandidates(normalized);
+        if (refreshed === null) return;
+        if (refreshed.length === 0) {
+          await createNewIdentity(normalized, effectiveSeed);
+          return;
+        }
+        setCandidates(refreshed);
+        return;
       }
+      setGeneralError("Couldn't merge that identity. Try again.");
+    } catch {
+      setGeneralError("Couldn't merge that identity. Try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function onPickerCreateNew() {
+    setGeneralError(null);
+    setSubmitting(true);
+    try {
+      await createNewIdentity(normalized, effectiveSeed);
     } catch {
       setGeneralError("Couldn't create your identity. Try again.");
     } finally {
@@ -127,8 +223,33 @@ export default function OnboardingForm() {
     }
   }
 
+  function onChangeName() {
+    setStep("form");
+    setCandidates([]);
+    setGeneralError(null);
+  }
+
   if (!redirectChecked) {
     return null;
+  }
+
+  if (step === "picker") {
+    return (
+      <>
+        <CandidatePicker
+          candidates={candidates}
+          onPick={onPickCandidate}
+          onCreateNew={onPickerCreateNew}
+          onChangeName={onChangeName}
+          submitting={submitting}
+        />
+        {generalError && (
+          <p role="alert" aria-live="polite" className="mx-auto mt-4 max-w-md px-6 text-center text-sm text-hot-pink">
+            {generalError}
+          </p>
+        )}
+      </>
+    );
   }
 
   return (
