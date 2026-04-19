@@ -215,6 +215,29 @@ describe("rejoinUser — body validation", () => {
       error: { code: "INVALID_BODY", field: "roomId" },
     });
   });
+
+  it("rejects rejoinToken longer than 512 chars as INVALID_BODY 400 with field=rejoinToken", async () => {
+    const { deps } = makeDeps();
+    const result = await rejoinUser(
+      { userId: VALID_USER_ID, rejoinToken: "x".repeat(513) },
+      deps
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 400,
+      error: { code: "INVALID_BODY", field: "rejoinToken" },
+    });
+  });
+
+  it("accepts a 512-char rejoinToken as a boundary", async () => {
+    const { deps } = makeDeps();
+    const result = await rejoinUser(
+      { userId: VALID_USER_ID, rejoinToken: "x".repeat(512) },
+      deps
+    );
+    // This should reach the compare+update path — fakes are happy-path by default
+    expect(result).toMatchObject({ ok: true });
+  });
 });
 
 // ─── Auth failures ───────────────────────────────────────────────────────────

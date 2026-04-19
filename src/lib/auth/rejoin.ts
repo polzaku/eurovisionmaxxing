@@ -4,6 +4,7 @@ import type { ApiErrorCode } from "@/lib/api-errors";
 
 const UUID_V4_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const REJOIN_TOKEN_MAX_LEN = 512;
 
 export interface RejoinInput {
   userId: unknown;
@@ -54,15 +55,25 @@ export async function rejoinUser(
       400
     );
   }
-  if (input.roomId !== undefined && typeof input.roomId !== "string") {
-    return fail("INVALID_BODY", "roomId must be a string when present.", 400, "roomId");
-  }
-  if (!UUID_V4_REGEX.test(input.userId)) {
-    return fail("INVALID_BODY", "userId must be a UUID v4.", 400, "userId");
-  }
 
   const userId = input.userId;
   const rejoinToken = input.rejoinToken;
+
+  if (rejoinToken.length > REJOIN_TOKEN_MAX_LEN) {
+    return fail(
+      "INVALID_BODY",
+      `rejoinToken must be at most ${REJOIN_TOKEN_MAX_LEN} characters.`,
+      400,
+      "rejoinToken"
+    );
+  }
+
+  if (input.roomId !== undefined && typeof input.roomId !== "string") {
+    return fail("INVALID_BODY", "roomId must be a string when present.", 400, "roomId");
+  }
+  if (!UUID_V4_REGEX.test(userId)) {
+    return fail("INVALID_BODY", "userId must be a UUID v4.", 400, "userId");
+  }
 
   const { data, error: selectError } = await deps.supabase
     .from("users")
