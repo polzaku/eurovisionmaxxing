@@ -122,3 +122,124 @@ export function pearsonCorrelation(x: number[], y: number[]): number {
   const den = Math.sqrt(denX * denY);
   return den === 0 ? 0 : num / den;
 }
+
+// ─── Full-room scoring pipeline ───────────────────────────────────────────────
+
+export interface ScoreRoomInput {
+  categories: VotingCategory[];
+  contestants: { id: string; country: string }[];
+  userIds: string[];
+  votes: Vote[];
+}
+
+export interface UserResult {
+  userId: string;
+  contestantId: string;
+  weightedScore: number;
+  rank: number;
+  pointsAwarded: number;
+}
+
+export interface LeaderboardEntry {
+  contestantId: string;
+  totalPoints: number;
+}
+
+export interface ScoreRoomOutput {
+  filledVotes: Vote[];
+  results: UserResult[];
+  leaderboard: LeaderboardEntry[];
+}
+
+/**
+ * Compose the scoring primitives into the full SPEC §9 pipeline.
+ * Pure function; does not mutate inputs.
+ * Preconditions are the caller's responsibility — see the design doc §3.
+ */
+export function scoreRoom(input: ScoreRoomInput): ScoreRoomOutput {
+  const { categories, contestants, userIds, votes } = input;
+
+  const countryById = new Map(contestants.map((c) => [c.id, c.country]));
+
+  // Group raw votes by user.
+  const rawByUser = new Map<string, Vote[]>();
+  for (const uid of userIds) rawByUser.set(uid, []);
+  for (const v of votes) rawByUser.get(v.userId)?.push(v);
+
+  // Step 1: missed-fill. Produce a new Vote array with filled scores.
+  const filledVotes: Vote[] = [];
+  for (const uid of userIds) {
+    const userVotes = rawByUser.get(uid) ?? [];
+    const fillValues = computeMissedFill(userVotes, categories);
+    for (const v of userVotes) {
+      if (v.missed) {
+        filledVotes.push({ ...v, scores: { ...fillValues } });
+      } else {
+        filledVotes.push({
+          ...v,
+          scores: v.scores ? { ...v.scores } : null,
+        });
+      }
+    }
+  }
+
+  // Group filled votes by user for scoring.
+  const filledByUser = new Map<string, Vote[]>();
+  for (const uid of userIds) filledByUser.set(uid, []);
+  for (const v of filledVotes) filledByUser.get(v.userId)?.push(v);
+
+  // Step 2 + 3 + 4: per-user weighted score, rank, points.
+  const results: UserResult[] = [];
+  for (const uid of userIds) {
+    const userVotes = filledByUser.get(uid) ?? [];
+    const scored = userVotes.filter((v) => v.scores !== null);
+
+    const entries = scored.map((v) => ({
+      contestantId: v.contestantId,
+      scores: v.scores as Record<string, number>,
+      country: countryById.get(v.contestantId) ?? "",
+      weightedScore: computeWeightedScore(
+        v.scores as Record<string, number>,
+        categories
+      ),
+    }));
+
+    entries.sort((a, b) => {
+      if (a.weightedScore !== b.weightedScore) {
+        return b.weightedScore - a.weightedScore;
+      }
+      return tiebreak(
+        { scores: a.scores, country: a.country },
+        { scores: b.scores, country: b.country }
+      );
+    });
+
+    entries.forEach((e, i) => {
+      const rank = i + 1;
+      results.push({
+        userId: uid,
+        contestantId: e.contestantId,
+        weightedScore: e.weightedScore,
+        rank,
+        pointsAwarded: rankToPoints(rank),
+      });
+    });
+  }
+
+  // Step 5: leaderboard totals. Every contestant from input.contestants appears,
+  // with 0 if no user awarded them points.
+  const totals = new Map<string, number>();
+  for (const c of contestants) totals.set(c.id, 0);
+  for (const r of results) {
+    totals.set(r.contestantId, (totals.get(r.contestantId) ?? 0) + r.pointsAwarded);
+  }
+
+  const leaderboard: LeaderboardEntry[] = [...totals.entries()]
+    .map(([contestantId, totalPoints]) => ({ contestantId, totalPoints }))
+    .sort((a, b) => {
+      if (a.totalPoints !== b.totalPoints) return b.totalPoints - a.totalPoints;
+      return a.contestantId.localeCompare(b.contestantId);
+    });
+
+  return { filledVotes, results, leaderboard };
+}
