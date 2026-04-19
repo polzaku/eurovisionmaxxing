@@ -35,4 +35,8 @@ yarn-error.log*
 next-env.d.ts
 
 # reference docs (local only)
+TODO.md
 .vscode/settings.json
+
+# superpowers brainstorming artifacts (local only)
+.superpowers/
