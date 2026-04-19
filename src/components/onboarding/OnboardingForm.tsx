@@ -9,6 +9,7 @@ import { generateCarouselSeeds } from "@/lib/onboarding/seeds";
 import { sanitizeNextPath } from "@/lib/onboarding/safeNext";
 import { DISPLAY_NAME_REGEX } from "@/lib/auth/onboard";
 import { createExpiryDate, getSession, setSession } from "@/lib/session";
+import { apiFetch } from "@/lib/api/fetch";
 
 const DEFAULT_SEED = "emx-default";
 const NAME_DEBOUNCE_MS = 300;
@@ -93,7 +94,7 @@ export default function OnboardingForm() {
     }
     setSubmitting(true);
     try {
-      const res = await fetch("/api/auth/onboard", {
+      const res = await apiFetch("/api/auth/onboard", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
