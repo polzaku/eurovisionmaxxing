@@ -4,6 +4,8 @@ export type ApiErrorCode =
   | "INVALID_BODY"
   | "INVALID_DISPLAY_NAME"
   | "INVALID_AVATAR_SEED"
+  | "USER_NOT_FOUND"
+  | "INVALID_TOKEN"
   | "INTERNAL_ERROR";
 
 export interface ApiErrorBody {
