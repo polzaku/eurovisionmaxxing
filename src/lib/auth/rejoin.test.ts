@@ -45,7 +45,7 @@ function makeDeps(o: MakeDepsOverrides = {}) {
   const updateEqMock = vi.fn().mockResolvedValue({ error: updateError });
   const updateMock = vi.fn(() => ({ eq: updateEqMock }));
 
-  const fromMock = vi.fn(() => ({
+  const fromMock = vi.fn((_table: string) => ({
     select: selectMock,
     update: updateMock,
   }));
