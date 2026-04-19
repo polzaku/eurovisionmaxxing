@@ -1,0 +1,20 @@
+import { describe, it, expect, vi } from "vitest";
+import { __makeApiFetch } from "@/lib/api/fetch";
+
+function makeResponse(status: number): Response {
+  return new Response(null, { status });
+}
+
+describe("apiFetch", () => {
+  it("refreshes session expiry on a 200 response", async () => {
+    const refreshExpiry = vi.fn();
+    const response = makeResponse(200);
+    const fetchImpl = vi.fn().mockResolvedValue(response);
+    const apiFetch = __makeApiFetch({ fetchImpl, refreshExpiry });
+
+    const result = await apiFetch("/x");
+
+    expect(result).toBe(response);
+    expect(refreshExpiry).toHaveBeenCalledTimes(1);
+  });
+});
