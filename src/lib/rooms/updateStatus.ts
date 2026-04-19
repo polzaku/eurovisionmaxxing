@@ -32,6 +32,23 @@ export interface UpdateStatusFailure {
 
 export type UpdateStatusResult = UpdateStatusSuccess | UpdateStatusFailure;
 
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const ALLOWED_REQUESTED_STATUSES: ReadonlySet<string> = new Set([
+  "voting",
+  "done",
+]);
+
+function fail(
+  code: ApiErrorCode,
+  message: string,
+  status: number,
+  field?: string
+): UpdateStatusFailure {
+  return { ok: false, error: field ? { code, message, field } : { code, message }, status };
+}
+
 type RoomRow = Database["public"]["Tables"]["rooms"]["Row"];
 
 function mapRoom(row: RoomRow): Room {
@@ -57,8 +74,22 @@ export async function updateRoomStatus(
   input: UpdateStatusInput,
   deps: UpdateStatusDeps
 ): Promise<UpdateStatusResult> {
-  const roomId = input.roomId as string;
-  const status = input.status as string;
+  if (typeof input.roomId !== "string" || !UUID_REGEX.test(input.roomId)) {
+    return fail("INVALID_ROOM_ID", "roomId must be a UUID.", 400, "roomId");
+  }
+  if (typeof input.userId !== "string" || input.userId.length === 0) {
+    return fail("INVALID_USER_ID", "userId must be a non-empty string.", 400, "userId");
+  }
+  if (typeof input.status !== "string" || !ALLOWED_REQUESTED_STATUSES.has(input.status)) {
+    return fail(
+      "INVALID_STATUS",
+      "status must be one of 'voting' or 'done'.",
+      400,
+      "status"
+    );
+  }
+  const roomId = input.roomId;
+  const status = input.status;
 
   const { data: updated } = await deps.supabase
     .from("rooms")

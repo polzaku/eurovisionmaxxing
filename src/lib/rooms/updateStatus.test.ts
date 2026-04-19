@@ -115,3 +115,64 @@ describe("updateRoomStatus — happy path", () => {
     });
   });
 });
+
+describe("updateRoomStatus — input validation", () => {
+  it("rejects non-UUID roomId with INVALID_ROOM_ID", async () => {
+    const mock = makeSupabaseMock();
+    const broadcastSpy = vi.fn();
+    const result = await updateRoomStatus(
+      { roomId: "not-a-uuid", status: "voting", userId: VALID_USER_ID },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 400,
+      error: { code: "INVALID_ROOM_ID", field: "roomId" },
+    });
+    expect(mock.updatePatches).toEqual([]);
+    expect(broadcastSpy).not.toHaveBeenCalled();
+  });
+
+  it("rejects non-string roomId with INVALID_ROOM_ID", async () => {
+    const mock = makeSupabaseMock();
+    const result = await updateRoomStatus(
+      { roomId: 42, status: "voting", userId: VALID_USER_ID },
+      makeDeps(mock)
+    );
+    expect(result).toMatchObject({ ok: false, error: { code: "INVALID_ROOM_ID" } });
+  });
+
+  it.each([undefined, null, 42, ""])(
+    "rejects missing/empty/non-string userId (%s) with INVALID_USER_ID",
+    async (userId) => {
+      const mock = makeSupabaseMock();
+      const result = await updateRoomStatus(
+        { roomId: VALID_ROOM_ID, status: "voting", userId },
+        makeDeps(mock)
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        status: 400,
+        error: { code: "INVALID_USER_ID", field: "userId" },
+      });
+      expect(mock.updatePatches).toEqual([]);
+    }
+  );
+
+  it.each([undefined, null, 42, "", "scoring", "announcing", "lobby", "voting_ending"])(
+    "rejects status=%s (outside {voting, done}) with INVALID_STATUS",
+    async (status) => {
+      const mock = makeSupabaseMock();
+      const result = await updateRoomStatus(
+        { roomId: VALID_ROOM_ID, status, userId: VALID_USER_ID },
+        makeDeps(mock)
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        status: 400,
+        error: { code: "INVALID_STATUS", field: "status" },
+      });
+      expect(mock.updatePatches).toEqual([]);
+    }
+  );
+});
