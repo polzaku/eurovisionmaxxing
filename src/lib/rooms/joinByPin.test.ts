@@ -205,3 +205,44 @@ describe("joinByPin — room not found", () => {
     });
   });
 });
+
+describe("joinByPin — status guard", () => {
+  it.each(["scoring", "announcing", "done"] as const)(
+    "rejects status=%s with 409 ROOM_NOT_JOINABLE",
+    async (status) => {
+      const mock = makeSupabaseMock({
+        roomSelectResult: {
+          data: { id: VALID_ROOM_ID, status },
+          error: null,
+        },
+      });
+      const result = await joinByPin(
+        { pin: "ABCDEF", userId: VALID_USER_ID },
+        makeDeps(mock)
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        status: 409,
+        error: { code: "ROOM_NOT_JOINABLE" },
+      });
+      expect(mock.membershipUpsertSpy).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(["lobby", "voting"] as const)(
+    "accepts status=%s and upserts membership",
+    async (status) => {
+      const mock = makeSupabaseMock({
+        roomSelectResult: {
+          data: { id: VALID_ROOM_ID, status },
+          error: null,
+        },
+      });
+      const result = await joinByPin(
+        { pin: "ABCDEF", userId: VALID_USER_ID },
+        makeDeps(mock)
+      );
+      expect(result).toMatchObject({ ok: true, roomId: VALID_ROOM_ID });
+    }
+  );
+});

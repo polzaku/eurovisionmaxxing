@@ -5,6 +5,12 @@ import { PIN_CHARSET } from "@/types";
 
 const PIN_REGEX = new RegExp(`^[${PIN_CHARSET}]{6,7}$`);
 
+const UNJOINABLE_STATUSES: ReadonlySet<string> = new Set([
+  "scoring",
+  "announcing",
+  "done",
+]);
+
 function normalizePin(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
   const normalized = raw.trim().toUpperCase();
@@ -76,6 +82,14 @@ export async function joinByPin(
     return fail("ROOM_NOT_FOUND", "No room matches that PIN.", 404);
   }
   const row = roomQuery.data as { id: string; status: string };
+
+  if (UNJOINABLE_STATUSES.has(row.status)) {
+    return fail(
+      "ROOM_NOT_JOINABLE",
+      "This room is no longer accepting new members.",
+      409
+    );
+  }
 
   const { error: upsertError } = await deps.supabase
     .from("room_memberships")
