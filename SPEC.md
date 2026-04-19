@@ -73,7 +73,7 @@ The app is configured entirely through environment variables — no hardcoded en
 
 ## 3. Color scheme & theming
 
-- **Default:** dark mode. Follow device `prefers-color-scheme`. No manual toggle for MVP.
+- **Default:** dark mode. Follow device `prefers-color-scheme` on first visit. A manual override is available from the header (see §3.4) — users on a light-mode device during daytime pre-show can opt into dark, and vice versa.
 - No hardcoded hex values in components — use Tailwind semantic classes (`bg-background`, `text-foreground`, etc.) wired to CSS variables.
 - Eurovision-adjacent palette: deep navy base, gold/amber accents, hot pink highlights.
 - All text must pass WCAG AA contrast on both light and dark backgrounds.
@@ -118,6 +118,17 @@ All animations in §3.2 are gated on `prefers-reduced-motion: no-preference` at 
 - `animate-rank-shift` becomes an instant reorder (no transition).
 - `animate-fade-in` becomes an instant opacity flip.
 - `animate-shimmer` is replaced with a static `bg-muted`.
+
+### 3.4 Manual theme toggle
+
+A compact theme toggle lives in the shared header alongside the locale switcher (§21.4). Three states cycle on tap: **System → Light → Dark → System**. The current state is shown as an icon (☼ / 🌙 / 🖥).
+
+- Persists to `localStorage.emx_theme` with value `"system" | "light" | "dark"`. Default is `"system"`.
+- When set to `"system"`, the app respects `prefers-color-scheme` at all times (matches MVP default behaviour).
+- When set to `"light"` or `"dark"`, the app applies that theme via a `data-theme` attribute on `<html>` that takes precedence over the media query.
+- The toggle is **suppressed on `/room/{id}/present`** — the TV surface is always dark (§10.3) to avoid blinding viewers mid-show.
+
+No server persistence — theme is device-local. Rationale: users may use the app on multiple devices with different ambient-light contexts.
 
 ---
 
@@ -219,6 +230,60 @@ The repo must ship the following fallback JSON files under `data/contestants/`:
 
 A `data/README.md` documents the minimal JSON shape (four fields) and the fact that the other fields are derived at runtime.
 
+### 5.1c Operational runbook for contestant data refresh
+
+The hardcoded fallback is load-bearing whenever the EurovisionAPI lags behind the public announcement. A documented refresh process prevents show-night surprises.
+
+**Owner:** repo maintainer (currently the original author). On-call backup must be named in `SUPABASE_SETUP.md` before the first show of the season.
+
+**Triggers:**
+- Eurovision **allocation draw** (running order announcement) for each semi-final — typically ~2 weeks before that semi airs.
+- Contestant **withdrawal** announcement — can happen any time between draw and show.
+- **Opening show day** for each event — final verification within 24 h of broadcast.
+
+**Process (≤5 min):**
+1. Run `npm run fetch-contestants -- --year=YYYY --event=semi1|semi2|final`. The script hits EurovisionAPI with the current cascade (§5.1) and writes the normalised JSON to `data/contestants/{year}/{event}.json`.
+2. If the API returns empty / invalid, the script exits non-zero. Fall back to manual transcription from [eurovision.tv](https://eurovision.tv) official announcements — paste into the JSON using the 4-field shape from §5.2.
+3. Diff-check: `git diff data/contestants/` must show only expected changes (running order, new artist, spelling fix). Unexpected deletions require manual review before commit.
+4. Commit with message `Update {year}/{event} running order — {source}` where source is `api` or `manual-{yyyy-mm-dd}`.
+5. Vercel auto-deploys on push to `main`. No further action.
+
+**Verification:** the `/api/contestants?year=YYYY&event=EVENT` endpoint must return the fresh data within 1 min of deploy. A smoke query against the production URL is included in the PR template.
+
+### 5.1d Admin-driven contestant refresh (lobby only)
+
+Running orders can change between room creation and showtime — e.g. a contestant withdraws. Admins need a non-destructive way to pull the latest data without tearing down the room (losing the PIN, existing memberships, and lobby bets — §22).
+
+**Endpoint:** `POST /api/rooms/{id}/refresh-contestants` (admin-only).
+
+**Preconditions:**
+- `rooms.status = 'lobby'`. Any other status → HTTP 409 `{ code: "room_not_in_lobby" }`.
+- Caller must be `rooms.owner_user_id` or a co-admin (§6.7). Otherwise 403.
+
+**Behaviour:**
+- Re-runs the §5.1 cascade (cache-bypassed: `fetch(url, { next: { revalidate: 0 } })`).
+- Compares the returned list with the in-memory cached list for the room. If the new list has **different `runningOrder`, added contestants, or removed contestants**, the room's server-side cached contestant snapshot is replaced.
+- Broadcasts `contestants_refreshed` on `room:{roomId}` — clients reload the contestant list.
+- Response body: `{ added: string[], removed: string[], reordered: string[] }` (arrays of country codes) so the admin can see what changed.
+
+**Does not affect:** votes (none yet in lobby), bets (re-validated only if a bet references a removed contestant; none do in the catalog per §22, so no special handling).
+
+**Rate limit:** 1 refresh per 30 s per room to prevent mash-tap spam.
+
+### 5.1e Loading state during contestant fetch
+
+In the `/create` wizard Step 1 (§6.1) and on any admin-triggered refresh (§5.1d), the fetch may take 2–10 s on bad networks. The UI must communicate progress so users don't perceive the app as frozen.
+
+- Fetch fires **on year/event selection change** (auto, debounced 300 ms to collapse rapid changes). No explicit "Load" button.
+- While in flight:
+  - Preview area renders a shimmer placeholder with the copy *"Loading contestants…"* (locale key `create.contestantsLoading`).
+  - The wizard's **"Next" button is disabled** and shows a faded state.
+- On success: render count + first 5 flags, e.g. *"17 countries loaded 🇦🇱 🇦🇷 🇦🇹 🇧🇪 🇭🇷 …"* (locale key `create.contestantsLoaded` with ICU `{count, plural}`). "Next" enables.
+- If the fetch is **still running at 5 s**: swap placeholder copy to *"Still loading — EurovisionAPI can be slow."* (locale key `create.contestantsSlow`). Keep the shimmer.
+- **Hard timeout at 10 s** → treat as API failure → proceed to §5.1 step 2 (hardcoded fallback) silently. Log `fallback_reason: "api_timeout_10s"` server-side.
+- The fetch is abortable via `AbortController`. Changing year or event mid-flight cancels the previous request (prevents race-condition lists from clobbering the preview).
+- If the final outcome is §5.1 step 4 (`ContestDataError`): render the §6.1 Step 1 inline error *"We couldn't load contestant data for this event. Try a different year or event."* with the "Back" CTA.
+
 ### 5.2 Hardcoded JSON structure
 Files live at `data/contestants/{year}/{event}.json`. Updated manually once per season when lineup confirms. Filename convention: `data/contestants/2026/semi1.json`, `semi2.json`, `final.json`.
 
@@ -243,8 +308,24 @@ interface Contestant {
 - Events available: Semi-Final 1, Semi-Final 2, Grand Final (not all years had semis — validate)
 - Contestants display in running order by default
 
+**Allocation-draw-lag caveat (current season):** Semi-final running orders are published only after the **allocation draw**, typically ~2 weeks before each semi airs and ~6–8 weeks before the grand final. Before that draw, the EurovisionAPI will often return either (a) an empty list, (b) a list without `runningOrder`, or (c) alphabetical ordering that is NOT the broadcast order. Consequences for the MVP:
+- At room creation for a semi whose draw hasn't happened, §5.1 step 2 fails validation (missing/invalid `runningOrder`) → cascades to hardcoded JSON → cascades to `ContestDataError` if the JSON also isn't yet populated.
+- Admins attempting to create a current-season semi room before allocation draw see the §6.1 Step 1 inline error. They must wait, or choose Grand Final (which has a longer-published lineup), or choose a past year for practice rooms.
+- Maintainers populate `data/contestants/{year}/{event}.json` within 24 h of the official announcement per §5.1c.
+
 ### 5.4 Flag display
 Use `flagEmoji` field (unicode flag emoji derived from `countryCode`). Render at 24px on voting cards, 32px on results. No external flag image CDN needed.
+
+### 5.5 Integration smoke test (CI)
+
+A GitHub Action `contestant-api-smoke.yml` runs on a daily schedule (`0 6 * * *` UTC) and on PRs that touch `src/lib/contestants.ts` or the `/api/contestants` route. It hits the real EurovisionAPI against a **known-good historical fixture** (2025 grand final) and asserts:
+
+- HTTP 200
+- Array length ≥ 25
+- Every row has the four required fields (`country`, `artist`, `song`, `runningOrder`)
+- A spot-check: the country with `runningOrder = 1` matches the committed `data/contestants/2025/final.json` row at index 0.
+
+On failure, the job posts a notification to the repo's GitHub Issues (label `api-upstream`) and does **not** block PRs — the fallback cascade exists precisely so upstream flakiness doesn't break us. The job's value is surfacing slow rot in the upstream schema before show night.
 
 ---
 
@@ -264,7 +345,8 @@ Admin goes through a 3-step wizard:
 - Announcement mode: two large radio cards with explanatory copy —
   - **Live:** *"Take turns announcing your points, Eurovision-style. Great with a TV."*
   - **Instant:** *"Reveal the winner in one shot. Great if you're short on time."*
-- **"Sync everyone to the performing act"** toggle (internal name: `allow_now_performing`) — lets the admin tap the currently-performing country to bring all guests to that card during voting. Off by default. Info icon on the toggle opens a one-line explanation.
+- **Room bets (optional, off by default)** — toggle *"Add a betting sidegame"*. When enabled, the admin picks **exactly 3 bets** from the catalog in §22.1, or taps **"Surprise me"** for 3 random picks. Bets lock at the `lobby → voting` transition. Separate leaderboard from the main Eurovision-points game. Full mechanic in §22.
+- **"Now performing" broadcast** (internal name: `allow_now_performing`) — when enabled, the admin can tap the currently-performing country. Guests see an opt-in *"Jump to [Country]"* pill at the top of their voting view (not a forced snap). The `/present` screen always follows the broadcast. Off by default. Info icon copy: *"Shows guests a pill to jump; it never auto-snaps them while they're scoring."* See §6.5.
 
 **Step 3: Room ready**
 - Display room PIN (6 alphanumeric chars, uppercase, excluding O/0/I/1 for readability)
@@ -274,7 +356,7 @@ Admin goes through a 3-step wizard:
 - "Start lobby" button → transitions room to `lobby` status and navigates admin to room view.
 
 **Editing after creation (admin-only, in-lobby):**
-While `rooms.status = 'lobby'`, the admin can re-open a limited wizard from the lobby view to change **categories**, **announcement mode**, and the **now-performing toggle** — all via the same UI as Step 2. Year and event are **not** editable post-creation (contestant data and PIN don't change). All edits lock permanently once status transitions to `voting`. The lobby view surfaces the entry point as an "Edit room" control, visible only to the owner.
+While `rooms.status = 'lobby'`, the admin can re-open a limited wizard from the lobby view to change **categories** (add, remove, rename, edit weight/hint, **drag-reorder** via the same grip-handle UX as §7.2), **announcement mode**, the **now-performing toggle**, and the **room bets** (swap/replace/toggle off — see §22.2). Year and event are **not** editable post-creation (contestant data and PIN don't change; for contestant-list updates after an allocation-draw update, use §5.1d). All edits lock permanently once status transitions to `voting`. The lobby view surfaces the entry point as an "Edit room" control, visible only to the owner (and co-admins, §6.7).
 
 ### 6.2 Room PIN generation
 - 6 chars from charset: `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (no O, 0, I, 1)
@@ -293,21 +375,123 @@ lobby → voting → scoring → announcing → done
 
 State transitions are admin-only actions. State is stored in `rooms.status` and broadcast via Supabase Realtime to all room subscribers. All connected clients react to state changes immediately.
 
+#### 6.3.1 "End voting" undo window
+
+"End voting" is a high-consequence tap that kicks off scoring and freezes every guest's vote. The admin must have a safety net for accidental taps (common on phones held loosely while shouting across a room).
+
+**Flow:**
+1. Admin taps "End voting" on their control panel.
+2. Server transitions `rooms.status` → `voting_ending` (new intermediate state) and writes `rooms.voting_ends_at = now() + 5 seconds`.
+3. All clients receive a `voting_ending` broadcast and render a **5-second countdown toast** at the top of the screen: *"Voting ends in 5… 4… 3… Undo"* with a large "Undo" button visible to the admin only.
+4. If the admin taps **Undo** before the countdown elapses: server reverts `rooms.status` back to `voting`, broadcasts `status_changed` with `voting`, and the toast dismisses. Guest voting resumes seamlessly (no local state lost).
+5. If the countdown elapses without an undo: server transitions `rooms.status` → `scoring` and the §9 pipeline runs.
+6. If the admin leaves the app during the countdown, the countdown continues server-side — this is a server-authoritative timer, not a client timer. Refresh-proof.
+
+**State machine addition:**
+```
+lobby → voting ⇄ voting_ending → scoring → announcing → done
+                  ↑____undo____|
+```
+
+`voting_ending` is added to the `rooms.status` CHECK constraint. Guest voting is still permitted during `voting_ending` (votes aren't locked yet — only the state is in a "committing" phase). The 5-second window is not user-adjustable in MVP.
+
+#### 6.3.2 Late joiners during `voting`
+
+Common case: a friend arrives 30 min late and wants to join the room. Spec:
+
+- Users may join a room in any status except `scoring`, `announcing`, or `done`. For `voting`, join succeeds; the user is added to `room_memberships` with `joined_at = now()`.
+- On first load, late joiners see a **one-time info card** at the top of their voting view: *"You joined mid-show. Catch up by scoring the songs you've seen — skip the rest, or mark them 'I missed this'."* The card is dismissible.
+- **Bets are locked** for late joiners — they see the room's 3 bets as read-only with their personal pick set to *"No opinion (joined after bets locked)"* per §22.3. No retroactive picks permitted.
+- Late joiners' votes are scored identically to everyone else's — no weighting or penalty. The `joined_at` timestamp is informational only.
+- If `joined_at` is within 10 minutes of `rooms.voting_ends_at` (the admin has already triggered "End voting"), they are **still accepted into voting** but the server surfaces a warning toast: *"Voting ends in under a minute — score quickly."*
+- Attempts to join during `scoring`, `announcing`, or `done` return HTTP 409 `{ code: "room_voting_closed" }` — the join-by-pin route (§6.4) already rejects `announcing`/`done` and must be extended to reject `scoring` / `voting_ending`.
+
 ### 6.4 Room join by PIN
 Route: `eurovisionmaxxing.com/join`
-- **Six individual slot inputs** (SMS-code style), one character each, auto-uppercase, auto-advance focus on keystroke, auto-backtrack on delete. Paste into any slot distributes characters across the slots. Rationale: PINs are often read aloud across a room — slotting matches how they're spoken ("A… B… J…").
-- On six filled slots: auto-submit `POST /api/rooms/join-by-pin` → redirect to room URL on success
-- Error states: room not found, room already in `announcing` or `done` state. Errors render inline below the slots and do **not** clear the entered characters (so the user can correct a typo rather than retype).
+
+**Input pattern:** one underlying `<input>` element with `inputmode="text" autocapitalize="characters" autocomplete="one-time-code" maxlength="6" pattern="[A-HJKMNP-Z2-9]{6}"` styled with a **visual slot overlay** — six segmented boxes render the typed characters, but the DOM target is a single input. Rationale: this preserves the speakable "A… B… J…" look while getting clipboard paste, password manager autofill, iOS SMS-code autofill, and natural backspace-to-correct for free. Six-slot DOM-input implementations break all four of those.
+
+- Auto-uppercase via `autocapitalize="characters"` + a JS transform on input to enforce the charset.
+- On six valid characters: auto-submit `POST /api/rooms/join-by-pin` → redirect to room URL on success.
+- Error states: room not found, room already in `scoring` / `announcing` / `voting_ending` / `done`. Errors render inline below the input and **do not clear the entered characters** (user can correct a typo).
+- Error copy: locale keys `errors.room_not_found` and `errors.room_voting_closed` (mapped from server error codes per §21.7).
+
+**Fallback visual (optional enhancement):** keep a non-interactive six-slot row below the input for speakable display. Both layouts share the same input value via React state. If the single-input pattern causes issues on any tested browser, switch to the legacy six-DOM-input pattern behind a feature flag.
 
 ### 6.5 "Now performing" mode
-When enabled by admin at room creation (see §6.1 Step 2, "Sync everyone to the performing act"):
+When enabled by admin at room creation (see §6.1 Step 2, "Now performing" broadcast):
+
 - Admin sees a "Now performing" control panel with a list of all contestants. For MVP the admin taps each act manually as the show progresses (no auto-follow-running-order). Auto-queue is deferred to V2.
 - Tapping a contestant broadcasts `now_performing: contestantId` to all room subscribers.
-- All connected clients' voting UI snaps to that contestant's card — **with two safety conditions**:
-  1. The snap is **deferred while the user is actively interacting with a score button** (button press-down in flight). The snap fires on the next interaction release.
-  2. If the user is **already viewing the performing card**, the snap is a no-op.
-- Non-admin users on a *different* card than the currently-performing one see a small indicator pill at the top: *"🎤 Now performing: [Country] — [Song]"*, tappable to jump. The indicator is **suppressed on the performing card itself** (no duplication).
-- Users can still manually navigate away; the snap only triggers once per broadcast.
+
+**Guest phones (opt-in pill, never auto-snap):**
+- Non-admin users on a *different* card than the currently-performing one see a prominent pill at the **top of their voting view**: *"🎤 Now performing: [Country flag] [Country] — [Song] → Jump"*. Tapping the pill navigates to that contestant's card. Tapping the **×** dismisses the pill for that broadcast only (next `now_performing` event re-shows it).
+- The pill is **suppressed on the performing card itself** (no duplication).
+- Guests are never force-navigated. Rationale: a user mid-score on a different act should not be interrupted. The pill is a discoverable affordance; the choice to jump is theirs.
+
+**Admin's own phone:** same pill pattern as guests (admin is also a scorer). The admin tapping "Now performing: [X]" broadcasts the event but does not force-snap the admin's own view.
+
+**`/room/{id}/present` (TV screen):** **always follows the broadcast** — the TV auto-snaps to the performing country's card so the room-view on the TV stays synchronised with the show. This is the place where automatic sync belongs (shared context, no individual interaction state to disrupt).
+
+### 6.6 Lobby experience
+
+The lobby is no longer a dead "waiting for admin" screen. Guests arrive 20–30 min before showtime; the lobby surface should reward early arrival, orient late arrivals, and tee up the night.
+
+**6.6.1 Show countdown**
+- Prominent countdown to the event's broadcast start time, when known. Format: `DD:HH:MM:SS` collapsing to `HH:MM:SS` in the final 24 h.
+- Broadcast start times for each `{year, event}` are shipped alongside the contestant fallback JSON (`data/contestants/{year}/{event}.json` gains a top-level `broadcastStartUtc` field). Backfilled for 2025; populated with the 2026 schedule when announced.
+- If `broadcastStartUtc` is missing (e.g. a practice room on past-year data), countdown is suppressed and replaced with *"Ready whenever you are."*
+
+**6.6.2 "Who's here" roster**
+- Every room member's avatar + display name rendered as an always-visible roster, live-updated via the `user_joined` / `user_left` broadcasts (§15). Grey-out on presence loss (>30 s since last broadcast ping on `room:{roomId}`).
+- Roster is visible to **everyone** in the lobby, not just admin — helps guests see "who's already here?" at a glance and reduces "am I alone?" anxiety for early arrivers.
+- The roster moves to a compact header strip once voting starts (§8.x), continuing to show presence throughout the show.
+
+**6.6.3 Contestant primer carousel**
+- Horizontally scrollable card deck showing every contestant in running order: flag · country · song · artist. Tapping a card flips it to reveal the category hints that will apply (pulled from the selected template) plus a "Preview song" external link to YouTube if available (deep-link only — no embed, no media rights required).
+- Deep-link source: the `artistPreviewUrl` optional field on the hardcoded JSON (`data/contestants/{year}/{event}.json`). When absent, the "Preview song" link is hidden.
+- Useful for late joiners who missed early acts, and for early arrivers who want to warm up.
+
+**6.6.4 Room bets preview**
+- If the admin enabled bets (§6.1 Step 2, §22), the three bet questions render as a read-only card in the lobby showing what will be asked when bets open. Guests can place their picks from this card (see §22.3 interaction). Un-picked bets remain in a guest's *"Still to pick"* list.
+- Lobby closes for bet picks at the `lobby → voting` transition. Late joiners see a greyed-out version with the *"Bets locked"* banner per §6.3.2.
+
+**6.6.5 Lobby admin controls**
+- Room PIN and QR code (from §6.1 Step 3) remain visible for mid-lobby joiners.
+- "Start voting" primary CTA (admin only).
+- "Edit room" secondary (admin + co-admins, §6.7).
+- Co-admin promotion drawer accessible from the roster (§6.7).
+
+### 6.7 Admin transfer and co-admins
+
+A single admin's phone dying mid-show is a real risk over a 4-hour event. The MVP supports lightweight redundancy without introducing user roles or complex permissioning.
+
+**Data model:**
+- `rooms.owner_user_id` remains the primary admin (the room's "owner") — immutable for the room's lifetime (used for present-screen locale §21.4, and for audit).
+- New `room_memberships.is_co_admin BOOLEAN DEFAULT FALSE` flag — a co-admin has the same authority as the owner for every admin-gated action **except transferring ownership** (reserved for the owner).
+- Zero, one, or many co-admins per room. No UI limit in MVP (friend groups self-limit).
+
+**Promotion flow:**
+- Any time before `done`, the owner opens the roster (§6.6.2 in lobby; header roster during voting/announcing) and long-presses / right-taps a member → modal: *"Make [Name] a co-admin?"* with confirm/cancel.
+- Server validates caller == owner, sets `is_co_admin = true`, broadcasts `co_admin_changed` so the promoted user's UI surfaces admin controls without a refresh.
+
+**Demotion:**
+- Same flow, reverse label. Owner only.
+
+**Ownership transfer (owner-initiated):**
+- Owner opens roster → long-press on an existing co-admin → *"Hand over ownership to [Name]?"* with a confirm dialog: *"You'll become a co-admin. Only they can transfer ownership back."*
+- On confirm: server sets `rooms.owner_user_id = newOwnerId`, sets old owner's `is_co_admin = true`, broadcasts `ownership_transferred`. The new owner's `preferred_locale` now drives the `/present` screen (§21.4) from the next render.
+
+**Automatic promotion-on-absence (fallback):**
+- If the owner has been absent from `room:{roomId}` presence for **>5 minutes** during `voting` / `voting_ending` / `scoring` / `announcing`, the server auto-promotes the **longest-tenured co-admin** (earliest `room_memberships.joined_at` among co-admins) to owner and broadcasts `ownership_transferred` with `reason: "owner_absent_5m"`.
+- If there are no co-admins at the 5-minute mark, the server does nothing (no random non-admin promotion — that's a V2 design).
+- On owner return, ownership does **not** automatically revert. The new owner may choose to transfer back.
+
+**Authorization recap:**
+- Owner-only: transfer ownership, promote/demote co-admins, delete the room (V2).
+- Admin-or-co-admin (any row-mutating admin action elsewhere in the spec): status transitions, now-performing broadcasts, hot-take moderation (§8.7), bet resolution (§22), announcer handoff (§10.2), contestant refresh (§5.1d), room edits in lobby (§6.1).
+
+All "admin-only" mentions throughout this document are shorthand for "owner or co-admin" unless explicitly scoped to the owner.
 
 ---
 
@@ -374,26 +558,34 @@ These anchors appear on every voting card regardless of template. Anchor copy is
 ## 8. Voting interface
 
 ### 8.1 Layout (mobile-first)
-- Full-screen single-contestant view
-- Header: contestant flag emoji + country name + song title + artist name
-- Running order indicator: "3 of 17" (the current card's position in the running order, out of total contestants — always constant for a given event). A **separate progress indicator** ("scored / total", e.g. "5 / 17 scored") is shown elsewhere in the header so the two counts are not conflated.
-- Body: category score rows (10-button 1–10 scale, see §8.2), one row per category
-- Footer: "I missed this" button + Prev/Next navigation
-- Jump-to: small button opens a scrollable drawer of all countries (flag + name), tapping any navigates directly
+- Full-screen single-contestant view.
+- Header:
+  - Left: contestant flag emoji + country name + song title + artist name.
+  - Right: a compact progress cluster — the running-order label `3/17` stacked above a thin **progress bar** (`bg-muted` track, `bg-primary` fill) whose fill ratio is `scoredCount / totalContestants`, with the smaller label `2 scored` underneath the bar. Rationale: progress-bar + one numeric label communicates both "where am I in the running order" and "how far through voting am I" without two competing integer labels as in earlier drafts.
+- **Global scale strip** directly below the header, above the category rows: a single line reading `Scale: 1 Devastating · 5 Fine · 10 Iconic` (locale keys `voting.scale.1|5|10`). Replaces the per-row anchor repetition that appeared in earlier spec drafts — shown once per card.
+- Body: category score rows per §8.2 (hints always inline below each category name, per §7.2).
+- Footer: "I missed this" button + Prev/Next navigation + jump-to drawer button.
+- Jump-to: small button opens a scrollable drawer of all countries (flag + name + per-contestant **scored-chip** from §8.8), tapping any navigates directly.
 
 ### 8.2 Category score buttons
 Each category renders as a row of **10 tappable buttons** labelled 1 through 10. No slider.
 
 - **Values:** integer 1–10. Each button represents one discrete value.
 - **Touch targets:** min 44×44 CSS px per button. On narrow viewports the row wraps to two lines (1–5 top, 6–10 bottom); on wider viewports it renders as a single row.
-- **Anchors:** the anchor copy from §7.3 is rendered underneath buttons 1, 5, and 10 in `text-muted-foreground`, one line each.
-- **Unset state:** no button selected. The row uses `bg-muted` fill with button labels in `text-muted-foreground`. A small ghost line reads `t('voting.tapToScore')` ("Tap to score") below the row.
+- **Category row header:** each row shows the category **name** on the left and a **status label** on the right, aligned baseline-to-baseline:
+  - *Unscored* → label reads `Not scored` in `text-muted-foreground` (locale key `voting.status.unscored`).
+  - *Scored* → label reads `✓ scored N` where N is the selected value, rendered in `text-primary` (gold) (locale key `voting.status.scored` with `{value}`).
+  - Rationale: moves the scored/unscored signal to an explicit, scannable label on every row. Replaces the earlier "ghost Tap to score" line and the per-row anchor repetition.
+- **Weight badge (only when weights are non-uniform):** when the room's category weights are not all equal, categories with `weight > 1` render a pill next to their name: `counts 2×` (or `counts 3×`, etc., locale key `voting.weight.badge` with `{multiplier}`). Categories with `weight = 1` render no badge. For rooms where **every** category has `weight = 1` (all predefined templates by default), the badge is suppressed entirely — no visual noise in the common case. Percentages (§7.2 admin builder) remain the primary authoring display; **voters see weight as a multiplier, not a percentage**.
+- **Hint:** the category hint (from §7.2 for custom, from the template definition for predefined) renders inline below the category name, always visible, in `text-muted-foreground` at a smaller size. Unchanged from §7.2.
+- **Unset state:** no button selected. Buttons render with `bg-muted` fill and `text-muted-foreground` labels.
 - **Selected state:** the pressed button fills with `bg-primary` (gold), its label flips to `text-background`, and `animate-score-pop` fires on press.
 - **Interaction:**
   - Tapping a button sets the score to that value.
   - Tapping a different button updates the score to the new value.
   - Tapping the currently-selected button **clears** the score (returns to unset). Rationale: no separate "clear" control needed.
-- **Scored definition:** a category is considered scored whenever exactly one button is pressed. The progress indicator in §8.1 counts only categories in this state.
+- **Scored definition:** a category is considered scored whenever exactly one button is pressed. The progress bar in §8.1 and the per-contestant chip in §8.8 count only categories in this state.
+- **No per-row anchors:** the 1/5/10 anchor copy lives once in the §8.1 global scale strip, not under every row. Removes ~15 lines of repeated text per voting card for a 5-category template.
 
 ### 8.3 "I missed this" button
 - Shown per-contestant in the footer.
@@ -419,8 +611,25 @@ Each category renders as a row of **10 tappable buttons** labelled 1 through 10.
   - `Offline — changes queued` — client could not reach the server. Offline queue is held in memory (V1) and on `localStorage.emx_offline_queue` (survives tab reload within the same session).
 - **Offline UX:**
   - A one-line banner appears at the top of the voting view when `navigator.onLine === false` *or* three consecutive saves have failed: *"You're offline — changes will sync when you reconnect."* The voting UI remains fully interactive.
-  - On reconnect: drain the offline queue in order (oldest first). Conflicts (a row already has a later server-side `updated_at`) resolve **server-wins** — the server value is applied, and the client surfaces a brief toast *"Your offline changes for [contestant] conflicted with a newer version on the server."*
+  - On reconnect: drain the offline queue in order (oldest first). Each queued write carries the contestant id, the category (or missed/hot-take flag), the client-side timestamp, and a `queuedAtRoomStatus` snapshot.
   - Banner and chip clear once the queue drains successfully.
+
+**8.5.1 Conflict reconciliation (server-wins, consolidated UX):**
+- A conflict = a queued write whose `updated_at` is earlier than the server's current `updated_at` for the same `(room_id, user_id, contestant_id)` row. Server value wins; the queued delta is discarded.
+- **Consolidated toast** replaces per-conflict toasts. When the drain completes, the client surfaces a single summary toast if any conflicts occurred: *"N offline edits couldn't be applied (newer values on the server). Tap for details."* Tapping opens a modal listing the contestant + category for each skipped write. Rationale: a reconnect after 15 queued edits should not trigger 15 stacked toasts.
+- If **zero conflicts** during drain: no toast. The `Saved` chip is signal enough.
+- Queued writes of *"I missed this"* or *"hot-take edit"* follow the same reconciliation path — any later server-side value wins.
+
+**8.5.2 Offline queue vs. room status transitions:**
+While the client was offline, the admin may have transitioned the room out of `voting`. The queued writes target a state that no longer accepts them.
+- On drain, each write validates the current `rooms.status`:
+  - If status is `voting` or `voting_ending`: write proceeds through normal UPSERT + conflict check.
+  - If status is `scoring` / `announcing` / `done`: the server **rejects the write with HTTP 409** `{ code: "room_voting_closed" }`. Client discards the queued entry.
+  - If `queuedAtRoomStatus` was `voting` and current is `announcing` (i.e. the user missed the end-of-voting entirely): the entire drain is aborted after the first 409, and a single *"Voting ended while you were offline — your unsaved changes for this room were discarded"* toast is shown. The offline queue is cleared for that `roomId`. The user's already-submitted pre-offline votes are retained (they're on the server). Rationale: trying to drain 10 locked writes is noisy and useless.
+- Writes for a different `roomId` (unlikely but possible) drain normally.
+
+**8.5.3 Queue size limits:**
+- Max 200 queued operations per room. On overflow, the oldest entries are evicted and a persistent banner warns *"Too many offline changes — oldest may be lost. Reconnect to save."* Unlikely in practice but prevents unbounded localStorage growth.
 
 ### 8.6 Navigation
 - Prev/Next arrows in footer; swipe gesture also works (left = next, right = prev).
@@ -435,6 +644,44 @@ Each category renders as a row of **10 tappable buttons** labelled 1 through 10.
 - Placeholder: *"Your one-liner"*.
 - Shown in results screen next to user's avatar.
 - Can be left blank; shown only if filled.
+
+**8.7.1 Editing after submission:**
+- A hot-take's author can edit their hot-take at any point until room status leaves `voting` / `voting_ending`. Edits debounce-save identically to scores (§8.5).
+- Each edit updates `votes.hot_take_edited_at` (new column, §13). If `hot_take_edited_at > hot_take_created_at`, the hot-take renders with a small trailing tag *"edited"* (locale key `results.hotTake.edited`) on both the results screen and any mid-show surface that displays it.
+- Once the room transitions to `scoring`, hot-takes are frozen — no further edits. Rationale: published text shown to the group shouldn't change silently.
+
+**8.7.2 Deletion by author or admin:**
+- The hot-take's **author** can tap a small trash icon next to their own hot-take (visible only in edit mode on the voting card) to delete it. Confirmation: *"Delete this hot-take?"* with Cancel/Delete. Deletion sets `votes.hot_take = NULL`, leaves the rest of the row intact, and clears `hot_take_edited_at`.
+- The **room owner or co-admin** (§6.7) can delete any hot-take from the results screen or mid-show from the hot-takes drawer. A trash icon appears on hover/tap for admin-eyed rows. Confirmation modal: *"Delete [User]'s hot-take? They won't be notified."* — matching the user's "silently" directive.
+- Admin deletions log `deleted_by_user_id` and `deleted_at` in a new optional column pair (§13). No separate audit table in MVP.
+- Once deleted, the hot-take is gone — no "deleted hot-take" placeholder renders. The user's avatar still shows their scored points as normal.
+- Deletion is permitted during `voting`, `voting_ending`, `scoring`, `announcing`, and `done`. Rationale: moderation needs to work at any point, including post-show on the shareable results link.
+
+### 8.8 Per-contestant "scored by N / M" chip
+
+Every contestant card (and every row in the jump-to drawer from §8.1) shows a compact chip indicating how many room members have scored that contestant in every category:
+
+- Chip format: `N / M scored` where `N` = number of members with all categories scored (not counting `missed`), `M` = total room members.
+- Placement: top-right of the contestant's card content area, and at the right edge of each row in the jump-to drawer.
+- Colour ladder:
+  - `0 / M` — `text-muted-foreground` (neutral).
+  - `1 ≤ N < M` — `text-muted-foreground` with the numeric N in `text-foreground`.
+  - `N = M` — `text-primary` (gold) with a check glyph: `✓ all scored`.
+- **Data source:** the server broadcasts `voting_progress` (§15, already spec'd — count only, not scores) for each user. Clients maintain per-contestant counts from the aggregated stream. No additional endpoint.
+- Updates in realtime via the same `room:{roomId}` subscription.
+- Purpose: answers "am I the slow one?" and lets guests see at a glance which contestants still need scores if they're trying to vote for their own missed ones via the jump-to drawer.
+- Users marked `missed: true` for a contestant do **not** count toward `N` — only fully-scored members count, consistent with the §8.2 "scored definition".
+
+### 8.9 Screen wake lock
+
+Phones aggressively sleep during a multi-hour show. The voting view and the `/present` screen both request the Screen Wake Lock API to keep the display awake while relevant.
+
+- **Voting view** (`/room/{id}` when `rooms.status ∈ { voting, voting_ending }`): acquire wake lock on mount, release on unmount or status transition out of voting.
+- **Present screen** (`/room/{id}/present`, §10.3): acquire wake lock on mount, release on unmount. Held throughout lobby → voting → scoring → announcing → done.
+- Use `navigator.wakeLock.request('screen')`. Wrap in a feature-detection check; on browsers without support (older Firefox, some iOS versions), silently no-op — no error toast.
+- If the lock is released by the browser (user switches tabs, phone lid closes, etc.), re-acquire automatically on `visibilitychange` → visible. Listen for `wakeLock.onrelease` to detect the release.
+- Never hold the wake lock on `/` , `/create`, `/join`, `/results/{id}`, or during `rooms.status = 'lobby'` — no reason to prevent the phone from sleeping during idle phases.
+- No user-visible toggle in MVP (implicit). A "disable wake lock" toggle is deferred to V2 if battery complaints emerge.
 
 ---
 
@@ -501,11 +748,13 @@ Sort descending → final leaderboard. All results written to `results` table.
    - Their hot takes displayed per country.
    - The **group leaderboard is locked** on this screen until either all users are ready or the admin overrides — users can see only their own picks, preserving the reveal moment.
 2. "Ready to reveal" button — admin sees count of users who are ready (e.g. *"4 / 6 ready"*).
-3. Admin reveal triggers:
-   - Once all users mark ready → admin's "Reveal final results" CTA is primary.
-   - If not all are ready, admin can still tap **"Reveal anyway"** once a timeout (60 seconds from the first ready) has elapsed, or once at least half the room is ready — whichever comes first. Surfacing "Reveal anyway" earlier avoids the whole room waiting on an afk user.
-4. On reveal → animated worst-to-best reveal of the group leaderboard.
-5. After leaderboard: awards screen (§11).
+3. Admin reveal triggers (three CTAs that materialise progressively on the admin's surface):
+   - **"Reveal final results"** (primary) — enabled once **all** users mark ready.
+   - **"Reveal anyway"** (secondary) — enabled earlier, when **either** ≥½ the room has marked ready **or** 60 s has elapsed since the first-ready event, whichever comes first.
+   - **"Admin override — reveal now"** (tertiary, destructive-style) — available to the admin **unconditionally at any time**, including before anyone marks ready. Rationale: if the whole room is AFK or a guest rage-quits, the admin must always be able to progress the show. Confirmation modal: *"Reveal the results right now? No one will be waited for."* — cancel / confirm.
+4. **Reveal-unlock countdown.** The admin's surface renders a live micro-counter next to the "Reveal anyway" CTA showing when it will unlock, e.g. *"Reveal anyway — unlocks in 0:22"* (counting down from the 60-second first-ready timer) or *"Reveal anyway — ready (3 / 6)"* (once ≥½ condition holds). This prevents the admin from sitting on a disabled button without knowing why. The "Admin override" CTA has no countdown — it's always active.
+5. On reveal → animated worst-to-best reveal of the group leaderboard.
+6. After leaderboard: awards screen (§11). If the room uses bets (§22), the bet-resolution gate runs between the leaderboard reveal and the awards screen — see §22.5.
 
 ### 10.2 Live announcement mode
 The "announce screen" (`/room/{roomId}/present`) is a dedicated fullscreen route, optimised for AirPlay/screen mirroring — no navigation chrome, designed for a TV.
@@ -524,7 +773,11 @@ The "announce screen" (`/room/{roomId}/present`) is a dedicated fullscreen route
    | **Present (TV) screen** | Label: *"[User] is announcing"* with avatar | Current reveal as a large overlay that fades after 3s | Full leaderboard with `animate-rank-shift` as scores update |
    | **Other guests' phones** | Label: *"[User] is announcing"* | Current reveal as a toast that auto-dismisses after 3s | Compact live leaderboard |
 
-4. **Advancing the reveal:** the announcer advances by **tapping anywhere on the lower half of their screen** (not a small button — the whole area is one large tap target, which avoids fumble under pressure). An optional 3-second auto-advance fires after each reveal; a persistent *"Hold"* control lets the announcer pause auto-advance indefinitely while they narrate.
+4. **Advancing the reveal:** the announcer has **two redundant controls**, either of which progresses to the next point:
+   - An explicit large **"Reveal next point"** button (primary, full-width, min 56 px tall) near the bottom-centre of the announcer's screen. Always visible, always labelled. This is the canonical affordance — first-time announcers will find it without tutorial.
+   - A **tap-anywhere zone** covering the full lower half of the announcer's screen, which fires the same advance. Redundant with the button, present because the button alone can be fumbled under pressure (phone held loose, gesture overshoot).
+   - An optional **3-second auto-advance** fires after each reveal. A persistent *"Hold"* control (top-right corner of the lower tap zone) pauses auto-advance indefinitely while the announcer narrates. "Hold" is sticky — tap once to enable, again to release.
+   - All three controls advance via the same `POST /api/rooms/{roomId}/announce/next` endpoint.
 5. After announcing all 12 points: *"Finish announcement"* button (primary, full-width).
 6. Next scheduled user starts their announcement (per `rooms.announcement_order`).
 7. **Admin handoff semantics:**
@@ -543,9 +796,38 @@ The "announce screen" (`/room/{roomId}/present`) is a dedicated fullscreen route
 
 **Rejoin during `announcing`:** if a user loses and regains their connection mid-announcement, they land on their current voting/results view and see the **current leaderboard** immediately, followed by a brief *"Catching up…"* label (~1s) so they understand they missed beats in between. The next `announce_next` broadcast resumes the live flow.
 
+#### 10.2.1 Announcement-order edge cases
+
+The `rooms.announcement_order` array is computed once at the `scoring → announcing` transition (seeded from `room_memberships` where `room_memberships.joined_at <= rooms.voting_ended_at`, shuffled deterministically with a stored seed for reproducibility). Post-snapshot, real-world messiness must not break the flow.
+
+**Users absent at their turn (never connected during announcing):**
+- When advancing to the next announcer, the server checks the target user's presence on `room:{roomId}` (last seen ≤30 s).
+- If absent: server sets `rooms.announce_skipped_user_ids` (new `UUID[]` column) += this user's id, surfaces *"[User] isn't here — their points are being skipped"* as a brief banner on all clients for 3 s, advances the pointer to the next user.
+- **Skipped users' points are NOT revealed in MVP.** Their points still contribute to the final leaderboard (already written during `scoring`) — but the dramatic individual reveal is suppressed. Rationale: keeping the momentum of the show. V2 could offer a "claim your turn" late-rejoin.
+- Admin can manually **restore** a skipped user at any time from the announcer roster panel — tapping their row re-inserts them after the current announcer and clears the skip.
+
+**Users who left before `announcing` started:**
+- Same treatment as "absent at their turn" — the server's advance-time presence check handles it uniformly, no separate filtering at `announcement_order` construction.
+
+**Admin re-shuffle of announcement order:**
+- Before **any** user has revealed **any** point (i.e. `current_announce_idx = 0` AND `announcement_order[0]` has not yet advanced), the admin sees a *"Re-shuffle order"* button in the roster panel. Tapping it generates a new random permutation of the remaining announcers and broadcasts `announcement_order_reshuffled`.
+- Once the first announcer has advanced even once, the button is disabled. Rationale: mid-show reorder would rewrite narrative history.
+
+**Original announcer returns mid-delegation:**
+- Already covered in §10.2 flow step 7. The returning user sees *"Admin is announcing for you"* and does not get control back in MVP. Deferred to V2.
+
+**All users absent simultaneously:**
+- If the server advances and every subsequent entry in `announcement_order` is absent (including any co-admins), the admin is offered *"Finish the show"* — a single large button that transitions the admin into a **batch-reveal mode**: all remaining points for all absent users are revealed in sequence by the admin tapping "Next point" like a normal announcer. Each point is still attributed to the original user in the record (`points_awarded`), just revealed by the admin.
+- If the admin is themselves absent at this moment: the room sits in `announcing` until an admin or co-admin reconnects. No auto-termination in MVP. The `/present` screen renders *"Awaiting an admin to continue…"* until then.
+
+**Handoff presence-gate update:**
+- The proactive handoff offer (§10.2 step 7, "admin sees 'Announce for [User]' after 30 seconds of no advance") remains. If the current announcer reconnects mid-handoff-offer, the offer dismisses automatically.
+
 ### 10.3 Presentation screen (`/room/{roomId}/present`)
 - Fullscreen, no URL bar ideally (use PWA manifest + `display: standalone`).
 - **iOS/Safari fullscreen fallback:** when `display: standalone` and/or the landscape viewport override can't be acquired (common on iOS Safari when not launched from the home screen), the route surfaces a one-tap *"Enter fullscreen"* prompt that triggers `document.documentElement.requestFullscreen()` on the user gesture. Prompt is dismissible and reappears only if the browser exits fullscreen.
+- **Screen wake lock** held for the full lifetime of the route (see §8.9).
+- Theme is **always dark** regardless of admin's theme preference (see §3.4) — the TV should never flash-bang the room.
 - Shows the current live leaderboard: flag + country + running total, sorted by current score.
 - Animates rank changes when scores are added (smooth reorder transition, ~300ms, via `animate-rank-shift`).
 - Shows whose turn it is to announce and which point value is next.
@@ -584,27 +866,120 @@ Computed server-side after scoring. Stored in `room_awards` table. Displayed on 
 
 **Pair-award storage (Neighbourhood voters):** the two users of the pair are stored in `winner_user_id` and `winner_user_id_b` (deterministic order: alphabetical by display_name). The awards UI renders this as a dual-avatar card (see §11.3).
 
+### 11.2a Bet-based awards (when `rooms.bets_enabled = true`)
+
+When the room has bets (§22), two additional personality awards are generated alongside §11.2:
+
+| Award | Logic |
+|---|---|
+| **The Oracle** | User with the most correct bet picks across the room's 3 bets. Ties resolve by who got the highest-odds correct call first (= fewest other users who picked the same direction), then alphabetical display name. |
+| **The Wishcaster** | User with the fewest correct bet picks (zero correct is valid). A gentle ribbing award, always paired with The Oracle on the reveal sequence. |
+
+These awards follow the same storage convention as §11.2 — `room_awards.award_key ∈ { 'the_oracle', 'the_wishcaster' }`, `winner_user_id`, `stat_value` (count of correct picks), `stat_label` (locale-keyed). They are only written when `rooms.bets_enabled = true`. The main bet standings (full per-user correctness) live in a **separate bet leaderboard** rendered inside the awards screen (§11.3) and on the shareable results page (§12) — see §22.5.
+
 ### 11.3 Awards screen
 - Cinematic reveal: one award at a time, admin/presenter taps to advance.
 - A small **"Next award"** button is always visible in a corner of the screen (not just a tap-anywhere zone) — so that if the admin fumbles or a guest can't tell where to tap, the control is unambiguously findable.
 - Each award: large award name, winner's avatar + display name (or country flag for contestant awards), brief stat shown below.
 - **Pair / joint-winner awards** (Neighbourhood voters; 2-way ties on personality awards): rendered as a **dual-avatar card** — both avatars side-by-side, both display names below, single shared stat line. Caption: *"voted most alike"* for Neighbourhood voters; *"joint winners"* for ties.
-- Last award is always "The enabler" — good narrative closer.
-- After all awards the screen shows two primary CTAs side-by-side:
+- **Reveal sequence:**
+  1. Category awards (§11.1).
+  2. Personality awards in order of increasing "social heat": Biggest stan, Harshest critic, Most contrarian, Hive mind master, Neighbourhood voters, Dark horse, Fashion stan.
+  3. **Bet-based awards** if enabled (§11.2a): Wishcaster first, then Oracle — playful before reward. Followed immediately by a **full bet leaderboard** card (not dual-avatar; ranked list of every user with their bet-correctness count and the 3 bets resolved yes/no).
+  4. **The enabler** — always the last award; narrative closer.
+- After all awards the screen shows three CTAs side-by-side:
   - **"Copy share link"** — copies the `/results/{roomId}` URL and shows a 2s *"Copied!"* confirmation.
-  - **"Create another room"** — routes back to `/create` pre-filled with the same year/event (admin only; guests see only "Copy share link").
+  - **"Copy text summary"** — copies an emoji-formatted leaderboard + bet results (see §12.2) to the clipboard for pasting into group chats. 2s confirmation.
+  - **"Create another room"** — routes back to `/create` pre-filled with the same year/event (admin only; guests see the first two CTAs).
 
 ---
 
 ## 12. Shareable results
 
-- Read-only results page: `eurovisionmaxxing.com/results/{roomId}`
-- Accessible to anyone with the link (no auth required)
-- Shows: final leaderboard, each user's points breakdown, all awards, all hot takes
-- Data persists indefinitely (Supabase free tier doesn't auto-delete rows)
+### 12.1 Read-only results page
+
+- Read-only results page: `eurovisionmaxxing.com/results/{roomId}`.
+- Accessible to anyone with the link (no auth required).
+- Shows: final leaderboard, each user's points breakdown, all awards, all hot takes, bet leaderboard + bet resolutions (if §22 bets enabled).
+- Data persists indefinitely (Supabase free tier doesn't auto-delete rows).
 - Supabase project kept alive via UptimeRobot pinging `/api/health` every 5 minutes. The endpoint must execute a real Supabase query (not just a static response) — implemented as `supabase.from('rooms').select('id').limit(1)` — so that both Vercel and the Supabase DB stay warm. Pinging the homepage only keeps Vercel warm.
 - `/api/health` returns `{ ok: true }` on success or HTTP 503 with `{ ok: false, error }` on failure.
-- No PDF export in MVP — the shareable link is the export
+
+### 12.2 Text summary (copy-paste to group chats)
+
+A results surface that's shareable via a single clipboard paste into WhatsApp / iMessage / Signal / Telegram. The format:
+
+```
+🇪🇺 Eurovision 2026 — Grand Final
+Our room's top 10:
+🥇 🇸🇪 Sweden — 142 pts
+🥈 🇺🇦 Ukraine — 128 pts
+🥉 🇫🇷 France — 114 pts
+4  🇮🇹 Italy — 89 pts
+5  🇬🇧 UK — 72 pts
+6  🇩🇪 Germany — 65 pts
+7  🇪🇸 Spain — 58 pts
+8  🇳🇴 Norway — 51 pts
+9  🇱🇹 Lithuania — 44 pts
+10 🇵🇱 Poland — 39 pts
+
+Bet results (3 / 3 won):
+✅ Will Sweden finish top 5?
+❌ Will anyone perform barefoot?
+✅ Will the winning song be non-English?
+
+Full results: https://eurovisionmaxxing.com/results/abc123def
+```
+
+- Rendered by a pure function `formatRoomSummary(room, results, bets): string` living in `src/lib/format.ts`.
+- Accessible from **two** places:
+  - "Copy text summary" button on the awards screen (§11.3).
+  - "Copy text summary" button on the results page header (§12.1).
+- 2-second *"Copied!"* confirmation on click.
+- Supports the current locale — medal emojis and flag emojis are universal, but the labels *"Our room's top 10"*, *"Bet results"*, *"Full results"* etc. render in the user's `preferred_locale`.
+- Always top 10; rooms with ≤10 contestants render the full list.
+- Bets section is omitted entirely when `rooms.bets_enabled = false`.
+
+### 12.3 HTML export (standalone file)
+
+Endpoint `GET /api/results/{id}/export.html` returns a self-contained single-file HTML document:
+
+- All CSS inlined in a `<style>` block — no external fetches, no CDN dependencies.
+- All data embedded — leaderboard, per-user breakdowns, awards, hot takes, bet results.
+- Includes a visible "Generated at {timestamp} from eurovisionmaxxing.com/results/{id}" footer.
+- Filename: `emx-{year}-{event}-{pin}.html` (e.g. `emx-2026-final-AC42H7.html`).
+- No JavaScript — pure static HTML, opens in any browser, airplane-mode viewable.
+- Response headers: `Content-Type: text/html; charset=utf-8`, `Content-Disposition: attachment; filename="..."`.
+- Size budget: ≤300 KB for a 15-user / 26-contestant grand final.
+
+### 12.4 PDF export
+
+Endpoint `GET /api/results/{id}/export.pdf` returns a printable PDF:
+
+- Generated server-side via **Puppeteer on Vercel serverless** or, if Vercel's bundle-size limit is a blocker (likely; Puppeteer is ~180 MB), via **`@react-pdf/renderer`** as the fallback implementation — document structure authored as React components in `src/lib/pdf/ResultsDocument.tsx`.
+- Layout: cover page (room title, PIN, date, winner) → full leaderboard → per-user breakdowns → awards → bet results → hot takes appendix.
+- A4 portrait, 1 cm margins, accessible contrast even on monochrome printers.
+- Same filename convention as HTML: `emx-{year}-{event}-{pin}.pdf`.
+- **Recommended implementation:** `@react-pdf/renderer` — smaller bundle, no headless-browser cold-start penalty, sufficient for a static document. Puppeteer deferred to V2 only if fidelity gaps emerge.
+
+Both exports reuse the same data-fetching pipeline as §12.1 (uses `GET /api/results/{id}` internally) and require `rooms.status = 'done'`. Earlier status → HTTP 409 `{ code: "results_not_ready" }`.
+
+### 12.5 Results page during pre-`done` statuses
+
+Shareable links may be opened (accidentally or prematurely) while the room is still in `voting` / `voting_ending` / `scoring` / `announcing`. The page must not 404 and must not leak in-flight scores.
+
+| `rooms.status` | `/results/{roomId}` renders |
+|---|---|
+| `lobby` | Placeholder: *"This room hasn't started voting yet. Check back after the show."* + countdown to `broadcastStartUtc` if known. |
+| `voting` / `voting_ending` | Placeholder: *"Voting is still in progress. Results will be available once the admin ends voting."* + "Join this room" CTA (deep-links to `/room/{roomId}` for the standard join flow). |
+| `scoring` | Placeholder: *"Tallying results…"* with `animate-shimmer` overlay. Page polls `/api/results/{id}` every 2 seconds and auto-renders the full results on `announcing` or `done`. |
+| `announcing` | **Partial results surface** — shows the **current live leaderboard** (points revealed so far) with a banner *"Live — announcements in progress"*. Per-user breakdowns, awards, hot takes, and bet results are all hidden; only the public running total is exposed. Link viewers are NOT participants in the announcement flow (they just see numbers). |
+| `done` | Full results per §12.1. |
+
+- Share URL shared during `announcing` gives an evocative "tuning in" experience without spoiling awards.
+- Share URL used during `voting` nudges the visitor to join the room (if PIN visible in the placeholder).
+- Share URL during `lobby` is safe to copy early — the countdown doubles as a "save the date" surface.
+- Exports (§12.3, §12.4) remain gated to `done` — partial exports would be misleading.
 
 ---
 
@@ -634,16 +1009,20 @@ CREATE TABLE rooms (
   event                 VARCHAR(6) NOT NULL CHECK (event IN ('semi1', 'semi2', 'final')),
   categories            JSONB NOT NULL,         -- [{name, weight, hint}] — predefined templates additionally include {key, nameKey, hintKey}, see §21.6
   owner_user_id         UUID REFERENCES users(id),
-  status                VARCHAR(12) NOT NULL DEFAULT 'lobby'
-                          CHECK (status IN ('lobby','voting','scoring','announcing','done')),
+  status                VARCHAR(14) NOT NULL DEFAULT 'lobby'
+                          CHECK (status IN ('lobby','voting','voting_ending','scoring','announcing','done')),
   announcement_mode     VARCHAR(7) NOT NULL DEFAULT 'instant'
                           CHECK (announcement_mode IN ('live','instant')),
   announcement_order    UUID[],                 -- ordered array of userIds for live mode
+  announce_skipped_user_ids UUID[] DEFAULT '{}', -- users skipped because absent at their turn (§10.2.1)
+  voting_ends_at        TIMESTAMPTZ,            -- set when admin taps "End voting"; scoring starts when now() ≥ this (§6.3.1)
+  voting_ended_at       TIMESTAMPTZ,            -- set when the voting_ending countdown elapsed and scoring actually began
   announcing_user_id    UUID REFERENCES users(id),
   delegate_user_id      UUID REFERENCES users(id), -- admin delegate during handoff (§10.2); NULL when the original announcer is driving
   current_announce_idx  SMALLINT DEFAULT 0,     -- which point value is being announced
   now_performing_id     VARCHAR(20),            -- contestant id currently performing
   allow_now_performing  BOOLEAN DEFAULT FALSE,
+  bets_enabled          BOOLEAN DEFAULT FALSE,  -- when true, the room has 3 bets via `room_bets` (§22)
   created_at            TIMESTAMPTZ DEFAULT NOW()
 );
 ```
@@ -655,6 +1034,7 @@ CREATE TABLE room_memberships (
   user_id     UUID REFERENCES users(id),
   joined_at   TIMESTAMPTZ DEFAULT NOW(),
   is_ready    BOOLEAN DEFAULT FALSE,            -- for instant mode "ready to reveal"
+  is_co_admin BOOLEAN DEFAULT FALSE,            -- admin delegate with same powers as owner, except ownership transfer (§6.7)
   PRIMARY KEY (room_id, user_id)
 );
 ```
@@ -669,6 +1049,9 @@ CREATE TABLE votes (
   scores          JSONB,                        -- {categoryName: score} NULL if missed
   missed          BOOLEAN DEFAULT FALSE,
   hot_take        VARCHAR(140),
+  hot_take_edited_at      TIMESTAMPTZ,          -- set when hot_take is edited after initial save; controls the "edited" tag (§8.7.1)
+  hot_take_deleted_by_user_id UUID REFERENCES users(id),  -- NULL unless hot-take was deleted; records the author or admin who removed it (§8.7.2)
+  hot_take_deleted_at     TIMESTAMPTZ,
   updated_at      TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE (room_id, user_id, contestant_id)
 );
@@ -692,14 +1075,48 @@ CREATE TABLE results (
 ```sql
 CREATE TABLE room_awards (
   room_id         UUID REFERENCES rooms(id) ON DELETE CASCADE,
-  award_key       VARCHAR(30) NOT NULL,         -- e.g. "harshest_critic"
-  award_name      VARCHAR(50) NOT NULL,         -- display name
+  award_key       VARCHAR(30) NOT NULL,         -- e.g. "harshest_critic", "the_oracle"
+  award_name      VARCHAR(50) NOT NULL,         -- display name (English fallback; real copy via locale key)
   winner_user_id  UUID REFERENCES users(id),    -- null for contestant awards
   winner_user_id_b UUID REFERENCES users(id),   -- second winner slot: used for the Neighbourhood Voters pair and for 2-way ties on personality awards (§11.2). Null otherwise.
   winner_contestant_id VARCHAR(20),             -- null for user awards
   stat_value      NUMERIC(6,3),                 -- the underlying metric
   stat_label      VARCHAR(80),                  -- human-readable stat description
   PRIMARY KEY (room_id, award_key)
+);
+```
+
+### `room_bets`
+```sql
+-- One row per bet question attached to a room. Rooms have exactly 3 (when bets_enabled), or 0 (when disabled).
+CREATE TABLE room_bets (
+  room_id         UUID REFERENCES rooms(id) ON DELETE CASCADE,
+  bet_key         VARCHAR(30) NOT NULL,          -- catalog id from §22.1, e.g. "c1_landslide", "a3_pyro"
+  display_slot    SMALLINT NOT NULL,             -- 1 | 2 | 3 — ordinal within the room
+  resolver_type   VARCHAR(10) NOT NULL           -- 'auto' (closed-loop) | 'manual' (admin-adjudicated)
+                    CHECK (resolver_type IN ('auto','manual')),
+  resolution      VARCHAR(10)                    -- 'yes' | 'no' | 'unknown' | NULL (unresolved)
+                    CHECK (resolution IN ('yes','no','unknown')),
+  resolved_at     TIMESTAMPTZ,
+  resolved_by_user_id UUID REFERENCES users(id), -- admin who tapped it, NULL for auto bets
+  PRIMARY KEY (room_id, bet_key),
+  UNIQUE (room_id, display_slot)
+);
+```
+
+### `bet_picks`
+```sql
+-- A user's yes/no guess for a single bet. Created in lobby / re-openable until rooms.status leaves 'lobby'.
+CREATE TABLE bet_picks (
+  room_id     UUID REFERENCES rooms(id) ON DELETE CASCADE,
+  user_id     UUID REFERENCES users(id),
+  bet_key     VARCHAR(30) NOT NULL,
+  pick        VARCHAR(10) NOT NULL              -- 'yes' | 'no' | 'no_opinion'
+                CHECK (pick IN ('yes','no','no_opinion')),
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (room_id, user_id, bet_key),
+  FOREIGN KEY (room_id, bet_key) REFERENCES room_bets(room_id, bet_key) ON DELETE CASCADE
 );
 ```
 
@@ -714,13 +1131,15 @@ CREATE INDEX idx_votes_room_user        ON votes(room_id, user_id);
 CREATE INDEX idx_votes_room_contestant  ON votes(room_id, contestant_id);
 CREATE INDEX idx_results_room           ON results(room_id);
 CREATE INDEX idx_room_memberships_user  ON room_memberships(user_id);
+CREATE INDEX idx_room_bets_room         ON room_bets(room_id);
+CREATE INDEX idx_bet_picks_room_user    ON bet_picks(room_id, user_id);
 ```
 
 ### RLS policies
 
 **Architecture decision:** all API routes go through Next.js Route Handlers that use the `SUPABASE_SECRET_KEY` service-role client (`createServiceClient()` in `src/lib/supabase/server.ts`). That client **bypasses RLS**, so the policies below exist only as a defence-in-depth against direct client-side Supabase access using the publishable key — never as the primary authorization layer. Authorization decisions (ownership, room membership, admin-only actions) are enforced in the API route handlers.
 
-RLS is enabled on all six tables. The MVP ships these policies:
+RLS is enabled on all tables. The MVP ships these policies:
 
 ```sql
 ALTER TABLE users             ENABLE ROW LEVEL SECURITY;
@@ -729,6 +1148,8 @@ ALTER TABLE room_memberships  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE votes             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE results           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE room_awards       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE room_bets         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bet_picks         ENABLE ROW LEVEL SECURITY;
 
 -- Rooms: public read (needed for join-by-pin)
 CREATE POLICY "Rooms are viewable by everyone"
@@ -763,6 +1184,19 @@ CREATE POLICY "Awards viewable when room is done"
     WHERE rooms.id = room_awards.room_id
     AND rooms.status IN ('announcing', 'done')
   ));
+
+-- Room bets: public read (bet questions are not secret; picks are kept server-authoritative via API routes)
+CREATE POLICY "Room bets viewable by everyone"
+  ON room_bets FOR SELECT USING (true);
+
+-- Bet picks: readable once the room is in 'announcing' or 'done' (preserves the reveal moment)
+CREATE POLICY "Bet picks viewable when room is announcing or done"
+  ON bet_picks FOR SELECT
+  USING (EXISTS (
+    SELECT 1 FROM rooms
+    WHERE rooms.id = bet_picks.room_id
+    AND rooms.status IN ('announcing', 'done')
+  ));
 ```
 
 No `INSERT`/`UPDATE`/`DELETE` policies are created — writes must go through the service-role API routes. Tighter per-user `votes` SELECT policies are deferred to V2 when/if direct client reads become necessary.
@@ -776,6 +1210,8 @@ ALTER PUBLICATION supabase_realtime ADD TABLE rooms;
 ALTER PUBLICATION supabase_realtime ADD TABLE room_memberships;
 ALTER PUBLICATION supabase_realtime ADD TABLE votes;
 ALTER PUBLICATION supabase_realtime ADD TABLE results;
+ALTER PUBLICATION supabase_realtime ADD TABLE room_bets;
+ALTER PUBLICATION supabase_realtime ADD TABLE bet_picks;
 ```
 
 All of the above is bundled in `supabase/schema.sql`, which is applied once per Supabase project via the SQL Editor (see SUPABASE_SETUP.md).
@@ -796,14 +1232,25 @@ All routes in `app/api/` as Next.js Route Handlers.
 | GET | `/api/rooms/{id}` | Get room state |
 | POST | `/api/rooms/join-by-pin` | Resolve PIN → roomId, add membership |
 | POST | `/api/rooms/{id}/join` | Add user to room |
-| PATCH | `/api/rooms/{id}/status` | Admin: transition room status |
+| PATCH | `/api/rooms/{id}/status` | Admin: transition room status. Accepts `"voting_ending"` to kick off the 5-s undo window (§6.3.1). Returns 409 if the transition is invalid. |
+| POST | `/api/rooms/{id}/status/undo` | Admin: revert `voting_ending` → `voting` before the countdown elapses. 409 if `voting_ends_at` has passed or status isn't `voting_ending`. |
 | PATCH | `/api/rooms/{id}/now-performing` | Admin: set current performer |
+| POST | `/api/rooms/{id}/refresh-contestants` | Admin, lobby-only: re-run the §5.1 cascade and update the room's cached list (§5.1d). |
+| PATCH | `/api/rooms/{id}/ownership` | **Owner-only**: transfer `owner_user_id` to another member; old owner becomes a co-admin (§6.7). |
+| PATCH | `/api/rooms/{id}/co-admins` | Owner-only: promote/demote a member's `is_co_admin` flag (§6.7). |
 | POST | `/api/rooms/{id}/votes` | Upsert a user's vote for a contestant |
+| DELETE | `/api/rooms/{id}/votes/{contestantId}/hot-take` | Delete a hot-take. Author, owner, or co-admin (§8.7.2). |
+| POST | `/api/rooms/{id}/bets` | Admin, lobby-only: set the 3 bet `bet_keys` for the room (§22.2). Replaces any existing set. |
+| PATCH | `/api/rooms/{id}/bets/{bet_key}` | Admin-only: resolve an admin-adjudicated bet to `yes`/`no`/`unknown` (§22.5). |
+| POST | `/api/rooms/{id}/bet-picks` | User: upsert one or more `bet_picks` rows. Allowed only while `rooms.status = 'lobby'` (§22.3). |
 | POST | `/api/rooms/{id}/score` | Admin: trigger scoring engine |
 | POST | `/api/rooms/{id}/announce/next` | Advance announcement by one step |
 | POST | `/api/rooms/{id}/announce/handoff` | Admin takes over for a user |
+| PATCH | `/api/rooms/{id}/announcement-order` | Admin: re-shuffle the announcement order. Only allowed before any advance (§10.2.1). |
 | GET | `/api/rooms/{id}/results` | Get full results (room must be 'announcing'/'done') |
-| GET | `/api/results/{id}` | Public read-only results (no auth) |
+| GET | `/api/results/{id}` | Public read-only results (no auth). Status-dependent render per §12.5. |
+| GET | `/api/results/{id}/export.html` | Standalone HTML export (§12.3). 409 if room is not `done`. |
+| GET | `/api/results/{id}/export.pdf` | PDF export (§12.4). 409 if room is not `done`. |
 | GET | `/api/health` | Uptime probe (see §12) — runs a trivial Supabase query and returns `{ ok: true }` or HTTP 503 |
 
 ---
@@ -818,16 +1265,24 @@ Events broadcast by server to this channel:
 ```typescript
 type RoomEvent =
   | { type: 'status_changed'; status: RoomStatus }
+  | { type: 'voting_ending'; votingEndsAt: string }  // ISO timestamp for the 5-s undo countdown (§6.3.1)
   | { type: 'user_joined'; user: { id, displayName, avatarSeed } }
   | { type: 'user_left'; userId: string }
   | { type: 'now_performing'; contestantId: string }
-  | { type: 'voting_progress'; userId: string; scoredCount: number }  // count only, not scores
+  | { type: 'voting_progress'; userId: string; contestantId: string; scoredCount: number }  // per-user per-contestant; count only
+  | { type: 'contestants_refreshed'; added: string[]; removed: string[]; reordered: string[] }
+  | { type: 'co_admin_changed'; userId: string; isCoAdmin: boolean }
+  | { type: 'ownership_transferred'; newOwnerUserId: string; reason?: 'owner_absent_5m' }
+  | { type: 'announcement_order_reshuffled'; newOrder: string[] }
   | { type: 'announce_next'; contestantId: string; points: number; announcingUserId: string }
   | { type: 'announce_turn'; userId: string }  // whose turn to announce
+  | { type: 'announce_skip'; userId: string; reason: 'absent_at_turn' }
   | { type: 'score_update'; contestantId: string; newTotal: number; newRank: number }
+  | { type: 'bet_resolution'; betKey: string; resolution: 'yes' | 'no' | 'unknown' }
+  | { type: 'hot_take_deleted'; voteId: string; deletedByUserId: string }
 ```
 
-In addition, Postgres Changes for `rooms`, `room_memberships`, `votes`, `results` are exposed via the `supabase_realtime` publication (see §13) so clients can optionally subscribe directly for DB-level signals (used as a fallback if a broadcast is missed during reconnect).
+In addition, Postgres Changes for `rooms`, `room_memberships`, `votes`, `results`, `room_bets`, `bet_picks` are exposed via the `supabase_realtime` publication (see §13) so clients can optionally subscribe directly for DB-level signals (used as a fallback if a broadcast is missed during reconnect).
 
 Client subscribes on room entry. Unsubscribes on unmount. Reconnect handled by Supabase client library automatically.
 
@@ -881,21 +1336,37 @@ Domain `eurovisionmaxxing.com` (and `www.eurovisionmaxxing.com`) is registered a
 
 ### 17a.3 SUPABASE_SETUP.md
 
-A committed runbook at the repo root walks a new operator from zero to a working stack: creating the Supabase project, copying the publishable + secret keys into `.env.local`, running `supabase/schema.sql`, enabling Realtime on the four relevant tables, verifying RLS is on, configuring UptimeRobot against `/api/health`, and wiring the Cloudflare → Vercel domain. This file is required — it is the handoff doc for anyone running the app independently of the original author.
+A committed runbook at the repo root walks a new operator from zero to a working stack: creating the Supabase project, copying the publishable + secret keys into `.env.local`, running `supabase/schema.sql`, enabling Realtime on **all six** relevant tables (`rooms`, `room_memberships`, `votes`, `results`, `room_bets`, `bet_picks`), verifying RLS is on, configuring UptimeRobot against `/api/health`, wiring the Cloudflare → Vercel domain, and naming an on-call backup for contestant-data refresh duties (§5.1c). This file is required — it is the handoff doc for anyone running the app independently of the original author.
+
+### 17a.4 CI
+
+Two GitHub Actions workflows:
+
+- **`ci.yml`** — runs on every PR and push to `main`. Steps: `npm ci`, `npm run type-check`, `npm run lint`, `npm run test`. Build check via `npm run build` for the PR workflow only (saves minutes on main).
+- **`contestant-api-smoke.yml`** — scheduled daily at 06:00 UTC + on PRs touching `src/lib/contestants.ts` or `app/api/contestants/`. See §5.5 for the test assertions. Failures post to the repo Issues with the `api-upstream` label; do not block the PR.
+
+Both workflows use Node 20 and the same lockfile-locked install. No caching beyond the default `actions/setup-node` npm cache.
 
 ---
 
 ## 18. Deferred to V2
 
 - Google OAuth / persistent accounts
-- PDF export
 - AI-generated Eurovision-style avatars
-- Pre-show predictions (top 3 picks before voting opens)
-- Category weight adjustment post-room-creation
-- PDF score cards
+- Pre-show predictions beyond the 3 yes/no spread bets (e.g. top-3 picks, country drafting)
+- Category weight adjustment **during `voting`** (lobby-edit already covers this for `lobby`, see §6.1)
 - Per-category award animations (distinct per template)
 - Historical cross-room stats ("your voting history across all parties")
 - NQ (non-qualification) predictions for semis
+- Auto-follow running order for "Now performing" (admin still taps manually in MVP)
+- Original announcer reclaiming control mid-delegation (§10.2 step 7)
+- "Claim your turn" for skipped absent announcers (§10.2.1)
+- Auto-promotion of a non-co-admin to owner when both owner and co-admins are absent
+- V2 bet catalog expansion: drafting, country picks, spreads beyond yes/no
+- Multi-winner support beyond 2-way on personality awards (§11.2 tiebreak)
+- Puppeteer-based PDF export (MVP uses `@react-pdf/renderer`, §12.4)
+- "Disable wake lock" user toggle (if battery complaints emerge, §8.9)
+- PDF-based individual score cards (the shareable link + HTML/PDF export cover the group summary; per-user cards are V2)
 
 ---
 
@@ -912,15 +1383,18 @@ A committed runbook at the repo root walks a new operator from zero to a working
 
 The app is MVP-complete when a group can:
 1. Create a room with any predefined template, select 2025 or 2026 event
-2. Join via link, PIN, or QR code on their phones
-3. Vote on all or some contestants with autosave working
+2. Join via link, PIN, or QR code on their phones — including late joiners mid-`voting` (§6.3.2)
+3. Vote on all or some contestants with autosave working, including offline queue reconciliation after a reconnect (§8.5)
 4. Use "I missed this" for any entry
-5. Have the admin close voting and trigger scoring
-6. Experience either live announcement or instant reveal
+5. Have the admin close voting (with 5-second undo window, §6.3.1) and trigger scoring
+6. Experience either live announcement or instant reveal, with admin-override reveal always available (§10.1)
 7. See the full leaderboard and all awards
-8. Share a results link that works for anyone without an account
-9. The present screen renders correctly when AirPlayed to a TV
-10. Any user can switch between `en` / `es` / `uk` / `fr` / `de` at any time and the full UI (voting, announcement, awards) renders correctly in the chosen locale (§21)
+8. Optionally enable a 3-bet sidegame in the lobby (§22) with guest picks, admin-adjudicated resolution, and bet leaderboard in results
+9. Share a results link that works for anyone without an account, plus HTML + PDF export (§12.3, §12.4) and copy-paste text summary (§12.2)
+10. The present screen renders correctly when AirPlayed to a TV, holds the screen awake (§8.9), and is always dark-themed (§3.4)
+11. Any user can switch between `en` / `es` / `uk` / `fr` / `de` at any time and the full UI (voting, announcement, awards, bets) renders correctly in the chosen locale (§21)
+12. The owner can transfer ownership to another member, or promote a co-admin, so admin responsibilities survive a dying phone (§6.7)
+13. The hot-take author or an admin can delete a hot-take silently; edits are marked *"edited"* (§8.7)
 
 Everything else is V2.
 
@@ -944,11 +1418,19 @@ Unsupported `navigator.language` values (any locale not in this table) fall back
 
 **In scope for translation:**
 - All UI chrome: buttons, labels, headers, toasts, validation copy, empty states, error messages rendered client-side.
-- Score anchors (§7.3).
+- Score anchors (§7.3) — rendered as the global scale strip (§8.1).
 - Template names, category names, category hints for the three predefined templates in §7.1.
-- All personality award names + stat labels (§11.2) and the "Best [Category]" category-award template.
+- All personality award names + stat labels (§11.2) and the "Best [Category]" category-award template. Bet-based awards (§11.2a) `the_oracle`, `the_wishcaster`.
 - Country names displayed in the UI (the English keys of `COUNTRY_CODES` in `src/lib/contestants.ts` remain the internal lookup keys and are not translated).
-- Hot-take placeholder and emoji-count helper copy.
+- Hot-take placeholder and emoji-count helper copy, including the *"edited"* tag (§8.7.1).
+- **Bet question text** (§22.1) — every entry in the catalog. Rendered via stable `bet_key → bets.{bet_key}.question` keys.
+- **Bet status / resolution** labels: Yes / No / Still deciding / Skip — nobody knows (§22.5).
+- **Voting card status labels**: `voting.status.scored`, `voting.status.unscored`, `voting.weight.badge` (§8.2).
+- **Text summary labels** for the copy-paste export (§12.2): *"Our room's top 10"*, *"Bet results"*, *"Full results"*, medal prefixes.
+- **Lobby copy**: show countdown units, *"Still to pick"*, *"Bets locked"*, *"Preview song"*, roster *"here"* / *"away"* labels.
+- **Theme toggle** labels: System / Light / Dark (§3.4).
+- **Admin transfer / co-admin** modal copy (§6.7).
+- **Reveal-unlock countdown** micro-text on the admin's instant-mode screen (§10.1 step 4).
 
 **Out of scope:**
 - Admin-typed custom category names/hints (§7.2) — rendered as literal.
@@ -967,7 +1449,7 @@ src/
     server.ts        # getLocaleForUser(userId) — used by the present screen
 ```
 
-Message files use ICU MessageFormat with nested namespaces: `common`, `onboarding`, `voting`, `templates`, `categories`, `awards`, `countries`, `errors`, `present`. ICU plural rules are used wherever counts appear (e.g. `"{points, plural, one {# point goes} other {# points go}} to {country}"`) — Ukrainian requires `one`/`few`/`many`/`other` plural arms.
+Message files use ICU MessageFormat with nested namespaces: `common`, `onboarding`, `voting`, `templates`, `categories`, `awards`, `countries`, `errors`, `present`, `create`, `lobby`, `bets`, `admin`, `theme`, `share`, `results`. ICU plural rules are used wherever counts appear (e.g. `"{points, plural, one {# point goes} other {# points go}} to {country}"`, `"{count, plural, one {# bet won} other {# bets won}}"`) — Ukrainian requires `one`/`few`/`many`/`other` plural arms.
 
 ### 21.4 Locale detection, persistence & selection
 
@@ -1020,5 +1502,135 @@ ALTER TABLE users
 ### 21.9 Testing
 
 - `src/locales/locales.test.ts` — fails if any non-`en` locale is missing a key present in `en.json`.
-- Ukrainian pluralization smoke test — confirms ICU plural arms resolve for 1 / 2 / 5 of each count-sensitive message.
+- Ukrainian pluralization smoke test — confirms ICU plural arms resolve for 1 / 2 / 5 of each count-sensitive message, including the bets namespace's *"{count, plural, one {# bet won} other {# bets won}}"*.
 - Scoring and API tests remain locale-agnostic and operate on the stable vote-key (`category.key ?? category.name`), never on display strings.
+- Bet resolution tests (§22.5) remain locale-agnostic and operate on `bet_key`, never on translated question text.
+
+---
+
+## 22. Room bets
+
+An opt-in sidegame where every guest answers **exactly 3 yes/no spread-bet questions** before voting opens. Correct calls earn points in a separate bet leaderboard; incorrect calls earn nothing. The main Eurovision-points game is unaffected.
+
+### 22.1 Bet catalog
+
+The shipping catalog lives at `src/lib/bets/catalog.ts` as a typed array. Each entry:
+
+```typescript
+interface BetCatalogEntry {
+  betKey: string;          // stable identifier, used in room_bets.bet_key and locale keys
+  resolverType: 'auto' | 'manual';
+  autoResolver?: (ctx: RoomScoringContext) => 'yes' | 'no';  // required iff resolverType === 'auto'
+}
+```
+
+**Closed-loop (`resolverType: 'auto'`, 6 entries):**
+
+| `bet_key` | Question (English reference) | Resolver logic |
+|---|---|---|
+| `c1_landslide` | Will the room winner win by ≥30 points? | `results[rank=1].total − results[rank=2].total ≥ 30` |
+| `c2_cross_room_ten` | Will any country get a 10 from at least half the room in at least one category? | Per category per contestant, count users scoring `10`. If `max_count ≥ ceil(memberCount / 2)` for any (contestant, category) pair → yes. |
+| `c5_below_three` | Will any country score below 3.0 average in the room? | `min(avg_weighted_score) < 3.0` across contestants. |
+| `c6_big5_shutout` | Will **no** Big 5 country finish in the room top 3? | Big 5 = `{GB, FR, DE, ES, IT}`. If none of the top 3 contestants by `finalScore` are in Big 5 → yes. |
+| `c7_owner_matches_group` | Will the group #1 match the **owner**'s personal #1? | `results.ranked[owner_user_id][1].contestant_id === finalLeaderboard[1].contestant_id` → yes. |
+| `c10_identical_scores` | Will anyone score every category identically for a single country? (all 5s, all 7s, etc.) | Iterate every (user, contestant) vote; if `scores` values are all equal and `missed === false` → yes. |
+
+**Admin-adjudicated (`resolverType: 'manual'`, 13 entries):**
+
+| `bet_key` | Question (English reference) |
+|---|---|
+| `a1_barefoot` | Will anyone perform barefoot? |
+| `a3_pyro` | Will any performance feature pyrotechnics? |
+| `a4_wardrobe_reveal` | Will any performer do a wardrobe reveal/rip-off? |
+| `a5_non_english_winner` | Will a non-English-language song win? |
+| `a6_uk_bottom5` | Will the UK finish in the Eurovision bottom 5? |
+| `a7_host_outfits` | Will any host change outfits 4+ times? |
+| `a8_stage_trip` | Will any performer fall, trip, or visibly stumble on stage? |
+| `a9_jury_televote_split` | Will juries and televote disagree on the Eurovision winner? |
+| `a10_host_country_bottom_half` | Will the host country finish in the bottom half? |
+| `a11_wind_machine` | Will any performance feature a wind machine? |
+| `a12_stage_kiss` | Will there be an on-stage kiss? |
+| `a13_performer_cries` | Will any performer cry (happy or sad)? |
+| `a14_sweden_top5` | Will Sweden finish top 5? |
+
+Each question has three locale keys: `bets.{bet_key}.question`, `bets.{bet_key}.yesOutcome`, `bets.{bet_key}.noOutcome` — the outcome strings populate the results leaderboard ("Sweden did finish top 5" vs "Sweden did not finish top 5").
+
+### 22.2 Admin bet selection (lobby)
+
+During `/create` Step 2 (§6.1) and from lobby-edit:
+
+- Toggle *"Add a betting sidegame"* controls `rooms.bets_enabled`.
+- When enabled, the admin sees a **3-slot bet picker**:
+  - Three drop zones labelled *"Bet 1"*, *"Bet 2"*, *"Bet 3"*.
+  - A scrollable catalog list on the right. Tapping a catalog entry assigns it to the next empty slot (or replaces the admin's currently-selected slot).
+  - Each slot has an × button to clear.
+- **"Surprise me"** button: auto-fills all three empty slots with random `bet_key` picks (uniform over the catalog, no duplicates across slots). If the admin already has one or two slots filled, "Surprise me" fills only the remaining empty slots.
+- Validation: submission requires exactly 3 slots filled with distinct `bet_key`s. Client-side and server-side.
+- On commit, the server creates 3 `room_bets` rows keyed by `(room_id, bet_key)` with `display_slot ∈ {1,2,3}` matching the admin's chosen order, and `resolver_type` copied from the catalog.
+- Lobby-edit: admin can swap any slot for a different `bet_key`, reorder via drag-handle (same pattern as §7.2), or disable bets entirely (drops all 3 `room_bets` rows and all `bet_picks`).
+
+### 22.3 Guest bet picks (lobby)
+
+- Once `rooms.bets_enabled = true` and `room_bets` has its 3 rows, every guest sees the three bet questions as cards in the lobby (§6.6.4).
+- Each card presents: the question text, three tap targets — **Yes**, **No**, **No opinion** (secondary, smaller).
+- Default pick on a brand-new guest is unset. Guests are prompted via a *"Still to pick"* list at the top of the lobby view summarising any unsubmitted bets (e.g. *"1 of 3 bets still to pick — tap to answer"*).
+- Tapping a pick UPSERTS a `bet_picks` row via `POST /api/rooms/{id}/bet-picks` — no separate submit button. Pick may be changed up until bets lock.
+- **Bets lock at the `lobby → voting` transition.** At that moment:
+  - Any guest who has not placed all 3 picks gets their unpicked bets auto-set to `pick = 'no_opinion'`. Server-side auto-fill on status transition.
+  - Late joiners (§6.3.2) see the 3 bets as read-only with all picks prefilled to `'no_opinion'`. No UI for them to change picks.
+- `bet_picks` rows are **server-authoritative read** via the RLS policy (§13) — guests cannot see each other's picks until `rooms.status ∈ ('announcing', 'done')`. Prevents pre-show peeking for room-internal hints ("what did the admin pick?").
+
+### 22.4 Bet drawer during `voting`
+
+Admin-only floating drawer for logging admin-adjudicated bet events as they happen during the show:
+
+- **Icon** in the admin's header toggles the drawer open/closed.
+- Drawer lists all 3 room bets with status pills:
+  - `auto` bets show *"auto-resolving"* placeholder — no interaction.
+  - `manual` bets show three pills: **Yes**, **No**, **Still deciding** (default).
+- Admin taps as moments occur (e.g. wardrobe reveal just happened → Yes on `a4_wardrobe_reveal`). Taps UPSERT `room_bets.resolution` via `PATCH /api/rooms/{id}/bets/{bet_key}` and broadcast `bet_resolution` (§15).
+- Admin can change a manual bet from Yes to No or back to Still deciding at any time during `voting` / `voting_ending` / `scoring`. Locks once `announcing` begins (see §22.5).
+- Drawer is accessible to co-admins (§6.7) with identical permissions.
+
+### 22.5 Bet resolution & awards gate
+
+At the `scoring → announcing` transition (Live mode) or at the `leaderboard reveal → awards` transition (Instant mode, §10.1 step 6), the server runs the bet-resolution pipeline before awards generation:
+
+**Step 1: Auto-resolve.**
+- For every `room_bets` row where `resolver_type = 'auto'` and `resolution IS NULL`: invoke the catalog's `autoResolver(ctx)` with the room's scored context. Write the result to `resolution`, set `resolved_at = now()`, `resolved_by_user_id = NULL`.
+
+**Step 2: Manual-resolve gate (hard block before awards).**
+- For every `room_bets` row where `resolver_type = 'manual'` and `resolution IS NULL`: the admin is shown a mandatory *"Resolve remaining bets"* screen. For each unresolved manual bet, three pills:
+  - **Yes** — write `resolution = 'yes'`.
+  - **No** — write `resolution = 'no'`.
+  - **Skip — nobody knows** — write `resolution = 'unknown'`. All picks earn 0 on this bet; no one is credited.
+- The screen does not advance until every manual bet has a non-null `resolution`. Rationale: guarantees admin cannot forget to adjudicate (§22 brainstorm answer to user's explicit question).
+- `resolved_by_user_id` records the admin who adjudicated. Multiple admins may collaborate (co-admins can tap too).
+
+**Step 3: Bet leaderboard computation.**
+- For each user, compute `correctCount = count(bet_picks where bet_picks.pick === room_bets.resolution AND room_bets.resolution != 'unknown')`.
+- Write per-user bet standings to a new lightweight table or inline on the awards pipeline — MVP keeps it inline (derived on results-read; no cache table). `SELECT user_id, COUNT(*) FILTER (…) AS correct_count FROM bet_picks JOIN room_bets USING (room_id, bet_key) WHERE …`.
+- Ties resolve alphabetically by `display_name`.
+
+**Step 4: Oracle / Wishcaster awards.**
+- §11.2a computes `the_oracle` = user with max `correctCount`, `the_wishcaster` = user with min `correctCount`. Write `room_awards` rows.
+
+**Step 5: Proceed to awards reveal.**
+- Bet leaderboard and individual bet outcomes render in the awards sequence (§11.3).
+
+### 22.6 Results page rendering (§12)
+
+When `rooms.bets_enabled = true`, the `/results/{id}` page adds a **Bets section** between the main leaderboard and the awards breakdown:
+
+- Three question cards, one per bet: question text · resolution (Yes / No / Unknown) · outcome copy · per-pick breakdown ("5 of 7 correctly called this").
+- **Bet leaderboard** underneath: ranked list of users by `correctCount`, with each user's 3 picks visually decorated ✅ / ❌ / ⚪ (no opinion / unknown).
+- Text summary (§12.2) includes a compact bet section (≤4 lines).
+- HTML export (§12.3) and PDF export (§12.4) include the full bet section.
+
+### 22.7 Constraints & edge cases
+
+- **Room without bets**: `rooms.bets_enabled = false`, no `room_bets` rows, no bet surfaces anywhere. Exactly the pre-§22 behaviour.
+- **Admin disables bets mid-lobby**: all `room_bets` and `bet_picks` rows for the room are deleted (cascade). Guests see a one-shot toast *"Bets have been removed for this room."*.
+- **Admin leaves bets enabled but never picks**: room creation enforces 3 picks server-side — this state is unreachable.
+- **All 3 bets resolve `unknown`**: valid. Every user has `correctCount = 0`. Wishcaster is a 15-way tie → deterministic alphabetical top-two per §11.2. Oracle award is **suppressed** (locale key `awards.the_oracle.suppressed` renders *"The Oracle was unreachable this year"* as a small flavour card). Edge case intentionally handled as narrative.
+- **Single-member room (admin alone)**: bets work identically — the admin can still place picks and resolve. The Oracle and Wishcaster are the same person (acceptable MVP outcome; rare in practice).
