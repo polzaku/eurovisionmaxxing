@@ -67,6 +67,8 @@ export type ApiErrorCode =
 
 SPEC §4.3 states clearly that the rejoin token identifies the user, not a room. We therefore **accept but ignore** `roomId` (validated as a string only if present). Any membership resolution belongs to `/api/rooms/{id}` or `/api/rooms/{id}/join`.
 
+**How the `roomId` is supplied (context only — not a room picker).** Users always enter a specific room via URL: a shared link from the admin (`/room/{id}`), a PIN entered at `/join`, or a QR-code scan that encodes the same link. The client reads that URL-derived `roomId` and passes it into the rejoin call as a hint. There is no server-side "list my rooms" lookup and no cross-room enumeration by rejoin token.
+
 Error decision was made consciously: **split codes** (`USER_NOT_FOUND` 404 vs. `INVALID_TOKEN` 401). This provides an enumeration oracle in theory, but the client needs the distinction for UX (prompt to create a new identity vs. warn about tampering) and the practical risk of ID enumeration is low (UUIDs are unguessable and this is a volunteer-guest app, not a regulated-auth surface). If we later harden, we can collapse both to a single `INVALID_CREDENTIALS` 401 without a client break.
 
 | Case | Code | HTTP | Field |
