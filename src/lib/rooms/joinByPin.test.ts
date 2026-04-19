@@ -78,3 +78,79 @@ describe("joinByPin — happy path", () => {
     expect(mock.roomEqArgs).toEqual([{ col: "pin", val: "ABCDEF" }]);
   });
 });
+
+describe("joinByPin — PIN normalization", () => {
+  it("uppercases lowercase PIN before lookup", async () => {
+    const mock = makeSupabaseMock();
+    await joinByPin({ pin: "abcdef", userId: VALID_USER_ID }, makeDeps(mock));
+    expect(mock.roomEqArgs).toEqual([{ col: "pin", val: "ABCDEF" }]);
+  });
+
+  it("trims whitespace around the PIN", async () => {
+    const mock = makeSupabaseMock();
+    await joinByPin({ pin: "  ABCDEF ", userId: VALID_USER_ID }, makeDeps(mock));
+    expect(mock.roomEqArgs).toEqual([{ col: "pin", val: "ABCDEF" }]);
+  });
+
+  it("accepts a 7-char PIN (fallback range per §6.2)", async () => {
+    const mock = makeSupabaseMock({
+      roomSelectResult: {
+        data: { id: VALID_ROOM_ID, status: "lobby" },
+        error: null,
+      },
+    });
+    const result = await joinByPin(
+      { pin: "ABCDEFG", userId: VALID_USER_ID },
+      makeDeps(mock)
+    );
+    expect(result).toMatchObject({ ok: true });
+    expect(mock.roomEqArgs).toEqual([{ col: "pin", val: "ABCDEFG" }]);
+  });
+});
+
+describe("joinByPin — PIN validation", () => {
+  it.each([undefined, null, 42, ""])(
+    "rejects missing/empty/non-string PIN (%s) with INVALID_PIN",
+    async (pin) => {
+      const mock = makeSupabaseMock();
+      const result = await joinByPin(
+        { pin, userId: VALID_USER_ID },
+        makeDeps(mock)
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        status: 400,
+        error: { code: "INVALID_PIN", field: "pin" },
+      });
+      expect(mock.roomEqArgs).toEqual([]);
+    }
+  );
+
+  it("rejects a 5-char PIN", async () => {
+    const mock = makeSupabaseMock();
+    const result = await joinByPin(
+      { pin: "ABCDE", userId: VALID_USER_ID },
+      makeDeps(mock)
+    );
+    expect(result).toMatchObject({ ok: false, error: { code: "INVALID_PIN" } });
+  });
+
+  it("rejects an 8-char PIN", async () => {
+    const mock = makeSupabaseMock();
+    const result = await joinByPin(
+      { pin: "ABCDEFGH", userId: VALID_USER_ID },
+      makeDeps(mock)
+    );
+    expect(result).toMatchObject({ ok: false, error: { code: "INVALID_PIN" } });
+  });
+
+  it("rejects PIN containing a char outside PIN_CHARSET (e.g. '0')", async () => {
+    const mock = makeSupabaseMock();
+    const result = await joinByPin(
+      { pin: "AAA0AA", userId: VALID_USER_ID },
+      makeDeps(mock)
+    );
+    expect(result).toMatchObject({ ok: false, error: { code: "INVALID_PIN" } });
+    expect(mock.roomEqArgs).toEqual([]);
+  });
+});

@@ -1,6 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import type { ApiErrorCode } from "@/lib/api-errors";
+import { PIN_CHARSET } from "@/types";
+
+const PIN_REGEX = new RegExp(`^[${PIN_CHARSET}]{6,7}$`);
+
+function normalizePin(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const normalized = raw.trim().toUpperCase();
+  if (!PIN_REGEX.test(normalized)) return null;
+  return normalized;
+}
 
 export interface JoinByPinInput {
   pin: unknown;
@@ -37,7 +47,15 @@ export async function joinByPin(
   input: JoinByPinInput,
   deps: JoinByPinDeps
 ): Promise<JoinByPinResult> {
-  const pin = input.pin as string;
+  const pin = normalizePin(input.pin);
+  if (pin === null) {
+    return fail(
+      "INVALID_PIN",
+      "pin must be 6-7 characters from the Eurovision PIN charset.",
+      400,
+      "pin"
+    );
+  }
   const userId = input.userId as string;
 
   const roomQuery = await deps.supabase
