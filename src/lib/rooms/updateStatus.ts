@@ -129,13 +129,25 @@ export async function updateRoomStatus(
     );
   }
 
-  const { data: updated } = await deps.supabase
+  const updateResult = await deps.supabase
     .from("rooms")
     .update({ status })
     .eq("id", roomId)
     .select()
     .single();
 
-  await deps.broadcastRoomEvent(roomId, { type: "status_changed", status });
-  return { ok: true, room: mapRoom(updated as RoomRow) };
+  if (updateResult.error || !updateResult.data) {
+    return fail("INTERNAL_ERROR", "Could not update room. Please try again.", 500);
+  }
+
+  try {
+    await deps.broadcastRoomEvent(roomId, { type: "status_changed", status });
+  } catch (err) {
+    console.warn(
+      `broadcast 'status_changed' failed for room ${roomId}; state committed regardless:`,
+      err
+    );
+  }
+
+  return { ok: true, room: mapRoom(updateResult.data as RoomRow) };
 }
