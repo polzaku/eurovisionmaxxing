@@ -69,4 +69,14 @@ describe("apiFetch", () => {
 
     expect(refreshExpiry).not.toHaveBeenCalled();
   });
+
+  it("re-throws network errors without refreshing expiry", async () => {
+    const refreshExpiry = vi.fn();
+    const networkError = new TypeError("network");
+    const fetchImpl = vi.fn().mockRejectedValue(networkError);
+    const apiFetch = __makeApiFetch({ fetchImpl, refreshExpiry });
+
+    await expect(apiFetch("/x")).rejects.toBe(networkError);
+    expect(refreshExpiry).not.toHaveBeenCalled();
+  });
 });
