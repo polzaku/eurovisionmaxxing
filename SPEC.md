@@ -104,12 +104,20 @@ Defined in `tailwind.config.ts` and used throughout voting/results/announce scre
 
 | Class | Keyframes | Use |
 |---|---|---|
-| `animate-score-pop` | scale 1 → 1.3 → 1 over 0.3s | Score tick on slider change / points reveal |
+| `animate-score-pop` | scale 1 → 1.3 → 1 over 0.3s | Score button press / points reveal |
 | `animate-rank-shift` | translateY(var(--shift-from)) → 0 over 0.3s | Live leaderboard row reorder |
 | `animate-fade-in` | opacity 0 + translateY(8px) → full over 0.3s | Card/award reveal |
 | `animate-shimmer` | backgroundPosition −200% → 200% looping 2s | Loading placeholders |
 
-The range slider is styled globally in `globals.css` (`input[type="range"]` webkit/moz pseudo-elements) to a 28px gold thumb on an 8px muted track.
+Score buttons (§8.2) inherit the shared `bg-primary` / `bg-muted` tokens; no global `input[type="range"]` styling is needed (no slider in the MVP).
+
+### 3.3 Reduced motion
+
+All animations in §3.2 are gated on `prefers-reduced-motion: no-preference` at the CSS layer. For users with `prefers-reduced-motion: reduce`:
+- `animate-score-pop` is disabled (score updates instantly).
+- `animate-rank-shift` becomes an instant reorder (no transition).
+- `animate-fade-in` becomes an instant opacity flip.
+- `animate-shimmer` is replaced with a static `bg-muted`.
 
 ---
 
@@ -118,8 +126,7 @@ The range slider is styled globally in `globals.css` (`input[type="range"]` webk
 ### 4.1 Onboarding
 New users (no valid localStorage token) see a single onboarding screen:
 - Text input: display name (2–24 chars, trimmed, no special chars except spaces/hyphens)
-- Avatar preview: DiceBear `fun-emoji` generated from the typed name in real-time (debounced 300ms)
-- Optional: tap avatar to regenerate with a random seed suffix (gives them a few variants to pick)
+- **Avatar:** DiceBear `fun-emoji` seeded initially from the typed name (300ms debounce) to give an instant personal preview. Once the user taps the avatar or the "Shuffle" control, a **carousel of 4–6 pre-generated candidate seeds** is displayed horizontally; the user taps one to pick. The carousel remains visible and the user can re-open it by tapping their current avatar. Keystrokes **after the carousel has been opened** do not retrigger avatar regeneration (prevents flashing while typing).
 - "Join" button creates the user record and stores session in localStorage
 
 ### 4.2 Session storage schema (localStorage key: `emx_session`)
@@ -151,10 +158,11 @@ The rejoin token identifies the **user**, not a specific room. The same user can
 **Different device (no localStorage token):**
 1. User sees onboarding screen with name input
 2. On submit, server checks for existing users in that room with a matching name (case-insensitive, trimmed)
-3. If match(es) found → show confirmation UI: *"We found [Name] in this room — is that you?"* with their avatar displayed
-4. If multiple matches (same name) → show all matching avatars, user picks
-5. On confirmation → merge session, inherit all previous votes. New localStorage token issued.
-6. If no match → treat as new user
+3. If match(es) found → show **avatar-first confirmation UI**: *"Someone with that name is already in this room. Tap your avatar to rejoin, or create a new identity."* Display the candidate avatar(s) only — display names are not re-rendered until the user picks one (avoids leaking other guests' names to anyone who can guess a name).
+4. If multiple matches (same name) → show all matching avatars side-by-side, user picks the one that's theirs.
+5. **"Create new" escape hatch** is always present below the avatar picker, in case none match (e.g. a previous device for the same name belonged to someone else with the same name). Choosing it treats the user as new (step 6).
+6. On avatar pick → merge session, inherit all previous votes. New localStorage token issued.
+7. If no match → treat as new user
 
 **Note:** The rejoin token is stored hashed (bcrypt) in the database. The localStorage holds the plaintext token; the server hashes and compares on rejoin.
 
@@ -249,19 +257,24 @@ Admin goes through a 3-step wizard:
 - Year (default: current year)
 - Event: Semi-Final 1 / Semi-Final 2 / Grand Final
 - Preview of contestant count once loaded (e.g. "17 countries loaded")
+- If both the EurovisionAPI call **and** the hardcoded-JSON fallback fail (§5.1 step 4), the wizard renders an inline error: *"We couldn't load contestant data for this event. Try a different year or event."* with a "Back" CTA that returns to year/event selection (it does not silently fail).
 
 **Step 2: Voting configuration**
-- Select a scoring template (see §7)
-- Or build custom categories
-- Set announcement mode: Live or Instant (explained with a short description)
-- Toggle: allow "Now performing" mode (admin can focus all users to current song)
+- Template selection: four cards (Classic / Spectacle / Banger Test / Custom). Each predefined card is **expandable to preview its categories and hints inline before commit** — tap the card to expand/collapse; tap "Use this template" to select.
+- Announcement mode: two large radio cards with explanatory copy —
+  - **Live:** *"Take turns announcing your points, Eurovision-style. Great with a TV."*
+  - **Instant:** *"Reveal the winner in one shot. Great if you're short on time."*
+- **"Sync everyone to the performing act"** toggle (internal name: `allow_now_performing`) — lets the admin tap the currently-performing country to bring all guests to that card during voting. Off by default. Info icon on the toggle opens a one-line explanation.
 
 **Step 3: Room ready**
 - Display room PIN (6 alphanumeric chars, uppercase, excluding O/0/I/1 for readability)
-- QR code pointing to room URL
+- QR code pointing to room URL, rendered at **minimum 256×256 CSS px** (reliable scanning across a room). Fills to natural container above that.
 - Shareable link: `eurovisionmaxxing.com/room/{roomId}`
-- "Copy link" button, "Copy PIN" button
-- "Start lobby" button → transitions room to `lobby` status and navigates admin to room view
+- "Copy link" button, "Copy PIN" button. On tap, each shows a transient *"Copied!"* toast or inline label for ~2 seconds.
+- "Start lobby" button → transitions room to `lobby` status and navigates admin to room view.
+
+**Editing after creation (admin-only, in-lobby):**
+While `rooms.status = 'lobby'`, the admin can re-open a limited wizard from the lobby view to change **categories**, **announcement mode**, and the **now-performing toggle** — all via the same UI as Step 2. Year and event are **not** editable post-creation (contestant data and PIN don't change). All edits lock permanently once status transitions to `voting`. The lobby view surfaces the entry point as an "Edit room" control, visible only to the owner.
 
 ### 6.2 Room PIN generation
 - 6 chars from charset: `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (no O, 0, I, 1)
@@ -274,7 +287,7 @@ lobby → voting → scoring → announcing → done
 ```
 - `lobby`: users joining, admin sees participant list
 - `voting`: all users can vote; admin can press "End voting"
-- `scoring`: server computes all scores (brief transition, <1s)
+- `scoring`: server computes all scores (brief transition, typically <1s). All client surfaces render a **"Tallying results…" overlay** with `animate-shimmer` so this state is never a blank flash. The overlay clears as soon as the `status_changed` broadcast for `announcing` arrives.
 - `announcing`: either live or instant mode
 - `done`: results frozen, shareable link active
 
@@ -282,17 +295,19 @@ State transitions are admin-only actions. State is stored in `rooms.status` and 
 
 ### 6.4 Room join by PIN
 Route: `eurovisionmaxxing.com/join`
-- Single large PIN input field, auto-uppercase, 6-char limit
-- On submit: `POST /api/rooms/join-by-pin` → redirect to room URL on success
-- Error states: room not found, room already in `announcing` or `done` state
+- **Six individual slot inputs** (SMS-code style), one character each, auto-uppercase, auto-advance focus on keystroke, auto-backtrack on delete. Paste into any slot distributes characters across the slots. Rationale: PINs are often read aloud across a room — slotting matches how they're spoken ("A… B… J…").
+- On six filled slots: auto-submit `POST /api/rooms/join-by-pin` → redirect to room URL on success
+- Error states: room not found, room already in `announcing` or `done` state. Errors render inline below the slots and do **not** clear the entered characters (so the user can correct a typo rather than retype).
 
 ### 6.5 "Now performing" mode
-When enabled by admin at room creation:
-- Admin sees a "Now performing" control panel with a list of all contestants
-- Tapping a contestant broadcasts `now_performing: contestantId` to all room subscribers
-- All connected clients' voting UI snaps to that contestant's card
-- Non-admin users see a small indicator: "🎤 Now performing: [Country] — [Song]"
-- Users can still manually navigate away; the snap only triggers once per broadcast
+When enabled by admin at room creation (see §6.1 Step 2, "Sync everyone to the performing act"):
+- Admin sees a "Now performing" control panel with a list of all contestants. For MVP the admin taps each act manually as the show progresses (no auto-follow-running-order). Auto-queue is deferred to V2.
+- Tapping a contestant broadcasts `now_performing: contestantId` to all room subscribers.
+- All connected clients' voting UI snaps to that contestant's card — **with two safety conditions**:
+  1. The snap is **deferred while the user is actively interacting with a score button** (button press-down in flight). The snap fires on the next interaction release.
+  2. If the user is **already viewing the performing card**, the snap is a no-op.
+- Non-admin users on a *different* card than the currently-performing one see a small indicator pill at the top: *"🎤 Now performing: [Country] — [Song]"*, tappable to jump. The indicator is **suppressed on the performing card itself** (no duplication).
+- Users can still manually navigate away; the snap only triggers once per broadcast.
 
 ---
 
@@ -338,16 +353,16 @@ Admin builds from scratch. See §7.2.
 ### 7.2 Custom category builder
 - Add up to 8 categories
 - Each category:
-  - Name: required, 2–24 chars, no special characters
-  - Weight: optional number input, blank = 1, min 0.5, max 5, step 0.5
-  - Hint: optional, max 80 chars, shown as tooltip on the voting card
-- Drag-to-reorder (determines display order on voting card)
-- Live weight influence preview: below the list, show each category's percentage of total weight
-  - e.g. if Vocals=2, all others=1 with 5 categories: Vocals = 33%, others = 17% each
-- Validation: at least 1 category required before room can be created
+  - Name: required, 2–24 chars, no special characters. Duplicate names (case-insensitive, trimmed) within the same room are rejected.
+  - Weight: optional integer input, blank = 1, min 1, max 5, step 1. (Half-unit weights deferred to V2.)
+  - Hint: optional, max 80 chars. Rendered **inline below the category name on the voting card**, permanently visible. Not a hover tooltip.
+- Reorder via a dedicated drag handle (grip icon on the left of each row); touch-and-hold (300ms) to activate dragging on mobile.
+- **Percentage is the primary display** next to each category name — e.g. "Vocals · 33%". Weights are the underlying input (1–5); percentages are computed live as `weight[i] / Σ(weights)` and always sum to 100%.
+  - Examples: 5 categories of equal weight 1 → 20% each. Vocals=2 with four others at 1 → Vocals = 33%, others = 17% each.
+- Validation: at least 1 category required before room can be created.
 
 ### 7.3 Score scale anchors
-All categories use a 1–10 integer scale. Anchor labels shown on the slider:
+All categories use a 1–10 integer scale. Three anchor labels are rendered below the score-button row (§8.2), under buttons **1**, **5**, and **10**:
 - **1** — Devastating. A moment I will try to forget.
 - **5** — Fine. Watched it. Won't remember it.
 - **10** — Absolute masterpiece. My 12 points. Iconic.
@@ -361,27 +376,31 @@ These anchors appear on every voting card regardless of template. Anchor copy is
 ### 8.1 Layout (mobile-first)
 - Full-screen single-contestant view
 - Header: contestant flag emoji + country name + song title + artist name
-- Running order indicator: "3 of 17"
-- Body: category sliders, one per row
+- Running order indicator: "3 of 17" (the current card's position in the running order, out of total contestants — always constant for a given event). A **separate progress indicator** ("scored / total", e.g. "5 / 17 scored") is shown elsewhere in the header so the two counts are not conflated.
+- Body: category score rows (10-button 1–10 scale, see §8.2), one row per category
 - Footer: "I missed this" button + Prev/Next navigation
 - Jump-to: small button opens a scrollable drawer of all countries (flag + name), tapping any navigates directly
 
-### 8.2 Category slider
-- Range: 1–10, integer steps only
-- Large touch target (min 44px height)
-- Current value displayed prominently (large number)
-- Anchor labels shown at 1 and 10 (small, muted)
-- On first load, slider starts unset (no default value, shown as a distinct "not yet scored" state)
-- Once touched, slider snaps to 5 as starting position and tracks touch normally
-- A category is "scored" as soon as the slider is moved for the first time
+### 8.2 Category score buttons
+Each category renders as a row of **10 tappable buttons** labelled 1 through 10. No slider.
+
+- **Values:** integer 1–10. Each button represents one discrete value.
+- **Touch targets:** min 44×44 CSS px per button. On narrow viewports the row wraps to two lines (1–5 top, 6–10 bottom); on wider viewports it renders as a single row.
+- **Anchors:** the anchor copy from §7.3 is rendered underneath buttons 1, 5, and 10 in `text-muted-foreground`, one line each.
+- **Unset state:** no button selected. The row uses `bg-muted` fill with button labels in `text-muted-foreground`. A small ghost line reads `t('voting.tapToScore')` ("Tap to score") below the row.
+- **Selected state:** the pressed button fills with `bg-primary` (gold), its label flips to `text-background`, and `animate-score-pop` fires on press.
+- **Interaction:**
+  - Tapping a button sets the score to that value.
+  - Tapping a different button updates the score to the new value.
+  - Tapping the currently-selected button **clears** the score (returns to unset). Rationale: no separate "clear" control needed.
+- **Scored definition:** a category is considered scored whenever exactly one button is pressed. The progress indicator in §8.1 counts only categories in this state.
 
 ### 8.3 "I missed this" button
-- Shown per-contestant in the footer
-- Tap → modal confirm: *"Mark [Country] as missed? We'll fill in an estimated score based on your average voting across other entries."*
-- On confirm: contestant is marked `missed: true`, card shows a distinct "missed" state with the estimated score displayed as `~7` (with tilde prefix, dimmed/italic)
-- If the user has no other votes yet, estimated score shows as `~5`
-- User can undo "missed" status and vote normally until voting closes
-- "Missed" state is visually clear but not shameful — just a fact
+- Shown per-contestant in the footer.
+- Tap → contestant is **immediately** marked `missed: true` (no modal — modals interrupt live-viewing flow). A bottom-of-screen toast confirms: *"Marked missed — we'll estimate your scores as ~[projected average]. Undo"*. The toast's "Undo" reverts the action for 5 seconds; after the toast dismisses, the user can still leave the missed state via a **"Rescore" button on the missed-state card**.
+- Card shows a distinct "missed" state with the estimated score displayed as `~7` (with tilde prefix, dimmed/italic).
+- The projected-average shown in the toast is the user's mean score across their non-missed categories at that moment, rounded to 1dp — matches the live value in §8.4. If the user has no other votes yet, it shows as `~5`.
+- "Missed" state is visually clear but not shameful — just a fact.
 
 ### 8.4 Projected score display
 - Visible **only** on entries marked `missed: true`
@@ -389,26 +408,33 @@ These anchors appear on every voting card regardless of template. Anchor copy is
   - e.g. if user has voted on 5 entries and their avg vocals is 6.2 → projected vocals = 6 (rounded)
 - If user has voted on 0 entries: all projected scores default to 5
 - Shown inline on the missed card, clearly labelled "Estimated" with `~` prefix
-- Updated live as the user votes on more entries (Supabase Realtime subscription on own votes table)
+- Updated live as the user votes on more entries (Supabase Realtime subscription on own votes table). When a projected value changes, the cell fires `animate-score-pop` and a small inline label *"updated from your recent votes"* fades in for ~2s — so the user understands the number shifted because of their own activity, not a server error.
 - Once voting closes, projected scores are finalised as the actual filled values — displayed without the `~` in results
 
 ### 8.5 Autosave
-- Every slider interaction triggers a debounced save (500ms) via `UPSERT` to `votes` table
-- Visual indicator: small "Saving..." → "Saved" status in the corner, 1s display then fade
-- On reconnect after network loss, re-sync from DB and re-apply any locally-cached unsaved changes (store in-memory)
+- Every score-button press (§8.2) or other voting-state change (missed toggle, hot-take edit) triggers a debounced save (500ms) via `UPSERT` to `votes` table.
+- **Save indicator** in the header corner is a three-state chip:
+  - `Saving…` — request in flight (visible while the debounced request is unresolved).
+  - `Saved` — all changes in sync (persistent, not a 1s fade). Small check icon.
+  - `Offline — changes queued` — client could not reach the server. Offline queue is held in memory (V1) and on `localStorage.emx_offline_queue` (survives tab reload within the same session).
+- **Offline UX:**
+  - A one-line banner appears at the top of the voting view when `navigator.onLine === false` *or* three consecutive saves have failed: *"You're offline — changes will sync when you reconnect."* The voting UI remains fully interactive.
+  - On reconnect: drain the offline queue in order (oldest first). Conflicts (a row already has a later server-side `updated_at`) resolve **server-wins** — the server value is applied, and the client surfaces a brief toast *"Your offline changes for [contestant] conflicted with a newer version on the server."*
+  - Banner and chip clear once the queue drains successfully.
 
 ### 8.6 Navigation
-- Prev/Next arrows in footer; swipe gesture also works (left = next, right = prev)
-- Running order determines default sequence
-- If admin broadcasts "now performing", UI snaps to that contestant; user can navigate back
-- Progress indicator: number of scored entries / total entries shown in header
+- Prev/Next arrows in footer; swipe gesture also works (left = next, right = prev).
+- **Swipe only activates outside the category score-button area** — horizontal swipes initiated on a score row do not trigger navigation (prevents accidental nav while users are selecting scores). The header, footer, between-row gaps, and hot-take area are all valid swipe origins.
+- Running order determines default sequence.
+- If admin broadcasts "now performing", UI snaps to that contestant per §6.5; user can navigate back.
+- Progress indicator: number of scored entries / total entries shown in header (see §8.1 for the separation from the running-order indicator).
 
 ### 8.7 Hot takes
-- Optional per-contestant free-text field below the sliders
-- 140 character limit, emoji-aware (emoji count as 2 chars)
-- Placeholder: *"Your hot take on this performance..."*
-- Shown in results screen next to user's avatar
-- Can be left blank; shown only if filled
+- Optional per-contestant free-text field below the score rows (§8.2).
+- 140 character limit, emoji-aware (emoji count as 2 chars). A live counter renders below the input as `120 / 140`; the counter switches to `text-accent` (hot pink) once the user is within 10 characters of the limit, and the input visibly clamps at 140 (extra keystrokes do nothing).
+- Placeholder: *"Your one-liner"*.
+- Shown in results screen next to user's avatar.
+- Can be left blank; shown only if filled.
 
 ---
 
@@ -470,43 +496,60 @@ Sort descending → final leaderboard. All results written to `results` table.
 ## 10. Results & announcement
 
 ### 10.1 Instant mode
-1. Each user sees their own results first:
-   - Their Eurovision points list (who they gave 1 through 12)
-   - Their hot takes displayed per country
-2. "Ready to reveal" button — admin sees count of users who are ready
-3. Admin presses "Reveal final results" → animated worst-to-best reveal of the group leaderboard
-4. After leaderboard: awards screen (§11)
+1. Each user sees **their own** results first:
+   - Their Eurovision points list (who they gave 1 through 12), revealed 1 → 12 one at a time as the user taps.
+   - Their hot takes displayed per country.
+   - The **group leaderboard is locked** on this screen until either all users are ready or the admin overrides — users can see only their own picks, preserving the reveal moment.
+2. "Ready to reveal" button — admin sees count of users who are ready (e.g. *"4 / 6 ready"*).
+3. Admin reveal triggers:
+   - Once all users mark ready → admin's "Reveal final results" CTA is primary.
+   - If not all are ready, admin can still tap **"Reveal anyway"** once a timeout (60 seconds from the first ready) has elapsed, or once at least half the room is ready — whichever comes first. Surfacing "Reveal anyway" earlier avoids the whole room waiting on an afk user.
+4. On reveal → animated worst-to-best reveal of the group leaderboard.
+5. After leaderboard: awards screen (§11).
 
 ### 10.2 Live announcement mode
 The "announce screen" (`/room/{roomId}/present`) is a dedicated fullscreen route, optimised for AirPlay/screen mirroring — no navigation chrome, designed for a TV.
 
 **Flow:**
-1. Random user order determined server-side and stored in `rooms.announcement_order` (array of userIds)
+1. Random user order determined server-side and stored in `rooms.announcement_order` (array of userIds).
 2. First user's turn begins. Their screen shows:
-   - "You're announcing! Give your points from lowest to highest."
-   - Their points list (1 through 12), one at a time
-   - "Next" button to reveal the next point award
-3. For each point reveal:
-   - Announcer's screen shows: *"[N] point(s) go to... [Country]"* + Next button
-   - All other screens (+ the present screen) show the leaderboard updating live
-   - A country's score animates upward as points are added — other countries may shift in ranking
-4. After announcing all 12 points: "Finish announcement" button
-5. Next random user starts their announcement
-6. Admin can tap "Announce for [User]" to take over for someone who left — admin reads their points aloud
-7. After all users finish: transition to awards screen
+   - *"You're announcing! Give your points from lowest to highest."*
+   - Their points list (1 through 12), revealed one at a time.
+   - A tap-to-advance zone (see below).
+3. **For each point reveal, three surfaces show different content:**
+
+   | Surface | Top | Middle | Bottom |
+   |---|---|---|---|
+   | **Announcer's phone** | Remaining points to give — e.g. *"Still to give: 7, 8, 10, 12"* | *"[N] point(s) go to… [Country] [flag]"* reveal line | Full live room leaderboard with rank-shift animation — so the announcer can watch the effect of their reveal |
+   | **Present (TV) screen** | Label: *"[User] is announcing"* with avatar | Current reveal as a large overlay that fades after 3s | Full leaderboard with `animate-rank-shift` as scores update |
+   | **Other guests' phones** | Label: *"[User] is announcing"* | Current reveal as a toast that auto-dismisses after 3s | Compact live leaderboard |
+
+4. **Advancing the reveal:** the announcer advances by **tapping anywhere on the lower half of their screen** (not a small button — the whole area is one large tap target, which avoids fumble under pressure). An optional 3-second auto-advance fires after each reveal; a persistent *"Hold"* control lets the announcer pause auto-advance indefinitely while they narrate.
+5. After announcing all 12 points: *"Finish announcement"* button (primary, full-width).
+6. Next scheduled user starts their announcement (per `rooms.announcement_order`).
+7. **Admin handoff semantics:**
+   - The admin sees an **announcer roster** panel — a list of every user in the room with a presence dot (green = seen in last 30s via the room broadcast channel, grey otherwise). Any user can be handed off to the admin from this panel at any time.
+   - "Announce for [User]" is **proactively offered** to the admin when the current announcer has not advanced within 30 seconds of their turn starting or their last reveal. The admin can also invoke it unprompted from the roster.
+   - On takeover, `rooms.announcing_user_id` remains the original user (the points still belong to them for the record). A new column `rooms.delegate_user_id` is set to the admin. The admin advances from the current `current_announce_idx` — the user's already-revealed points are **not** re-revealed.
+   - If the original user returns mid-delegation, they see *"Admin is announcing for you"* and are not offered control back in MVP (deferred to V2).
+   - `POST /api/rooms/{roomId}/announce/handoff` sets `delegate_user_id`. `POST /api/rooms/{roomId}/announce/next` accepts advances from either `announcing_user_id` or `delegate_user_id`.
+8. After all users finish: transition to awards screen.
 
 **Realtime mechanism:**
-- Announcement state stored in `rooms` table: `announcing_user_id`, `current_point_reveal_index`
-- Each "Next" button tap calls `POST /api/rooms/{roomId}/announce/next`
-- Server updates state, Supabase Realtime broadcasts to all subscribers
-- No client ever drives state — server is authoritative
+- Announcement state stored in `rooms` table: `announcing_user_id`, `delegate_user_id`, `current_announce_idx`.
+- Each advance tap calls `POST /api/rooms/{roomId}/announce/next`.
+- Server updates state, Supabase Realtime broadcasts `announce_next` + `score_update` to all subscribers.
+- No client ever drives state — server is authoritative.
+
+**Rejoin during `announcing`:** if a user loses and regains their connection mid-announcement, they land on their current voting/results view and see the **current leaderboard** immediately, followed by a brief *"Catching up…"* label (~1s) so they understand they missed beats in between. The next `announce_next` broadcast resumes the live flow.
 
 ### 10.3 Presentation screen (`/room/{roomId}/present`)
-- Fullscreen, no URL bar ideally (use PWA manifest + `display: standalone`)
-- Shows the current live leaderboard: flag + country + running total, sorted by current score
-- Animates rank changes when scores are added (smooth reorder transition, ~300ms)
-- Shows whose turn it is to announce and which point value is next
-- Designed for a 16:9 TV-ish aspect ratio but gracefully handles other ratios
+- Fullscreen, no URL bar ideally (use PWA manifest + `display: standalone`).
+- **iOS/Safari fullscreen fallback:** when `display: standalone` and/or the landscape viewport override can't be acquired (common on iOS Safari when not launched from the home screen), the route surfaces a one-tap *"Enter fullscreen"* prompt that triggers `document.documentElement.requestFullscreen()` on the user gesture. Prompt is dismissible and reappears only if the browser exits fullscreen.
+- Shows the current live leaderboard: flag + country + running total, sorted by current score.
+- Animates rank changes when scores are added (smooth reorder transition, ~300ms, via `animate-rank-shift`).
+- Shows whose turn it is to announce and which point value is next.
+- Designed for a 16:9 TV-ish aspect ratio but gracefully handles other ratios.
 
 ---
 
@@ -530,20 +573,26 @@ Computed server-side after scoring. Stored in `room_awards` table. Displayed on 
 | **Biggest stan** | User with the highest mean score given across all non-missed votes |
 | **Hive mind master** | User whose final contestant ranking most closely tracks the group consensus ranking (lowest Spearman distance to group mean ranking) |
 | **Most contrarian** | User whose final contestant ranking diverges most from group consensus (highest Spearman distance) |
-| **Neighbourhood voters** | The pair of users with the highest pairwise Pearson correlation across all their scores (they voted most alike) |
+| **Neighbourhood voters** | The pair of users with the highest pairwise Pearson correlation across all their scores (they voted most alike). Displayed as a **dual-avatar card** — both users' avatars side by side with their display names, captioned *"voted most alike"*. |
 | **The dark horse** | Contestant with the highest variance in total scores across all users (most divisive) |
 | **Fashion stan** | User who gave the single highest score in the outfit/costume category across all their votes (or the category closest to "outfit" by name if custom) |
 | **The enabler** | User whose 12 points went to the overall group winner |
 
 **Spearman distance** = 1 − Spearman rank correlation coefficient. Computed in JavaScript using a simple rank-correlation implementation (no library needed — ~20 lines of code).
 
-**Tiebreaking for personality awards:** if two users tie on any personality metric, both are listed as joint winners.
+**Tiebreaking for personality awards:** if two users tie on any personality metric, both are stored as joint winners (`winner_user_id` + `winner_user_id_b`) and rendered as a joint credit on the card. 3+ way ties resolve deterministically by display-name alphabetical order to pick the top two — a known MVP limitation; full multi-winner support is deferred to V2.
+
+**Pair-award storage (Neighbourhood voters):** the two users of the pair are stored in `winner_user_id` and `winner_user_id_b` (deterministic order: alphabetical by display_name). The awards UI renders this as a dual-avatar card (see §11.3).
 
 ### 11.3 Awards screen
-- Cinematic reveal: one award at a time, admin/presenter taps to advance
-- Each award: large award name, winner's avatar + display name (or country flag for contestant awards), brief stat shown below
-- Last award is always "The enabler" — good narrative closer
-- After all awards: "Share results" button
+- Cinematic reveal: one award at a time, admin/presenter taps to advance.
+- A small **"Next award"** button is always visible in a corner of the screen (not just a tap-anywhere zone) — so that if the admin fumbles or a guest can't tell where to tap, the control is unambiguously findable.
+- Each award: large award name, winner's avatar + display name (or country flag for contestant awards), brief stat shown below.
+- **Pair / joint-winner awards** (Neighbourhood voters; 2-way ties on personality awards): rendered as a **dual-avatar card** — both avatars side-by-side, both display names below, single shared stat line. Caption: *"voted most alike"* for Neighbourhood voters; *"joint winners"* for ties.
+- Last award is always "The enabler" — good narrative closer.
+- After all awards the screen shows two primary CTAs side-by-side:
+  - **"Copy share link"** — copies the `/results/{roomId}` URL and shows a 2s *"Copied!"* confirmation.
+  - **"Create another room"** — routes back to `/create` pre-filled with the same year/event (admin only; guests see only "Copy share link").
 
 ---
 
@@ -591,6 +640,7 @@ CREATE TABLE rooms (
                           CHECK (announcement_mode IN ('live','instant')),
   announcement_order    UUID[],                 -- ordered array of userIds for live mode
   announcing_user_id    UUID REFERENCES users(id),
+  delegate_user_id      UUID REFERENCES users(id), -- admin delegate during handoff (§10.2); NULL when the original announcer is driving
   current_announce_idx  SMALLINT DEFAULT 0,     -- which point value is being announced
   now_performing_id     VARCHAR(20),            -- contestant id currently performing
   allow_now_performing  BOOLEAN DEFAULT FALSE,
@@ -645,6 +695,7 @@ CREATE TABLE room_awards (
   award_key       VARCHAR(30) NOT NULL,         -- e.g. "harshest_critic"
   award_name      VARCHAR(50) NOT NULL,         -- display name
   winner_user_id  UUID REFERENCES users(id),    -- null for contestant awards
+  winner_user_id_b UUID REFERENCES users(id),   -- second winner slot: used for the Neighbourhood Voters pair and for 2-way ties on personality awards (§11.2). Null otherwise.
   winner_contestant_id VARCHAR(20),             -- null for user awards
   stat_value      NUMERIC(6,3),                 -- the underlying metric
   stat_label      VARCHAR(80),                  -- human-readable stat description
@@ -853,7 +904,6 @@ A committed runbook at the repo root walks a new operator from zero to a working
 - Final domain name (`eurovisionmaxxing.com` vs `.app` vs `.tv`)
 - Whether to charge for a custom domain or keep on Vercel's free subdomain for the first season
 - Supabase project naming convention
-- Whether "Neighbourhood voters" award should show on-screen as a pair or just individually
 - Who writes the non-English copy for `es` / `uk` / `fr` / `de` (§21): (a) hand-write, (b) LLM first-pass + native-speaker review (especially for `uk` and Eurovision-idiomatic copy like "Gay panic level", "Staging chaos"), or (c) defer non-English locales to V2 and ship infrastructure-only
 
 ---
