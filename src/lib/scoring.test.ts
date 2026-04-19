@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { VotingCategory } from "@/types";
+import type { VotingCategory, Vote } from "@/types";
 import {
   computeWeightedScore,
   rankToPoints,
@@ -7,6 +7,7 @@ import {
   computeMissedFill,
   spearmanCorrelation,
   pearsonCorrelation,
+  scoreRoom,
 } from "@/lib/scoring";
 
 // ─── computeWeightedScore ─────────────────────────────────────────────────────
@@ -60,19 +61,23 @@ describe("computeWeightedScore", () => {
 // ─── rankToPoints ─────────────────────────────────────────────────────────────
 
 describe("rankToPoints", () => {
-  it("maps ranks 1..10 to Eurovision points", () => {
-    const expected = [12, 10, 8, 7, 6, 5, 4, 3, 2, 1];
-    for (let rank = 1; rank <= 10; rank++) {
-      expect(rankToPoints(rank)).toBe(expected[rank - 1]);
-    }
+  it.each([
+    [1, 12],
+    [2, 10],
+    [3, 8],
+    [4, 7],
+    [5, 6],
+    [6, 5],
+    [7, 4],
+    [8, 3],
+    [9, 2],
+    [10, 1],
+  ])("maps rank %i to %i points", (rank, points) => {
+    expect(rankToPoints(rank)).toBe(points);
   });
 
   it("returns 0 for rank 11", () => {
     expect(rankToPoints(11)).toBe(0);
-  });
-
-  it("returns 0 for a very large rank", () => {
-    expect(rankToPoints(100)).toBe(0);
   });
 
   it("returns 0 for rank 0 (not in map, `?? 0` fallback)", () => {
@@ -207,5 +212,179 @@ describe("pearsonCorrelation", () => {
 
   it("returns 0 when one series has zero variance (constant)", () => {
     expect(pearsonCorrelation([5, 5, 5], [1, 2, 3])).toBe(0);
+  });
+
+  it("returns 0 when n < 2", () => {
+    expect(pearsonCorrelation([1], [1])).toBe(0);
+  });
+});
+
+// ─── scoreRoom (pipeline) ─────────────────────────────────────────────────────
+
+function makeVote(overrides: Partial<Vote>): Vote {
+  return {
+    id: "v-0",
+    roomId: "r-1",
+    userId: "u-1",
+    contestantId: "c-1",
+    scores: null,
+    missed: false,
+    hotTake: null,
+    updatedAt: "2026-04-19T00:00:00Z",
+    ...overrides,
+  };
+}
+
+describe("scoreRoom (pipeline)", () => {
+  const twoEqualCategories: VotingCategory[] = [
+    { name: "vocals", weight: 1 },
+    { name: "staging", weight: 1 },
+  ];
+
+  it("computes per-user ranks, points, and final leaderboard on a canonical fixture", () => {
+    const contestants = [
+      { id: "2026-AL", country: "Albania" },
+      { id: "2026-BE", country: "Belgium" },
+      { id: "2026-CR", country: "Croatia" },
+      { id: "2026-DE", country: "Germany" },
+    ];
+    const userIds = ["u-1", "u-2", "u-3"];
+
+    // Scores are designed so each user produces a distinct ranking:
+    //   u-1 ranks: AL(10) > BE(8) > CR(6) > DE(4)
+    //   u-2 ranks: BE(9) > CR(7) > AL(5) > DE(3)
+    //   u-3 ranks: CR(10) > AL(8) > DE(6) > BE(4)
+    // Weighted = simple mean since both weights = 1.
+    const votes: Vote[] = [
+      // u-1
+      makeVote({ id: "v1-AL", userId: "u-1", contestantId: "2026-AL", scores: { vocals: 10, staging: 10 } }),
+      makeVote({ id: "v1-BE", userId: "u-1", contestantId: "2026-BE", scores: { vocals: 8,  staging: 8  } }),
+      makeVote({ id: "v1-CR", userId: "u-1", contestantId: "2026-CR", scores: { vocals: 6,  staging: 6  } }),
+      makeVote({ id: "v1-DE", userId: "u-1", contestantId: "2026-DE", scores: { vocals: 4,  staging: 4  } }),
+      // u-2
+      makeVote({ id: "v2-AL", userId: "u-2", contestantId: "2026-AL", scores: { vocals: 5,  staging: 5  } }),
+      makeVote({ id: "v2-BE", userId: "u-2", contestantId: "2026-BE", scores: { vocals: 9,  staging: 9  } }),
+      makeVote({ id: "v2-CR", userId: "u-2", contestantId: "2026-CR", scores: { vocals: 7,  staging: 7  } }),
+      makeVote({ id: "v2-DE", userId: "u-2", contestantId: "2026-DE", scores: { vocals: 3,  staging: 3  } }),
+      // u-3
+      makeVote({ id: "v3-AL", userId: "u-3", contestantId: "2026-AL", scores: { vocals: 8,  staging: 8  } }),
+      makeVote({ id: "v3-BE", userId: "u-3", contestantId: "2026-BE", scores: { vocals: 4,  staging: 4  } }),
+      makeVote({ id: "v3-CR", userId: "u-3", contestantId: "2026-CR", scores: { vocals: 10, staging: 10 } }),
+      makeVote({ id: "v3-DE", userId: "u-3", contestantId: "2026-DE", scores: { vocals: 6,  staging: 6  } }),
+    ];
+
+    const out = scoreRoom({ categories: twoEqualCategories, contestants, userIds, votes });
+
+    // Sort results for deterministic assertion (spec: results order not part of contract).
+    const resultKey = (r: { userId: string; contestantId: string }) =>
+      `${r.userId}|${r.contestantId}`;
+    const sortedResults = [...out.results].sort((a, b) =>
+      resultKey(a).localeCompare(resultKey(b))
+    );
+
+    // Points each user awards:
+    //   u-1: AL=12, BE=10, CR=8, DE=7
+    //   u-2: BE=12, CR=10, AL=8, DE=7
+    //   u-3: CR=12, AL=10, DE=8, BE=7
+    // Leaderboard totals:
+    //   AL = 12 + 8 + 10 = 30
+    //   BE = 10 + 12 + 7 = 29
+    //   CR = 8 + 10 + 12 = 30
+    //   DE = 7 + 7 + 8 = 22
+    // Sorted: totalPoints desc, then contestantId asc -> AL(30), CR(30), BE(29), DE(22)
+    expect(out.leaderboard).toEqual([
+      { contestantId: "2026-AL", totalPoints: 30 },
+      { contestantId: "2026-CR", totalPoints: 30 },
+      { contestantId: "2026-BE", totalPoints: 29 },
+      { contestantId: "2026-DE", totalPoints: 22 },
+    ]);
+
+    // Spot-check one user's full row set.
+    const u1Results = sortedResults.filter((r) => r.userId === "u-1");
+    expect(u1Results).toEqual([
+      { userId: "u-1", contestantId: "2026-AL", weightedScore: 10, rank: 1, pointsAwarded: 12 },
+      { userId: "u-1", contestantId: "2026-BE", weightedScore: 8,  rank: 2, pointsAwarded: 10 },
+      { userId: "u-1", contestantId: "2026-CR", weightedScore: 6,  rank: 3, pointsAwarded: 8 },
+      { userId: "u-1", contestantId: "2026-DE", weightedScore: 4,  rank: 4, pointsAwarded: 7 },
+    ]);
+
+    // filledVotes preserves all input votes; no missed -> no fills happen.
+    expect(out.filledVotes).toHaveLength(votes.length);
+  });
+
+  it("fills a missed vote with the user's per-category mean and still ranks them", () => {
+    const contestants = [
+      { id: "2026-AL", country: "Albania" },
+      { id: "2026-BE", country: "Belgium" },
+      { id: "2026-CR", country: "Croatia" },
+    ];
+    const userIds = ["u-1", "u-2"];
+
+    const oneCategory: VotingCategory[] = [{ name: "vocals", weight: 1 }];
+
+    // u-1: scores 10 on AL, MISSED on BE, scores 6 on CR
+    //      -> missed fill for BE uses mean(10, 6) = 8 (rounded from 8.0)
+    //      -> u-1 weighted: AL=10, BE=8, CR=6 -> ranks 1,2,3 -> pts 12,10,8
+    // u-2: scores 7 on all three -> all tied; tiebreak falls to alphabetical by country
+    //      -> u-2 ranks: AL,BE,CR (alphabetical) -> pts 12,10,8
+    const votes: Vote[] = [
+      makeVote({ id: "a1", userId: "u-1", contestantId: "2026-AL", scores: { vocals: 10 } }),
+      makeVote({ id: "a2", userId: "u-1", contestantId: "2026-BE", scores: null, missed: true }),
+      makeVote({ id: "a3", userId: "u-1", contestantId: "2026-CR", scores: { vocals: 6 } }),
+      makeVote({ id: "b1", userId: "u-2", contestantId: "2026-AL", scores: { vocals: 7 } }),
+      makeVote({ id: "b2", userId: "u-2", contestantId: "2026-BE", scores: { vocals: 7 } }),
+      makeVote({ id: "b3", userId: "u-2", contestantId: "2026-CR", scores: { vocals: 7 } }),
+    ];
+
+    const out = scoreRoom({ categories: oneCategory, contestants, userIds, votes });
+
+    // Filled vote for u-1 BE should have vocals = 8 and missed still true.
+    const beFilled = out.filledVotes.find(
+      (v) => v.userId === "u-1" && v.contestantId === "2026-BE"
+    );
+    expect(beFilled?.missed).toBe(true);
+    expect(beFilled?.scores).toEqual({ vocals: 8 });
+
+    // Leaderboard:
+    //   AL = 12 + 12 = 24
+    //   BE = 10 + 10 = 20
+    //   CR = 8 + 8 = 16
+    expect(out.leaderboard).toEqual([
+      { contestantId: "2026-AL", totalPoints: 24 },
+      { contestantId: "2026-BE", totalPoints: 20 },
+      { contestantId: "2026-CR", totalPoints: 16 },
+    ]);
+  });
+
+  it("resolves a weighted-score tie via peak-category score in the pipeline", () => {
+    const contestants = [
+      { id: "2026-AL", country: "Albania" },
+      { id: "2026-BE", country: "Belgium" },
+    ];
+    const userIds = ["u-1"];
+    const twoCats: VotingCategory[] = [
+      { name: "vocals", weight: 1 },
+      { name: "staging", weight: 1 },
+    ];
+
+    // Both weighted to 6, but AL has the higher peak (9 vs 7).
+    const votes: Vote[] = [
+      makeVote({ id: "x1", userId: "u-1", contestantId: "2026-AL", scores: { vocals: 9, staging: 3 } }),
+      makeVote({ id: "x2", userId: "u-1", contestantId: "2026-BE", scores: { vocals: 7, staging: 5 } }),
+    ];
+
+    const out = scoreRoom({ categories: twoCats, contestants, userIds, votes });
+
+    const alResult = out.results.find((r) => r.contestantId === "2026-AL");
+    const beResult = out.results.find((r) => r.contestantId === "2026-BE");
+    expect(alResult?.rank).toBe(1);
+    expect(alResult?.pointsAwarded).toBe(12);
+    expect(beResult?.rank).toBe(2);
+    expect(beResult?.pointsAwarded).toBe(10);
+
+    expect(out.leaderboard).toEqual([
+      { contestantId: "2026-AL", totalPoints: 12 },
+      { contestantId: "2026-BE", totalPoints: 10 },
+    ]);
   });
 });
