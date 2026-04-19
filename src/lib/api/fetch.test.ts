@@ -79,4 +79,31 @@ describe("apiFetch", () => {
     await expect(apiFetch("/x")).rejects.toBe(networkError);
     expect(refreshExpiry).not.toHaveBeenCalled();
   });
+
+  it("passes input and init through to the underlying fetch unchanged", async () => {
+    const refreshExpiry = vi.fn();
+    const fetchImpl = vi.fn().mockResolvedValue(makeResponse(200));
+    const apiFetch = __makeApiFetch({ fetchImpl, refreshExpiry });
+
+    const init: RequestInit = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hello: "world" }),
+    };
+    await apiFetch("/x", init);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).toHaveBeenCalledWith("/x", init);
+  });
+
+  it("resolves to the exact Response instance the underlying fetch returned", async () => {
+    const refreshExpiry = vi.fn();
+    const response = makeResponse(200);
+    const fetchImpl = vi.fn().mockResolvedValue(response);
+    const apiFetch = __makeApiFetch({ fetchImpl, refreshExpiry });
+
+    const result = await apiFetch("/x");
+
+    expect(result).toBe(response);
+  });
 });
