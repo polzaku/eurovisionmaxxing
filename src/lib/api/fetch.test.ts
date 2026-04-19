@@ -37,4 +37,36 @@ describe("apiFetch", () => {
 
     expect(refreshExpiry).toHaveBeenCalledTimes(1);
   });
+
+  it("does not refresh expiry on a 400 response, and returns the Response", async () => {
+    const refreshExpiry = vi.fn();
+    const response = makeResponse(400);
+    const fetchImpl = vi.fn().mockResolvedValue(response);
+    const apiFetch = __makeApiFetch({ fetchImpl, refreshExpiry });
+
+    const result = await apiFetch("/x");
+
+    expect(result).toBe(response);
+    expect(refreshExpiry).not.toHaveBeenCalled();
+  });
+
+  it("does not refresh expiry on a 401 response", async () => {
+    const refreshExpiry = vi.fn();
+    const fetchImpl = vi.fn().mockResolvedValue(makeResponse(401));
+    const apiFetch = __makeApiFetch({ fetchImpl, refreshExpiry });
+
+    await apiFetch("/x");
+
+    expect(refreshExpiry).not.toHaveBeenCalled();
+  });
+
+  it("does not refresh expiry on a 500 response", async () => {
+    const refreshExpiry = vi.fn();
+    const fetchImpl = vi.fn().mockResolvedValue(makeResponse(500));
+    const apiFetch = __makeApiFetch({ fetchImpl, refreshExpiry });
+
+    await apiFetch("/x");
+
+    expect(refreshExpiry).not.toHaveBeenCalled();
+  });
 });
