@@ -246,3 +246,40 @@ describe("joinByPin — status guard", () => {
     }
   );
 });
+
+describe("joinByPin — idempotency", () => {
+  it("calling twice in a row both succeed with the same roomId", async () => {
+    const mock = makeSupabaseMock();
+    const first = await joinByPin(
+      { pin: "ABCDEF", userId: VALID_USER_ID },
+      makeDeps(mock)
+    );
+    const second = await joinByPin(
+      { pin: "ABCDEF", userId: VALID_USER_ID },
+      makeDeps(mock)
+    );
+    expect(first).toEqual({ ok: true, roomId: VALID_ROOM_ID });
+    expect(second).toEqual({ ok: true, roomId: VALID_ROOM_ID });
+    expect(mock.upsertOptions).toEqual([
+      { onConflict: "room_id,user_id", ignoreDuplicates: true },
+      { onConflict: "room_id,user_id", ignoreDuplicates: true },
+    ]);
+  });
+});
+
+describe("joinByPin — DB error", () => {
+  it("returns 500 INTERNAL_ERROR when the membership upsert fails", async () => {
+    const mock = makeSupabaseMock({
+      membershipUpsertResult: { error: { message: "FK violation: user does not exist" } },
+    });
+    const result = await joinByPin(
+      { pin: "ABCDEF", userId: VALID_USER_ID },
+      makeDeps(mock)
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 500,
+      error: { code: "INTERNAL_ERROR" },
+    });
+  });
+});
