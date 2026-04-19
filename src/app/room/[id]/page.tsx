@@ -20,7 +20,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     if (getSession()) return;
-    router.replace(`/onboard?next=/room/${params.id}`);
+    router.replace(`/onboard?next=/room/${encodeURIComponent(params.id)}`);
   }, [params.id, router]);
 
   return (

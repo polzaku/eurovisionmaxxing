@@ -9,16 +9,12 @@ import { useDebouncedValue } from "@/lib/hooks/useDebouncedValue";
 import { generateCarouselSeeds } from "@/lib/onboarding/seeds";
 import { sanitizeNextPath } from "@/lib/onboarding/safeNext";
 import { extractRoomId } from "@/lib/onboarding/extractRoomId";
-import { DISPLAY_NAME_REGEX } from "@/lib/auth/onboard";
+import { DISPLAY_NAME_REGEX, normalizeDisplayName } from "@/lib/auth/onboard";
 import { createExpiryDate, getSession, setSession } from "@/lib/session";
 import { apiFetch } from "@/lib/api/fetch";
 
 const DEFAULT_SEED = "emx-default";
 const NAME_DEBOUNCE_MS = 300;
-
-function normalizeName(raw: string): string {
-  return raw.trim().replace(/\s+/g, " ");
-}
 
 function browserRng(): number {
   return Math.random();
@@ -74,7 +70,7 @@ export default function OnboardingForm() {
 
   useEffect(() => {
     if (carouselOpen) return;
-    const normalized = normalizeName(debouncedName);
+    const normalized = normalizeDisplayName(debouncedName);
     setPreviewSeed(normalized.length > 0 ? normalized : DEFAULT_SEED);
   }, [debouncedName, carouselOpen]);
 
@@ -91,7 +87,7 @@ export default function OnboardingForm() {
     setSelectedSeed(seed);
   }
 
-  const normalized = normalizeName(name);
+  const normalized = normalizeDisplayName(name);
   const nameValid = DISPLAY_NAME_REGEX.test(normalized);
 
   async function createNewIdentity(displayName: string, avatarSeed: string) {

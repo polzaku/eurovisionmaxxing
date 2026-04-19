@@ -19,6 +19,7 @@ interface MakeDepsOverrides {
 function makeDeps(o: MakeDepsOverrides = {}): {
   deps: CandidatesDeps;
   fromMock: ReturnType<typeof vi.fn>;
+  membershipsEq: ReturnType<typeof vi.fn>;
 } {
   const roomExists = o.roomExists ?? true;
   const roomSelectError = o.roomSelectError ?? null;
@@ -48,7 +49,7 @@ function makeDeps(o: MakeDepsOverrides = {}): {
     supabase: { from: fromMock } as unknown as CandidatesDeps["supabase"],
   };
 
-  return { deps, fromMock };
+  return { deps, fromMock, membershipsEq };
 }
 
 function validInput(extra: Record<string, unknown> = {}) {
@@ -212,7 +213,7 @@ describe("listCandidates — match logic", () => {
   });
 
   it("queries only by room_id — membership query is scoped so different rooms cannot leak", async () => {
-    const { deps, fromMock } = makeDeps({
+    const { deps, fromMock, membershipsEq } = makeDeps({
       memberships: [
         { users: { id: USER_A, display_name: "Alice", avatar_seed: "sa" } },
       ],
@@ -221,6 +222,7 @@ describe("listCandidates — match logic", () => {
     const tablesTouched = fromMock.mock.calls.map((c) => c[0]);
     expect(tablesTouched).toContain("rooms");
     expect(tablesTouched).toContain("room_memberships");
+    expect(membershipsEq).toHaveBeenCalledWith("room_id", VALID_ROOM_ID);
   });
 
   it("returns INTERNAL_ERROR 500 when the memberships select errors", async () => {
