@@ -32,8 +32,41 @@
       "error": "Couldn't create your identity. Try again."
     }
   },
-  "templates": {},
-  "categories": {},
+  "templates": {
+    "classic": {
+      "name": "The Classic",
+      "description": "For fans who want to be fair and thorough."
+    },
+    "spectacle": {
+      "name": "The Spectacle",
+      "description": "For when you want to reward the unhinged."
+    },
+    "bangerTest": {
+      "name": "The Banger Test",
+      "description": "For when the group wants to find the actual best song."
+    },
+    "custom": {
+      "name": "Custom",
+      "description": "Build your own categories from scratch."
+    }
+  },
+  "categories": {
+    "vocals":            { "name": "Vocals",            "hint": "Technical delivery and control — not just whether you like the style" },
+    "music":             { "name": "Music",             "hint": "Composition, arrangement, and production quality" },
+    "outfit":            { "name": "Outfit",            "hint": "The look. Does it serve? Does it commit?" },
+    "stagePerformance":  { "name": "Stage performance", "hint": "Movement, energy, use of the stage" },
+    "vibes":             { "name": "Vibes",             "hint": "The ineffable. How did it make you feel?" },
+    "drama":             { "name": "Drama",             "hint": "How much did it make you gasp, clutch pearls, or lean forward?" },
+    "costumeCommitment": { "name": "Costume commitment","hint": "Not just nice — how hard did they go? Full send?" },
+    "stagingChaos":      { "name": "Staging chaos",     "hint": "Was it controlled insanity or just confused? Reward the former." },
+    "gayPanicLevel":     { "name": "Gay panic level",   "hint": "The campness. The queerness. The iconography." },
+    "quotability":       { "name": "Quotability",       "hint": "Will you still be referencing this in November?" },
+    "catchiness":        { "name": "Catchiness",        "hint": "Could you hum it 10 minutes later?" },
+    "danceability":      { "name": "Danceability",      "hint": "Did your body move involuntarily?" },
+    "production":        { "name": "Production",        "hint": "Sound design, mixing, studio quality" },
+    "lyrics":            { "name": "Lyrics",            "hint": "What are they actually saying? Does it hold up?" },
+    "originality":       { "name": "Originality",       "hint": "Has Eurovision heard this before?" }
+  },
   "errors": {
     "INVALID_BODY": "Something about your request was invalid.",
     "INVALID_DISPLAY_NAME": "Display name must be 2–24 characters: letters, numbers, spaces, or hyphens.",

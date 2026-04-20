@@ -33,6 +33,10 @@ export interface VotingCategory {
   name: string; // 2–24 chars
   weight: number; // 0.5–5, step 0.5, default 1
   hint?: string; // max 80 chars, tooltip text
+  // SPEC §21.6 — i18n keys
+  key?: string;
+  nameKey?: string;
+  hintKey?: string;
 }
 
 export interface Room {
@@ -138,6 +142,10 @@ export interface VotingTemplate {
   name: string;
   description: string;
   categories: VotingCategory[];
+  // SPEC §21.6 — i18n keys
+  key?: string;
+  nameKey?: string;
+  descriptionKey?: string;
 }
 
 // ─── Eurovision points mapping ───────────────────────────────────────────────
