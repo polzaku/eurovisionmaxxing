@@ -104,7 +104,7 @@ Stable `key` values: `classic`, `spectacle`, `bangerTest`, `custom`. The `templa
 
 ### `categories` (30 keys — final list confirmed during extraction)
 
-15 distinct categories across the 3 predefined templates × `{name, hint}`. Naming convention: `categories.{slug}.name`, `categories.{slug}.hint`. Slugs are lowercase-snake versions of the existing English `name` values from `src/lib/templates.ts` (e.g. `vocals`, `drama`, `catchiness`, `vibes`, `quotability`, `originality`). The implementation plan locks the exact slug list by reading `templates.ts` — they are not enumerated here because the file is the source of truth and re-stating them risks divergence.
+15 distinct categories across the 3 predefined templates × `{name, hint}`. Naming convention: `categories.{slug}.name`, `categories.{slug}.hint`. Slugs are camelCase (matching JS property convention used elsewhere in the codebase) — single-word slugs are lowercase (`vocals`, `drama`, `catchiness`, `vibes`, `quotability`, `originality`); multi-word slugs camelCase (`stagePerformance`, `costumeCommitment`, `stagingChaos`, `gayPanicLevel`). The implementation plan locks the exact slug list by reading `templates.ts` — they are not enumerated here because the file is the source of truth and re-stating them risks divergence.
 
 ### `errors` (6 keys — matches existing `ApiErrorCode` union)
 
