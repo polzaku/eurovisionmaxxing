@@ -9,17 +9,23 @@ export type ApiErrorCode =
   | "INTERNAL_ERROR";
 
 export interface ApiErrorBody {
-  error: { code: ApiErrorCode; message: string; field?: string };
+  error: {
+    code: ApiErrorCode;
+    message: string;
+    field?: string;
+    params?: Record<string, unknown>;
+  };
 }
 
 export function apiError(
   code: ApiErrorCode,
   message: string,
   status: number,
-  field?: string
+  field?: string,
+  params?: Record<string, unknown>,
 ): NextResponse<ApiErrorBody> {
-  const body: ApiErrorBody = field
-    ? { error: { code, message, field } }
-    : { error: { code, message } };
-  return NextResponse.json(body, { status });
+  const error: ApiErrorBody["error"] = { code, message };
+  if (field !== undefined) error.field = field;
+  if (params !== undefined) error.params = params;
+  return NextResponse.json({ error }, { status });
 }
