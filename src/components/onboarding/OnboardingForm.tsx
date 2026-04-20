@@ -135,10 +135,12 @@ export default function OnboardingForm() {
   }
 
   function renderApiError(error: ApiErrorShape["error"]): string {
+    // next-intl returns "errors.<code>" when the key is missing (defaultGetMessageFallback).
     const key = `errors.${error.code}`;
+    // `as never`: error.code is a runtime string; next-intl's generic key constraint
+    // requires a literal type. The fallback check below handles any miss safely.
     const translated = tErrors(error.code as never, (error.params ?? {}) as never);
-    if (translated === key || translated === error.code) {
-      // Translation key missed or fell back to the literal — use server message.
+    if (translated === key) {
       return error.message;
     }
     return translated;
