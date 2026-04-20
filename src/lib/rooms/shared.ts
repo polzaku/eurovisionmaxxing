@@ -5,7 +5,11 @@ import { createServiceClient } from "@/lib/supabase/server";
 /** Discriminated union of realtime broadcast payloads on `room:{id}` channels (SPEC §15). */
 export type RoomEventPayload =
   | { type: "status_changed"; status: string }
-  | { type: "now_performing"; contestantId: string };
+  | { type: "now_performing"; contestantId: string }
+  | {
+      type: "user_joined";
+      user: { id: string; displayName: string; avatarSeed: string };
+    };
 
 type RoomRow = Database["public"]["Tables"]["rooms"]["Row"];
 
