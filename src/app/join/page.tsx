@@ -55,6 +55,21 @@ export default function JoinPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // During submit or auto-resume, hide the form and show a spinner so the PIN
+  // form doesn't briefly re-render with the resumed value while the redirect
+  // is in flight.
+  const isBusy = ui.kind === "submitting" || resumePin !== null;
+
+  if (isBusy) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
+        <div className="max-w-md w-full text-center animate-fade-in space-y-3">
+          <p className="text-muted-foreground animate-shimmer">Joining room&hellip;</p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
       <div className="max-w-md w-full space-y-6 text-center animate-fade-in">
@@ -66,11 +81,7 @@ export default function JoinPage() {
             Enter the 6-character room PIN to join.
           </p>
         </div>
-        <PinInput
-          onComplete={(pin) => void submit(pin)}
-          disabled={ui.kind === "submitting"}
-          initialValue={resumePin ?? undefined}
-        />
+        <PinInput onComplete={(pin) => void submit(pin)} />
         {ui.kind === "error" && (
           <p role="alert" className="text-sm text-destructive">
             {ui.message}

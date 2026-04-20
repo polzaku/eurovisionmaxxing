@@ -66,6 +66,12 @@ function makeRequest(body: unknown): NextRequest {
 describe("PATCH /api/rooms/[id]/status (route adapter)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Stub global fetch so defaultBroadcastRoomEvent's HTTP POST to
+    // Supabase's /realtime/v1/api/broadcast endpoint succeeds silently.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, status: 200 })
+    );
     roomSelectResult = {
       data: {
         id: VALID_ROOM_ID,

@@ -44,18 +44,18 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-import { POST } from "@/app/api/rooms/join-by-pin/route";
+import { POST } from "@/app/api/rooms/[id]/join/route";
 import { NextRequest } from "next/server";
 
 function makeRequest(body: unknown): NextRequest {
-  return new NextRequest("http://localhost/api/rooms/join-by-pin", {
+  return new NextRequest(`http://localhost/api/rooms/${VALID_ROOM_ID}/join`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
 }
 
-describe("POST /api/rooms/join-by-pin (route adapter)", () => {
+describe("POST /api/rooms/[id]/join (route adapter)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubGlobal(
@@ -68,28 +68,47 @@ describe("POST /api/rooms/join-by-pin (route adapter)", () => {
     };
   });
 
-  it("returns 200 with { roomId } on a known PIN", async () => {
-    const res = await POST(makeRequest({ pin: "ABCDEF", userId: VALID_USER_ID }));
+  it("returns 200 { joined: true } on happy path", async () => {
+    const res = await POST(
+      makeRequest({ userId: VALID_USER_ID }),
+      { params: { id: VALID_ROOM_ID } }
+    );
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { roomId: string };
-    expect(body).toEqual({ roomId: VALID_ROOM_ID });
+    const body = (await res.json()) as { joined: boolean };
+    expect(body).toEqual({ joined: true });
   });
 
   it("returns 400 INVALID_BODY on non-JSON body", async () => {
-    const req = new NextRequest("http://localhost/api/rooms/join-by-pin", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: "not json{{{",
-    });
-    const res = await POST(req);
+    const req = new NextRequest(
+      `http://localhost/api/rooms/${VALID_ROOM_ID}/join`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "not json{{{",
+      }
+    );
+    const res = await POST(req, { params: { id: VALID_ROOM_ID } });
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { code: string } };
     expect(body.error.code).toBe("INVALID_BODY");
   });
 
-  it("returns 404 ROOM_NOT_FOUND on unknown PIN", async () => {
+  it("returns 400 INVALID_USER_ID when userId is missing", async () => {
+    const res = await POST(
+      makeRequest({}),
+      { params: { id: VALID_ROOM_ID } }
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("INVALID_USER_ID");
+  });
+
+  it("returns 404 ROOM_NOT_FOUND when the room does not exist", async () => {
     roomSelectResult = { data: null, error: null };
-    const res = await POST(makeRequest({ pin: "ABCDEF", userId: VALID_USER_ID }));
+    const res = await POST(
+      makeRequest({ userId: VALID_USER_ID }),
+      { params: { id: VALID_ROOM_ID } }
+    );
     expect(res.status).toBe(404);
     const body = (await res.json()) as { error: { code: string } };
     expect(body.error.code).toBe("ROOM_NOT_FOUND");
@@ -100,7 +119,10 @@ describe("POST /api/rooms/join-by-pin (route adapter)", () => {
       data: { id: VALID_ROOM_ID, status: "announcing" },
       error: null,
     };
-    const res = await POST(makeRequest({ pin: "ABCDEF", userId: VALID_USER_ID }));
+    const res = await POST(
+      makeRequest({ userId: VALID_USER_ID }),
+      { params: { id: VALID_ROOM_ID } }
+    );
     expect(res.status).toBe(409);
     const body = (await res.json()) as { error: { code: string } };
     expect(body.error.code).toBe("ROOM_NOT_JOINABLE");
