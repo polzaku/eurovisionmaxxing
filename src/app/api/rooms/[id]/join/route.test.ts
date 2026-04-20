@@ -58,6 +58,10 @@ function makeRequest(body: unknown): NextRequest {
 describe("POST /api/rooms/[id]/join (route adapter)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, status: 200 })
+    );
     roomSelectResult = {
       data: { id: VALID_ROOM_ID, status: "lobby" },
       error: null,

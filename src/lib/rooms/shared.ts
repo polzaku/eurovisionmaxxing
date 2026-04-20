@@ -1,6 +1,5 @@
 import type { Database } from "@/types/database";
 import type { Room } from "@/types";
-import { createServiceClient } from "@/lib/supabase/server";
 
 /** Discriminated union of realtime broadcast payloads on `room:{id}` channels (SPEC §15). */
 export type RoomEventPayload =
@@ -33,20 +32,52 @@ export function mapRoom(row: RoomRow): Room {
   };
 }
 
-/** Default production broadcast implementation. Route adapters inject this; tests mock it. */
+/**
+ * Default production broadcast implementation. Route adapters inject this;
+ * tests mock it.
+ *
+ * Uses Supabase's Realtime HTTP broadcast endpoint rather than the
+ * supabase-js `channel().send()` path, which requires the sender to first
+ * subscribe + await the `SUBSCRIBED` acknowledgement — adding 200-500ms of
+ * latency per broadcast and failing silently in server-side Node contexts
+ * without `ws` installed. The HTTP endpoint delivers to the same topic
+ * without any subscribe handshake.
+ *
+ * Endpoint: `POST {SUPABASE_URL}/realtime/v1/api/broadcast`
+ * Reference: https://supabase.com/docs/guides/realtime/broadcast#http
+ */
 export async function defaultBroadcastRoomEvent(
   roomId: string,
   event: RoomEventPayload
 ): Promise<void> {
-  const supabase = createServiceClient();
-  const channel = supabase.channel(`room:${roomId}`);
-  try {
-    await channel.send({
-      type: "broadcast",
-      event: "room_event",
-      payload: event,
-    });
-  } finally {
-    await supabase.removeChannel(channel);
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SECRET_KEY;
+  if (!url || !key) {
+    throw new Error(
+      "defaultBroadcastRoomEvent: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SECRET_KEY missing"
+    );
+  }
+  const res = await fetch(`${url}/realtime/v1/api/broadcast`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify({
+      messages: [
+        {
+          topic: `room:${roomId}`,
+          event: "room_event",
+          payload: event,
+          private: false,
+        },
+      ],
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(
+      `defaultBroadcastRoomEvent: Supabase returned ${res.status} ${res.statusText}`
+    );
   }
 }
