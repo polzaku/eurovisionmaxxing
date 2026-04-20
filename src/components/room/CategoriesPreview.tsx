@@ -32,12 +32,20 @@ export default function CategoriesPreview({
 
   const openCategory = categories.find((c) => c.name === open);
   const hint = openCategory?.hint;
+  const anyHintAvailable = categories.some((c) => Boolean(c.hint));
 
   return (
     <section className="space-y-2">
-      <h2 className="text-sm uppercase tracking-wider text-muted-foreground">
-        You&rsquo;ll be rating
-      </h2>
+      <div className="flex items-baseline justify-between gap-2">
+        <h2 className="text-sm uppercase tracking-wider text-muted-foreground">
+          You&rsquo;ll be rating
+        </h2>
+        {anyHintAvailable && (
+          <p className="text-xs text-muted-foreground">
+            Tap for details
+          </p>
+        )}
+      </div>
       <ul className="flex flex-wrap gap-2">
         {categories.map((c) => {
           const isOpen = c.name === open;
@@ -50,13 +58,25 @@ export default function CategoriesPreview({
                 disabled={!hasHint}
                 aria-expanded={isOpen}
                 aria-controls={hasHint ? calloutId : undefined}
-                className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors ${
                   isOpen
                     ? "border-primary bg-primary/10 text-foreground"
-                    : "border-border bg-card hover:border-accent"
-                } ${hasHint ? "cursor-pointer" : "cursor-default"}`}
+                    : "border-border bg-card hover:border-accent active:bg-muted"
+                } ${hasHint ? "cursor-pointer" : "cursor-default opacity-80"}`}
               >
-                {c.name}
+                <span>{c.name}</span>
+                {hasHint && (
+                  <span
+                    aria-hidden
+                    className={`inline-flex h-4 w-4 items-center justify-center rounded-full border text-[10px] font-bold leading-none ${
+                      isOpen
+                        ? "border-primary text-primary"
+                        : "border-muted-foreground text-muted-foreground"
+                    }`}
+                  >
+                    {isOpen ? "\u2212" : "i"}
+                  </span>
+                )}
               </button>
             </li>
           );
