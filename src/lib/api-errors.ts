@@ -22,6 +22,11 @@ export function apiError(
   message: string,
   status: number,
   field?: string,
+  /**
+   * ICU MessageFormat substitution values forwarded to the client for
+   * translation. Keys should match the placeholders in the corresponding
+   * `errors.<code>` message in each locale file.
+   */
   params?: Record<string, unknown>,
 ): NextResponse<ApiErrorBody> {
   const error: ApiErrorBody["error"] = { code, message };
