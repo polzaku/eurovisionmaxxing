@@ -30,6 +30,7 @@ interface RoomShape {
   pin: string;
   status: string;
   ownerUserId: string;
+  categories: Array<{ name: string }>;
 }
 
 type Phase =
@@ -226,6 +227,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         pin={phase.room.pin}
         ownerUserId={phase.room.ownerUserId}
         memberships={members}
+        categories={phase.room.categories ?? []}
         isAdmin={isAdmin}
         startVotingState={startVotingState}
         shareUrl={shareUrl}

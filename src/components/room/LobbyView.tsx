@@ -4,11 +4,16 @@ import { useEffect, useState } from "react";
 import Avatar from "@/components/ui/Avatar";
 import Button from "@/components/ui/Button";
 import QrCode from "@/components/ui/QrCode";
+import CategoriesPreview from "@/components/room/CategoriesPreview";
 
 export interface LobbyMember {
   userId: string;
   displayName: string;
   avatarSeed: string;
+}
+
+export interface LobbyCategory {
+  name: string;
 }
 
 export type StartVotingState =
@@ -20,6 +25,7 @@ interface LobbyViewProps {
   pin: string;
   ownerUserId: string;
   memberships: LobbyMember[];
+  categories: LobbyCategory[];
   isAdmin: boolean;
   startVotingState: StartVotingState;
   shareUrl: string;
@@ -42,6 +48,7 @@ export default function LobbyView({
   pin,
   ownerUserId,
   memberships,
+  categories,
   isAdmin,
   startVotingState,
   shareUrl,
@@ -111,6 +118,8 @@ export default function LobbyView({
             </section>
           </>
         )}
+
+        <CategoriesPreview categories={categories} />
 
         <section className="space-y-3">
           <h2 className="text-sm uppercase tracking-wider text-muted-foreground">
