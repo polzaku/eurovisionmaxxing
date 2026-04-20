@@ -85,8 +85,6 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     const fetchResult = await fetchRoomData(roomId, {
       fetch: window.fetch.bind(window),
     });
-    // eslint-disable-next-line no-console
-    console.log("[loadRoom] fetch #1 result:", fetchResult);
     if (!fetchResult.ok) {
       setPhase({ kind: "error", message: mapRoomError(fetchResult.code) });
       return;
@@ -95,18 +93,9 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     const data = fetchResult.data as FetchRoomData;
     const room = data.room as RoomShape;
     let memberships = data.memberships as MembershipShape[];
-    // eslint-disable-next-line no-console
-    console.log(
-      "[loadRoom] fetch #1 room.status:",
-      room.status,
-      "memberships:",
-      memberships.length
-    );
 
     const isMember = memberships.some((m) => m.userId === session.userId);
     if (!isMember) {
-      // eslint-disable-next-line no-console
-      console.log("[loadRoom] caller not in memberships → auto-joining");
       const joinResult = await joinRoomApi(roomId, session.userId, {
         fetch: window.fetch.bind(window),
       });
@@ -118,19 +107,12 @@ export default function RoomPage({ params }: { params: { id: string } }) {
       const refetch = await fetchRoomData(roomId, {
         fetch: window.fetch.bind(window),
       });
-      // eslint-disable-next-line no-console
-      console.log("[loadRoom] fetch #2 (after auto-join) result:", refetch);
       if (!refetch.ok) {
         setPhase({ kind: "error", message: mapRoomError(refetch.code) });
         return;
       }
       const refetched = refetch.data as FetchRoomData;
       memberships = refetched.memberships as MembershipShape[];
-      // eslint-disable-next-line no-console
-      console.log(
-        "[loadRoom] setting phase ready (post-auto-join) with status:",
-        (refetched.room as RoomShape).status
-      );
       setPhase({
         kind: "ready",
         room: refetched.room as RoomShape,
@@ -139,11 +121,6 @@ export default function RoomPage({ params }: { params: { id: string } }) {
       return;
     }
 
-    // eslint-disable-next-line no-console
-    console.log(
-      "[loadRoom] setting phase ready (no auto-join) with status:",
-      room.status
-    );
     setPhase({
       kind: "ready",
       room,
@@ -156,11 +133,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
   }, [loadRoom]);
 
   useRoomRealtime(roomId, (event) => {
-    // eslint-disable-next-line no-console
-    console.log(`[room page] event received:`, event);
     if (event.type === "status_changed") {
-      // eslint-disable-next-line no-console
-      console.log(`[room page] status_changed → calling loadRoom()`);
       void loadRoom();
       return;
     }
@@ -190,8 +163,6 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     const result = await patchRoomStatus(roomId, "voting", session.userId, {
       fetch: window.fetch.bind(window),
     });
-    // eslint-disable-next-line no-console
-    console.log(`[room page] patchRoomStatus result:`, result);
     if (result.ok) {
       // status_changed broadcast will drive a refetch; meanwhile stay as idle.
       setStartVotingState({ kind: "idle" });
