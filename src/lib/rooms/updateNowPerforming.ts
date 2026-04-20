@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import type { Room } from "@/types";
 import type { ApiErrorCode } from "@/lib/api-errors";
-import type { RoomEventPayload } from "@/lib/rooms/shared";
+import { mapRoom, type RoomEventPayload } from "@/lib/rooms/shared";
 
 export interface UpdateNowPerformingInput {
   roomId: unknown;
@@ -30,9 +30,25 @@ export type UpdateNowPerformingResult =
   | UpdateNowPerformingSuccess
   | UpdateNowPerformingFailure;
 
+type RoomRow = Database["public"]["Tables"]["rooms"]["Row"];
+
 export async function updateRoomNowPerforming(
-  _input: UpdateNowPerformingInput,
-  _deps: UpdateNowPerformingDeps
+  input: UpdateNowPerformingInput,
+  deps: UpdateNowPerformingDeps
 ): Promise<UpdateNowPerformingResult> {
-  throw new Error("not implemented");
+  const roomId = input.roomId as string;
+  const contestantId = input.contestantId as string;
+
+  const { data: updated } = await deps.supabase
+    .from("rooms")
+    .update({ now_performing_id: contestantId })
+    .eq("id", roomId)
+    .select()
+    .single();
+
+  await deps.broadcastRoomEvent(roomId, {
+    type: "now_performing",
+    contestantId,
+  });
+  return { ok: true, room: mapRoom(updated as RoomRow) };
 }
