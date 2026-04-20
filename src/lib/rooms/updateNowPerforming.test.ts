@@ -273,3 +273,68 @@ describe("updateRoomNowPerforming — admin authorization", () => {
     expect(broadcastSpy).not.toHaveBeenCalled();
   });
 });
+
+describe("updateRoomNowPerforming — state guards", () => {
+  it("returns 409 NOW_PERFORMING_DISABLED when allow_now_performing is false", async () => {
+    const mock = makeSupabaseMock({
+      roomSelectResult: {
+        data: {
+          id: VALID_ROOM_ID,
+          status: "voting",
+          owner_user_id: VALID_USER_ID,
+          allow_now_performing: false,
+        },
+        error: null,
+      },
+    });
+    const broadcastSpy = vi.fn();
+    const result = await updateRoomNowPerforming(
+      {
+        roomId: VALID_ROOM_ID,
+        contestantId: VALID_CONTESTANT_ID,
+        userId: VALID_USER_ID,
+      },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 409,
+      error: { code: "NOW_PERFORMING_DISABLED" },
+    });
+    expect(mock.updatePatches).toEqual([]);
+    expect(broadcastSpy).not.toHaveBeenCalled();
+  });
+
+  it.each(["lobby", "scoring", "announcing", "done"] as const)(
+    "returns 409 ROOM_NOT_VOTING when status=%s (with allow_now_performing=true)",
+    async (status) => {
+      const mock = makeSupabaseMock({
+        roomSelectResult: {
+          data: {
+            id: VALID_ROOM_ID,
+            status,
+            owner_user_id: VALID_USER_ID,
+            allow_now_performing: true,
+          },
+          error: null,
+        },
+      });
+      const broadcastSpy = vi.fn();
+      const result = await updateRoomNowPerforming(
+        {
+          roomId: VALID_ROOM_ID,
+          contestantId: VALID_CONTESTANT_ID,
+          userId: VALID_USER_ID,
+        },
+        makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        status: 409,
+        error: { code: "ROOM_NOT_VOTING" },
+      });
+      expect(mock.updatePatches).toEqual([]);
+      expect(broadcastSpy).not.toHaveBeenCalled();
+    }
+  );
+});

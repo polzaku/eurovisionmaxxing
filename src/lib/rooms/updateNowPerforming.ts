@@ -96,6 +96,22 @@ export async function updateRoomNowPerforming(
     );
   }
 
+  if (!row.allow_now_performing) {
+    return fail(
+      "NOW_PERFORMING_DISABLED",
+      "This room did not enable the 'now performing' feature.",
+      409
+    );
+  }
+
+  if (row.status !== "voting") {
+    return fail(
+      "ROOM_NOT_VOTING",
+      "The now-performing pointer can only be set while the room is voting.",
+      409
+    );
+  }
+
   const { data: updated } = await deps.supabase
     .from("rooms")
     .update({ now_performing_id: contestantId })
