@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { NextRequest } from "next/server";
-import { middleware } from "./middleware";
+import { middleware } from "./src/middleware";
 import { LOCALE_COOKIE } from "@/i18n/config";
 
 function makeRequest(opts: {

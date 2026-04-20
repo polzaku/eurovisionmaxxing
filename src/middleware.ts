@@ -12,11 +12,14 @@ export function middleware(request: NextRequest): NextResponse {
 
   const detected = pickLocale(request.headers.get("accept-language"));
   const response = NextResponse.next();
-  response.cookies.set(LOCALE_COOKIE, detected, {
-    path: "/",
-    sameSite: "lax",
-    maxAge: ONE_YEAR_SECONDS,
-  });
+  // Use response.headers directly so that Set-Cookie is included in the HTTP
+  // response to the browser. response.cookies.set() only writes to
+  // x-middleware-set-cookie (an internal Next.js header that is forwarded to
+  // server components for the current request but is never sent to the client).
+  response.headers.append(
+    "Set-Cookie",
+    `${LOCALE_COOKIE}=${detected}; Path=/; Max-Age=${ONE_YEAR_SECONDS}; SameSite=Lax`,
+  );
   return response;
 }
 
