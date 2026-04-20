@@ -47,6 +47,7 @@ export default function OnboardingForm() {
     [searchParams],
   );
   const tErrors = useTranslations("errors");
+  const tOnboarding = useTranslations("onboarding");
 
   const [redirectChecked, setRedirectChecked] = useState(false);
   useEffect(() => {
@@ -96,7 +97,7 @@ export default function OnboardingForm() {
     setFieldError(null);
     setGeneralError(null);
     if (!nameValid) {
-      setFieldError("Use 2–24 letters, numbers, spaces, or hyphens.");
+      setFieldError(tOnboarding("displayName.hint"));
       return;
     }
     setSubmitting(true);
@@ -125,10 +126,10 @@ export default function OnboardingForm() {
       if (res.status === 400 && body?.error?.code === "INVALID_DISPLAY_NAME") {
         setFieldError(renderApiError(body.error));
       } else {
-        setGeneralError("Couldn't create your identity. Try again.");
+        setGeneralError(tOnboarding("submit.error"));
       }
     } catch {
-      setGeneralError("Couldn't create your identity. Try again.");
+      setGeneralError(tOnboarding("submit.error"));
     } finally {
       setSubmitting(false);
     }
@@ -159,17 +160,17 @@ export default function OnboardingForm() {
         <button
           type="button"
           onClick={openOrShuffleCarousel}
-          aria-label="Change avatar"
+          aria-label={tOnboarding("avatar.changeAria")}
           className="rounded-full border-2 border-border p-1 transition-colors hover:border-accent"
         >
           <Avatar seed={effectiveSeed} size={128} />
         </button>
-        <p className="text-sm text-muted-foreground">Tap your avatar to change it.</p>
+        <p className="text-sm text-muted-foreground">{tOnboarding("avatar.tapHint")}</p>
       </div>
 
       <div className="space-y-2">
         <label htmlFor="displayName" className="text-sm font-semibold text-foreground">
-          Your display name
+          {tOnboarding("displayName.label")}
         </label>
         <input
           id="displayName"
@@ -185,7 +186,7 @@ export default function OnboardingForm() {
           aria-invalid={fieldError != null}
           aria-describedby={fieldError ? "displayName-error" : undefined}
           className="w-full rounded-xl border-2 border-border bg-background px-4 py-3 text-lg text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none"
-          placeholder="e.g. Alice"
+          placeholder={tOnboarding("displayName.placeholder")}
         />
         {fieldError && (
           <p
@@ -219,7 +220,7 @@ export default function OnboardingForm() {
         disabled={!nameValid || submitting}
         className="block w-full rounded-xl bg-primary px-6 py-4 text-lg font-semibold text-primary-foreground transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
       >
-        {submitting ? "Joining…" : "Join"}
+        {submitting ? tOnboarding("submit.busy") : tOnboarding("submit.idle")}
       </button>
     </form>
   );

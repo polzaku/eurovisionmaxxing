@@ -12,7 +12,26 @@
       "joinRoom": "Join a room"
     }
   },
-  "onboarding": {},
+  "onboarding": {
+    "metaTitle": "Join — eurovisionmaxxing",
+    "displayName": {
+      "label": "Your display name",
+      "placeholder": "e.g. Alice",
+      "hint": "Use 2–24 letters, numbers, spaces, or hyphens."
+    },
+    "avatar": {
+      "title": "Choose your avatar",
+      "tapHint": "Tap your avatar to change it.",
+      "shuffleAria": "Shuffle avatars",
+      "shuffleLabel": "Shuffle",
+      "changeAria": "Change avatar"
+    },
+    "submit": {
+      "idle": "Join",
+      "busy": "Joining…",
+      "error": "Couldn't create your identity. Try again."
+    }
+  },
   "templates": {},
   "categories": {},
   "errors": {

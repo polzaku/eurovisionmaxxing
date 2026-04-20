@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import Avatar from "@/components/ui/Avatar";
 
 interface AvatarCarouselProps {
@@ -15,19 +16,20 @@ export default function AvatarCarousel({
   onSelect,
   onShuffle,
 }: AvatarCarouselProps) {
+  const t = useTranslations("onboarding.avatar");
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 id="avatar-carousel-label" className="text-sm font-semibold text-foreground">
-          Choose your avatar
+          {t("title")}
         </h2>
         <button
           type="button"
           onClick={onShuffle}
-          aria-label="Shuffle avatars"
+          aria-label={t("shuffleAria")}
           className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-accent hover:text-accent"
         >
-          Shuffle
+          {t("shuffleLabel")}
         </button>
       </div>
 
