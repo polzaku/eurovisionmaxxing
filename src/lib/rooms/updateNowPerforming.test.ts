@@ -338,3 +338,51 @@ describe("updateRoomNowPerforming — state guards", () => {
     }
   );
 });
+
+describe("updateRoomNowPerforming — broadcast semantics", () => {
+  it("does NOT roll back or 500 when the broadcast throws; logs a warning", async () => {
+    const mock = makeSupabaseMock();
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const broadcastSpy = vi
+      .fn()
+      .mockRejectedValue(new Error("realtime channel disconnected"));
+    const result = await updateRoomNowPerforming(
+      {
+        roomId: VALID_ROOM_ID,
+        contestantId: VALID_CONTESTANT_ID,
+        userId: VALID_USER_ID,
+      },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
+    );
+    expect(result).toMatchObject({
+      ok: true,
+      room: { nowPerformingId: VALID_CONTESTANT_ID },
+    });
+    expect(broadcastSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    warnSpy.mockRestore();
+  });
+});
+
+describe("updateRoomNowPerforming — UPDATE error", () => {
+  it("returns 500 INTERNAL_ERROR when the UPDATE fails; does NOT broadcast", async () => {
+    const mock = makeSupabaseMock({
+      roomUpdateResult: { data: null, error: { message: "write failed" } },
+    });
+    const broadcastSpy = vi.fn();
+    const result = await updateRoomNowPerforming(
+      {
+        roomId: VALID_ROOM_ID,
+        contestantId: VALID_CONTESTANT_ID,
+        userId: VALID_USER_ID,
+      },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 500,
+      error: { code: "INTERNAL_ERROR" },
+    });
+    expect(broadcastSpy).not.toHaveBeenCalled();
+  });
+});
