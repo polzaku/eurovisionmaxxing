@@ -80,9 +80,9 @@ export default function VotingConfig({
                   <p className="text-sm text-muted-foreground">
                     {t.description}
                   </p>
-                  <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+                  <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
                     {t.categories.map((c) => (
-                      <li key={c.name} className="line-clamp-1">
+                      <li key={c.name}>
                         <span className="font-medium text-foreground">
                           {c.name}
                         </span>

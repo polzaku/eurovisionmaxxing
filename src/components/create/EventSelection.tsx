@@ -98,22 +98,17 @@ export default function EventSelection({
           </p>
         )}
         {contestants.kind === "ready" && (
-          <p className="text-sm">
-            <span className="font-semibold">{contestants.count}</span> countries
-            loaded
+          <div className="space-y-1">
+            <p className="text-sm">
+              <span className="font-semibold">{contestants.count}</span>{" "}
+              {contestants.count === 1 ? "country" : "countries"} loaded
+            </p>
             {contestants.preview && contestants.preview.length > 0 && (
-              <>
-                {" "}
-                &middot;{" "}
-                <span className="text-muted-foreground">
-                  {contestants.preview
-                    .map((c) => `${c.flag} ${c.country}`)
-                    .join(" · ")}
-                  {contestants.count && contestants.count > 3 ? ", …" : ""}
-                </span>
-              </>
+              <p className="text-xs text-muted-foreground" aria-hidden>
+                {contestants.preview.map((c) => c.flag).join(" ")}
+              </p>
             )}
-          </p>
+          </div>
         )}
         {contestants.kind === "error" && (
           <p role="alert" className="text-sm text-destructive">

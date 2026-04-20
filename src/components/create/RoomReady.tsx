@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import QRCode from "qrcode";
 import Button from "@/components/ui/Button";
+import QrCode from "@/components/ui/QrCode";
 import type { Room } from "@/types";
 
 interface RoomReadyProps {
@@ -45,26 +45,7 @@ export default function RoomReady({
   onBack,
   onStartLobby,
 }: RoomReadyProps) {
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const url = roomUrl(room.id);
-
-  useEffect(() => {
-    let cancelled = false;
-    QRCode.toDataURL(url, {
-      width: 256,
-      margin: 1,
-      errorCorrectionLevel: "M",
-    })
-      .then((dataUrl) => {
-        if (!cancelled) setQrDataUrl(dataUrl);
-      })
-      .catch(() => {
-        if (!cancelled) setQrDataUrl(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [url]);
 
   return (
     <div className="space-y-8">
@@ -88,18 +69,7 @@ export default function RoomReady({
       </section>
 
       <section className="flex flex-col items-center gap-2">
-        {qrDataUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={qrDataUrl}
-            width={256}
-            height={256}
-            alt="Scan to join this room"
-            className="rounded-lg"
-          />
-        ) : (
-          <div className="h-[256px] w-[256px] rounded-lg bg-muted animate-shimmer" />
-        )}
+        <QrCode url={url} size={256} alt="Scan to join this room" />
         <p className="text-xs text-muted-foreground">Scan to join</p>
       </section>
 
