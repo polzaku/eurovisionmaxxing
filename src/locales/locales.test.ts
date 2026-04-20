@@ -21,6 +21,7 @@ const LOCALE_BUNDLES: Record<SupportedLocale, Record<string, unknown>> = {
 
 function flattenKeys(obj: unknown, prefix = ""): string[] {
   if (obj === null || typeof obj !== "object") return prefix ? [prefix] : [];
+  if (Array.isArray(obj)) return prefix ? [prefix] : [];
   const entries = Object.entries(obj as Record<string, unknown>);
   if (entries.length === 0) return prefix ? [] : [];
   return entries.flatMap(([k, v]) =>
@@ -38,9 +39,7 @@ describe("locale bundles", () => {
     const localeKeys = flattenKeys(bundle);
 
     if (localeKeys.length === 0) {
-      it(`${locale}: skipped (empty — not yet translated)`, () => {
-        expect(localeKeys.length).toBe(0);
-      });
+      it.todo(`${locale}: contains every key present in en (not yet translated)`);
       continue;
     }
 
