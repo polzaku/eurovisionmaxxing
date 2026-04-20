@@ -3,5 +3,12 @@
   "onboarding": {},
   "templates": {},
   "categories": {},
-  "errors": {}
+  "errors": {
+    "INVALID_BODY": "Something about your request was invalid.",
+    "INVALID_DISPLAY_NAME": "Display name must be 2–24 characters: letters, numbers, spaces, or hyphens.",
+    "INVALID_AVATAR_SEED": "Avatar identifier must be 1–{limit} characters.",
+    "USER_NOT_FOUND": "We couldn't find that session.",
+    "INVALID_TOKEN": "Your session has expired. Please rejoin.",
+    "INTERNAL_ERROR": "Something went wrong on our end. Please try again."
+  }
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import Avatar from "@/components/ui/Avatar";
 import AvatarCarousel from "@/components/onboarding/AvatarCarousel";
 import { useDebouncedValue } from "@/lib/hooks/useDebouncedValue";
@@ -30,7 +31,12 @@ interface OnboardResponse {
 }
 
 interface ApiErrorShape {
-  error: { code: string; message: string; field?: string };
+  error: {
+    code: string;
+    message: string;
+    field?: string;
+    params?: Record<string, unknown>;
+  };
 }
 
 export default function OnboardingForm() {
@@ -40,6 +46,7 @@ export default function OnboardingForm() {
     () => sanitizeNextPath(searchParams.get("next")),
     [searchParams],
   );
+  const tErrors = useTranslations("errors");
 
   const [redirectChecked, setRedirectChecked] = useState(false);
   useEffect(() => {
@@ -116,7 +123,7 @@ export default function OnboardingForm() {
       }
       const body = (await res.json().catch(() => null)) as ApiErrorShape | null;
       if (res.status === 400 && body?.error?.code === "INVALID_DISPLAY_NAME") {
-        setFieldError(body.error.message);
+        setFieldError(renderApiError(body.error));
       } else {
         setGeneralError("Couldn't create your identity. Try again.");
       }
@@ -125,6 +132,16 @@ export default function OnboardingForm() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function renderApiError(error: ApiErrorShape["error"]): string {
+    const key = `errors.${error.code}`;
+    const translated = tErrors(error.code as never, (error.params ?? {}) as never);
+    if (translated === key || translated === error.code) {
+      // Translation key missed or fell back to the literal — use server message.
+      return error.message;
+    }
+    return translated;
   }
 
   if (!redirectChecked) {
