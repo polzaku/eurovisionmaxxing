@@ -32,12 +32,44 @@ export type UpdateNowPerformingResult =
 
 type RoomRow = Database["public"]["Tables"]["rooms"]["Row"];
 
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const CONTESTANT_ID_MAX_LEN = 20;
+
+function fail(
+  code: ApiErrorCode,
+  message: string,
+  status: number,
+  field?: string
+): UpdateNowPerformingFailure {
+  return { ok: false, error: field ? { code, message, field } : { code, message }, status };
+}
+
 export async function updateRoomNowPerforming(
   input: UpdateNowPerformingInput,
   deps: UpdateNowPerformingDeps
 ): Promise<UpdateNowPerformingResult> {
-  const roomId = input.roomId as string;
-  const contestantId = input.contestantId as string;
+  if (typeof input.roomId !== "string" || !UUID_REGEX.test(input.roomId)) {
+    return fail("INVALID_ROOM_ID", "roomId must be a UUID.", 400, "roomId");
+  }
+  if (typeof input.userId !== "string" || input.userId.length === 0) {
+    return fail("INVALID_USER_ID", "userId must be a non-empty string.", 400, "userId");
+  }
+  if (
+    typeof input.contestantId !== "string" ||
+    input.contestantId.length === 0 ||
+    input.contestantId.length > CONTESTANT_ID_MAX_LEN
+  ) {
+    return fail(
+      "INVALID_CONTESTANT_ID",
+      `contestantId must be a string between 1 and ${CONTESTANT_ID_MAX_LEN} characters.`,
+      400,
+      "contestantId"
+    );
+  }
+  const roomId = input.roomId;
+  const contestantId = input.contestantId;
 
   const { data: updated } = await deps.supabase
     .from("rooms")

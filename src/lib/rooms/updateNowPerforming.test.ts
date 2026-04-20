@@ -120,3 +120,84 @@ describe("updateRoomNowPerforming — happy path", () => {
     });
   });
 });
+
+describe("updateRoomNowPerforming — input validation", () => {
+  it("rejects non-UUID roomId with INVALID_ROOM_ID", async () => {
+    const mock = makeSupabaseMock();
+    const broadcastSpy = vi.fn();
+    const result = await updateRoomNowPerforming(
+      {
+        roomId: "not-a-uuid",
+        contestantId: VALID_CONTESTANT_ID,
+        userId: VALID_USER_ID,
+      },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 400,
+      error: { code: "INVALID_ROOM_ID", field: "roomId" },
+    });
+    expect(mock.updatePatches).toEqual([]);
+    expect(broadcastSpy).not.toHaveBeenCalled();
+  });
+
+  it("rejects non-string roomId with INVALID_ROOM_ID", async () => {
+    const mock = makeSupabaseMock();
+    const result = await updateRoomNowPerforming(
+      { roomId: 42, contestantId: VALID_CONTESTANT_ID, userId: VALID_USER_ID },
+      makeDeps(mock)
+    );
+    expect(result).toMatchObject({ ok: false, error: { code: "INVALID_ROOM_ID" } });
+  });
+
+  it.each([undefined, null, 42, ""])(
+    "rejects missing/empty/non-string userId (%s) with INVALID_USER_ID",
+    async (userId) => {
+      const mock = makeSupabaseMock();
+      const result = await updateRoomNowPerforming(
+        { roomId: VALID_ROOM_ID, contestantId: VALID_CONTESTANT_ID, userId },
+        makeDeps(mock)
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        status: 400,
+        error: { code: "INVALID_USER_ID", field: "userId" },
+      });
+      expect(mock.updatePatches).toEqual([]);
+    }
+  );
+
+  it.each([undefined, null, 42, ""])(
+    "rejects missing/empty/non-string contestantId (%s) with INVALID_CONTESTANT_ID",
+    async (contestantId) => {
+      const mock = makeSupabaseMock();
+      const result = await updateRoomNowPerforming(
+        { roomId: VALID_ROOM_ID, contestantId, userId: VALID_USER_ID },
+        makeDeps(mock)
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        status: 400,
+        error: { code: "INVALID_CONTESTANT_ID", field: "contestantId" },
+      });
+      expect(mock.updatePatches).toEqual([]);
+    }
+  );
+
+  it("rejects contestantId longer than 20 chars with INVALID_CONTESTANT_ID", async () => {
+    const mock = makeSupabaseMock();
+    const result = await updateRoomNowPerforming(
+      {
+        roomId: VALID_ROOM_ID,
+        contestantId: "2026-thisistoolongforthecolumn",
+        userId: VALID_USER_ID,
+      },
+      makeDeps(mock)
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "INVALID_CONTESTANT_ID" },
+    });
+  });
+});
