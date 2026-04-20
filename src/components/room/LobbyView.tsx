@@ -77,36 +77,40 @@ export default function LobbyView({
           </div>
         </section>
 
-        <section className="flex flex-col items-center gap-2">
-          <QrCode url={shareUrl} size={224} alt="Scan to join this room" />
-          <p className="text-xs text-muted-foreground">Scan to join</p>
-        </section>
+        {isAdmin && (
+          <>
+            <section className="flex flex-col items-center gap-2">
+              <QrCode url={shareUrl} size={224} alt="Scan to join this room" />
+              <p className="text-xs text-muted-foreground">Scan to join</p>
+            </section>
 
-        <section className="space-y-2">
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">
-            Share link
-          </p>
-          <div className="flex items-center gap-2 rounded-lg border-2 border-border bg-card px-3 py-2">
-            <input
-              type="text"
-              readOnly
-              value={shareUrl}
-              className="flex-1 bg-transparent text-sm font-mono outline-none"
-              onFocus={(e) => e.currentTarget.select()}
-            />
-            <button
-              type="button"
-              onClick={() => {
-                onCopyLink();
-                markLinkCopied();
-              }}
-              aria-label="Copy share link"
-              className="text-sm text-muted-foreground hover:text-foreground"
-            >
-              {linkCopied ? "Copied!" : "Copy"}
-            </button>
-          </div>
-        </section>
+            <section className="space-y-2">
+              <p className="text-xs uppercase tracking-widest text-muted-foreground">
+                Share link
+              </p>
+              <div className="flex items-center gap-2 rounded-lg border-2 border-border bg-card px-3 py-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={shareUrl}
+                  className="flex-1 bg-transparent text-sm font-mono outline-none"
+                  onFocus={(e) => e.currentTarget.select()}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    onCopyLink();
+                    markLinkCopied();
+                  }}
+                  aria-label="Copy share link"
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  {linkCopied ? "Copied!" : "Copy"}
+                </button>
+              </div>
+            </section>
+          </>
+        )}
 
         <section className="space-y-3">
           <h2 className="text-sm uppercase tracking-wider text-muted-foreground">
