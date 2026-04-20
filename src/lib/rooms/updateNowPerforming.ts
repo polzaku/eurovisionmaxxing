@@ -4,79 +4,77 @@ import type { Room } from "@/types";
 import type { ApiErrorCode } from "@/lib/api-errors";
 import { mapRoom, type RoomEventPayload } from "@/lib/rooms/shared";
 
-export interface UpdateStatusInput {
+export interface UpdateNowPerformingInput {
   roomId: unknown;
-  status: unknown;
+  contestantId: unknown;
   userId: unknown;
 }
 
-export interface UpdateStatusDeps {
+export interface UpdateNowPerformingDeps {
   supabase: SupabaseClient<Database>;
   broadcastRoomEvent: (roomId: string, event: RoomEventPayload) => Promise<void>;
 }
 
-export interface UpdateStatusSuccess {
+export interface UpdateNowPerformingSuccess {
   ok: true;
   room: Room;
 }
 
-export interface UpdateStatusFailure {
+export interface UpdateNowPerformingFailure {
   ok: false;
   error: { code: ApiErrorCode; message: string; field?: string };
   status: number;
 }
 
-export type UpdateStatusResult = UpdateStatusSuccess | UpdateStatusFailure;
+export type UpdateNowPerformingResult =
+  | UpdateNowPerformingSuccess
+  | UpdateNowPerformingFailure;
+
+type RoomRow = Database["public"]["Tables"]["rooms"]["Row"];
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const ALLOWED_REQUESTED_STATUSES: ReadonlySet<string> = new Set([
-  "voting",
-  "done",
-]);
-
-const ALLOWED_TRANSITIONS: Record<string, readonly string[]> = {
-  lobby: ["voting"],
-  announcing: ["done"],
-};
+const CONTESTANT_ID_MAX_LEN = 20;
 
 function fail(
   code: ApiErrorCode,
   message: string,
   status: number,
   field?: string
-): UpdateStatusFailure {
+): UpdateNowPerformingFailure {
   return { ok: false, error: field ? { code, message, field } : { code, message }, status };
 }
 
-type RoomRow = Database["public"]["Tables"]["rooms"]["Row"];
-
-export async function updateRoomStatus(
-  input: UpdateStatusInput,
-  deps: UpdateStatusDeps
-): Promise<UpdateStatusResult> {
+export async function updateRoomNowPerforming(
+  input: UpdateNowPerformingInput,
+  deps: UpdateNowPerformingDeps
+): Promise<UpdateNowPerformingResult> {
   if (typeof input.roomId !== "string" || !UUID_REGEX.test(input.roomId)) {
     return fail("INVALID_ROOM_ID", "roomId must be a UUID.", 400, "roomId");
   }
   if (typeof input.userId !== "string" || input.userId.length === 0) {
     return fail("INVALID_USER_ID", "userId must be a non-empty string.", 400, "userId");
   }
-  if (typeof input.status !== "string" || !ALLOWED_REQUESTED_STATUSES.has(input.status)) {
+  if (
+    typeof input.contestantId !== "string" ||
+    input.contestantId.length === 0 ||
+    input.contestantId.length > CONTESTANT_ID_MAX_LEN
+  ) {
     return fail(
-      "INVALID_STATUS",
-      "status must be one of 'voting' or 'done'.",
+      "INVALID_CONTESTANT_ID",
+      `contestantId must be a string between 1 and ${CONTESTANT_ID_MAX_LEN} characters.`,
       400,
-      "status"
+      "contestantId"
     );
   }
   const roomId = input.roomId;
   const userId = input.userId;
-  const status = input.status;
+  const contestantId = input.contestantId;
 
   const roomQuery = await deps.supabase
     .from("rooms")
-    .select("id, status, owner_user_id")
+    .select("id, status, owner_user_id, allow_now_performing")
     .eq("id", roomId)
     .maybeSingle();
 
@@ -87,28 +85,36 @@ export async function updateRoomStatus(
     id: string;
     status: string;
     owner_user_id: string;
+    allow_now_performing: boolean;
   };
 
   if (row.owner_user_id !== userId) {
     return fail(
       "FORBIDDEN",
-      "Only the room owner can change the room's status.",
+      "Only the room owner can set the currently-performing contestant.",
       403
     );
   }
 
-  const allowed = ALLOWED_TRANSITIONS[row.status] ?? [];
-  if (!allowed.includes(status)) {
+  if (!row.allow_now_performing) {
     return fail(
-      "INVALID_TRANSITION",
-      `Cannot transition from '${row.status}' to '${status}'.`,
+      "NOW_PERFORMING_DISABLED",
+      "This room did not enable the 'now performing' feature.",
+      409
+    );
+  }
+
+  if (row.status !== "voting") {
+    return fail(
+      "ROOM_NOT_VOTING",
+      "The now-performing pointer can only be set while the room is voting.",
       409
     );
   }
 
   const updateResult = await deps.supabase
     .from("rooms")
-    .update({ status })
+    .update({ now_performing_id: contestantId })
     .eq("id", roomId)
     .select()
     .single();
@@ -118,10 +124,13 @@ export async function updateRoomStatus(
   }
 
   try {
-    await deps.broadcastRoomEvent(roomId, { type: "status_changed", status });
+    await deps.broadcastRoomEvent(roomId, {
+      type: "now_performing",
+      contestantId,
+    });
   } catch (err) {
     console.warn(
-      `broadcast 'status_changed' failed for room ${roomId}; state committed regardless:`,
+      `broadcast 'now_performing' failed for room ${roomId}; state committed regardless:`,
       err
     );
   }

@@ -1,16 +1,18 @@
 import { describe, it, expect, vi } from "vitest";
 import {
-  updateRoomStatus,
-  type UpdateStatusDeps,
-} from "@/lib/rooms/updateStatus";
+  updateRoomNowPerforming,
+  type UpdateNowPerformingDeps,
+} from "@/lib/rooms/updateNowPerforming";
 
 const VALID_ROOM_ID = "11111111-2222-4333-8444-555555555555";
 const VALID_USER_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+const VALID_CONTESTANT_ID = "2026-ua";
 
 const defaultRoomRow = {
   id: VALID_ROOM_ID,
-  status: "lobby",
+  status: "voting",
   owner_user_id: VALID_USER_ID,
+  allow_now_performing: true,
 };
 
 const defaultUpdatedRow = {
@@ -25,8 +27,8 @@ const defaultUpdatedRow = {
   announcement_order: null,
   announcing_user_id: null,
   current_announce_idx: 0,
-  now_performing_id: null,
-  allow_now_performing: false,
+  now_performing_id: VALID_CONTESTANT_ID,
+  allow_now_performing: true,
   created_at: "2026-04-19T12:00:00Z",
 };
 
@@ -71,7 +73,7 @@ function makeSupabaseMock(opts: MockOptions = {}) {
   });
 
   return {
-    supabase: { from } as unknown as UpdateStatusDeps["supabase"],
+    supabase: { from } as unknown as UpdateNowPerformingDeps["supabase"],
     selectEqCalls,
     updatePatches,
     updateEqCalls,
@@ -80,8 +82,8 @@ function makeSupabaseMock(opts: MockOptions = {}) {
 
 function makeDeps(
   mock: ReturnType<typeof makeSupabaseMock>,
-  overrides: Partial<UpdateStatusDeps> = {}
-): UpdateStatusDeps {
+  overrides: Partial<UpdateNowPerformingDeps> = {}
+): UpdateNowPerformingDeps {
   return {
     supabase: mock.supabase,
     broadcastRoomEvent: vi.fn().mockResolvedValue(undefined),
@@ -89,38 +91,46 @@ function makeDeps(
   };
 }
 
-describe("updateRoomStatus — happy path", () => {
-  it("transitions lobby → voting, UPDATEs DB, broadcasts, returns { room }", async () => {
+describe("updateRoomNowPerforming — happy path", () => {
+  it("sets now_performing_id, broadcasts, returns { room }", async () => {
     const mock = makeSupabaseMock();
     const broadcastSpy = vi.fn().mockResolvedValue(undefined);
-    const result = await updateRoomStatus(
-      { roomId: VALID_ROOM_ID, status: "voting", userId: VALID_USER_ID },
+    const result = await updateRoomNowPerforming(
+      {
+        roomId: VALID_ROOM_ID,
+        contestantId: VALID_CONTESTANT_ID,
+        userId: VALID_USER_ID,
+      },
       makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
     );
-
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.room).toMatchObject({
       id: VALID_ROOM_ID,
-      status: "voting",
-      ownerUserId: VALID_USER_ID,
+      nowPerformingId: VALID_CONTESTANT_ID,
     });
-    expect(mock.updatePatches).toEqual([{ status: "voting" }]);
+    expect(mock.updatePatches).toEqual([
+      { now_performing_id: VALID_CONTESTANT_ID },
+    ]);
     expect(mock.updateEqCalls).toEqual([{ col: "id", val: VALID_ROOM_ID }]);
     expect(broadcastSpy).toHaveBeenCalledTimes(1);
     expect(broadcastSpy).toHaveBeenCalledWith(VALID_ROOM_ID, {
-      type: "status_changed",
-      status: "voting",
+      type: "now_performing",
+      contestantId: VALID_CONTESTANT_ID,
     });
   });
 });
 
-describe("updateRoomStatus — input validation", () => {
+describe("updateRoomNowPerforming — input validation", () => {
   it("rejects non-UUID roomId with INVALID_ROOM_ID", async () => {
     const mock = makeSupabaseMock();
     const broadcastSpy = vi.fn();
-    const result = await updateRoomStatus(
-      { roomId: "not-a-uuid", status: "voting", userId: VALID_USER_ID },
+    const result = await updateRoomNowPerforming(
+      {
+        roomId: "not-a-uuid",
+        contestantId: VALID_CONTESTANT_ID,
+        userId: VALID_USER_ID,
+      },
       makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
     );
     expect(result).toMatchObject({
@@ -134,8 +144,8 @@ describe("updateRoomStatus — input validation", () => {
 
   it("rejects non-string roomId with INVALID_ROOM_ID", async () => {
     const mock = makeSupabaseMock();
-    const result = await updateRoomStatus(
-      { roomId: 42, status: "voting", userId: VALID_USER_ID },
+    const result = await updateRoomNowPerforming(
+      { roomId: 42, contestantId: VALID_CONTESTANT_ID, userId: VALID_USER_ID },
       makeDeps(mock)
     );
     expect(result).toMatchObject({ ok: false, error: { code: "INVALID_ROOM_ID" } });
@@ -145,8 +155,8 @@ describe("updateRoomStatus — input validation", () => {
     "rejects missing/empty/non-string userId (%s) with INVALID_USER_ID",
     async (userId) => {
       const mock = makeSupabaseMock();
-      const result = await updateRoomStatus(
-        { roomId: VALID_ROOM_ID, status: "voting", userId },
+      const result = await updateRoomNowPerforming(
+        { roomId: VALID_ROOM_ID, contestantId: VALID_CONTESTANT_ID, userId },
         makeDeps(mock)
       );
       expect(result).toMatchObject({
@@ -158,32 +168,52 @@ describe("updateRoomStatus — input validation", () => {
     }
   );
 
-  it.each([undefined, null, 42, "", "scoring", "announcing", "lobby", "voting_ending"])(
-    "rejects status=%s (outside {voting, done}) with INVALID_STATUS",
-    async (status) => {
+  it.each([undefined, null, 42, ""])(
+    "rejects missing/empty/non-string contestantId (%s) with INVALID_CONTESTANT_ID",
+    async (contestantId) => {
       const mock = makeSupabaseMock();
-      const result = await updateRoomStatus(
-        { roomId: VALID_ROOM_ID, status, userId: VALID_USER_ID },
+      const result = await updateRoomNowPerforming(
+        { roomId: VALID_ROOM_ID, contestantId, userId: VALID_USER_ID },
         makeDeps(mock)
       );
       expect(result).toMatchObject({
         ok: false,
         status: 400,
-        error: { code: "INVALID_STATUS", field: "status" },
+        error: { code: "INVALID_CONTESTANT_ID", field: "contestantId" },
       });
       expect(mock.updatePatches).toEqual([]);
     }
   );
+
+  it("rejects contestantId longer than 20 chars with INVALID_CONTESTANT_ID", async () => {
+    const mock = makeSupabaseMock();
+    const result = await updateRoomNowPerforming(
+      {
+        roomId: VALID_ROOM_ID,
+        contestantId: "2026-thisistoolongforthecolumn",
+        userId: VALID_USER_ID,
+      },
+      makeDeps(mock)
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "INVALID_CONTESTANT_ID" },
+    });
+  });
 });
 
-describe("updateRoomStatus — room not found", () => {
+describe("updateRoomNowPerforming — room not found", () => {
   it("returns 404 ROOM_NOT_FOUND when the room does not exist", async () => {
     const mock = makeSupabaseMock({
       roomSelectResult: { data: null, error: null },
     });
     const broadcastSpy = vi.fn();
-    const result = await updateRoomStatus(
-      { roomId: VALID_ROOM_ID, status: "voting", userId: VALID_USER_ID },
+    const result = await updateRoomNowPerforming(
+      {
+        roomId: VALID_ROOM_ID,
+        contestantId: VALID_CONTESTANT_ID,
+        userId: VALID_USER_ID,
+      },
       makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
     );
     expect(result).toMatchObject({
@@ -199,29 +229,39 @@ describe("updateRoomStatus — room not found", () => {
     const mock = makeSupabaseMock({
       roomSelectResult: { data: null, error: { message: "boom" } },
     });
-    const result = await updateRoomStatus(
-      { roomId: VALID_ROOM_ID, status: "voting", userId: VALID_USER_ID },
+    const result = await updateRoomNowPerforming(
+      {
+        roomId: VALID_ROOM_ID,
+        contestantId: VALID_CONTESTANT_ID,
+        userId: VALID_USER_ID,
+      },
       makeDeps(mock)
     );
-    expect(result).toMatchObject({
-      ok: false,
-      error: { code: "ROOM_NOT_FOUND" },
-    });
+    expect(result).toMatchObject({ ok: false, error: { code: "ROOM_NOT_FOUND" } });
   });
 });
 
-describe("updateRoomStatus — admin authorization", () => {
+describe("updateRoomNowPerforming — admin authorization", () => {
   it("returns 403 FORBIDDEN when caller is not the owner", async () => {
     const otherUserId = "bbbbbbbb-cccc-4ddd-8eee-ffffffffffff";
     const mock = makeSupabaseMock({
       roomSelectResult: {
-        data: { id: VALID_ROOM_ID, status: "lobby", owner_user_id: otherUserId },
+        data: {
+          id: VALID_ROOM_ID,
+          status: "voting",
+          owner_user_id: otherUserId,
+          allow_now_performing: true,
+        },
         error: null,
       },
     });
     const broadcastSpy = vi.fn();
-    const result = await updateRoomStatus(
-      { roomId: VALID_ROOM_ID, status: "voting", userId: VALID_USER_ID },
+    const result = await updateRoomNowPerforming(
+      {
+        roomId: VALID_ROOM_ID,
+        contestantId: VALID_CONTESTANT_ID,
+        userId: VALID_USER_ID,
+      },
       makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
     );
     expect(result).toMatchObject({
@@ -234,101 +274,108 @@ describe("updateRoomStatus — admin authorization", () => {
   });
 });
 
-describe("updateRoomStatus — transition matrix", () => {
-  // Allowed edges: lobby->voting and announcing->done. All others should 409.
-  const allowed: Array<[string, string]> = [
-    ["lobby", "voting"],
-    ["announcing", "done"],
-  ];
-  const allStatuses = ["lobby", "voting", "scoring", "announcing", "done"];
-  const requested = ["voting", "done"];
+describe("updateRoomNowPerforming — state guards", () => {
+  it("returns 409 NOW_PERFORMING_DISABLED when allow_now_performing is false", async () => {
+    const mock = makeSupabaseMock({
+      roomSelectResult: {
+        data: {
+          id: VALID_ROOM_ID,
+          status: "voting",
+          owner_user_id: VALID_USER_ID,
+          allow_now_performing: false,
+        },
+        error: null,
+      },
+    });
+    const broadcastSpy = vi.fn();
+    const result = await updateRoomNowPerforming(
+      {
+        roomId: VALID_ROOM_ID,
+        contestantId: VALID_CONTESTANT_ID,
+        userId: VALID_USER_ID,
+      },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 409,
+      error: { code: "NOW_PERFORMING_DISABLED" },
+    });
+    expect(mock.updatePatches).toEqual([]);
+    expect(broadcastSpy).not.toHaveBeenCalled();
+  });
 
-  for (const current of allStatuses) {
-    for (const req of requested) {
-      const isAllowed = allowed.some(
-        ([from, to]) => from === current && to === req
+  it.each(["lobby", "scoring", "announcing", "done"] as const)(
+    "returns 409 ROOM_NOT_VOTING when status=%s (with allow_now_performing=true)",
+    async (status) => {
+      const mock = makeSupabaseMock({
+        roomSelectResult: {
+          data: {
+            id: VALID_ROOM_ID,
+            status,
+            owner_user_id: VALID_USER_ID,
+            allow_now_performing: true,
+          },
+          error: null,
+        },
+      });
+      const broadcastSpy = vi.fn();
+      const result = await updateRoomNowPerforming(
+        {
+          roomId: VALID_ROOM_ID,
+          contestantId: VALID_CONTESTANT_ID,
+          userId: VALID_USER_ID,
+        },
+        makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
       );
-      const label = `${current} -> ${req}`;
-      if (isAllowed) {
-        it(`allows ${label}`, async () => {
-          const mock = makeSupabaseMock({
-            roomSelectResult: {
-              data: {
-                id: VALID_ROOM_ID,
-                status: current,
-                owner_user_id: VALID_USER_ID,
-              },
-              error: null,
-            },
-            roomUpdateResult: {
-              data: { ...defaultUpdatedRow, status: req },
-              error: null,
-            },
-          });
-          const broadcastSpy = vi.fn().mockResolvedValue(undefined);
-          const result = await updateRoomStatus(
-            { roomId: VALID_ROOM_ID, status: req, userId: VALID_USER_ID },
-            makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
-          );
-          expect(result).toMatchObject({ ok: true, room: { status: req } });
-          expect(broadcastSpy).toHaveBeenCalledTimes(1);
-        });
-      } else {
-        it(`rejects ${label} with 409 INVALID_TRANSITION`, async () => {
-          const mock = makeSupabaseMock({
-            roomSelectResult: {
-              data: {
-                id: VALID_ROOM_ID,
-                status: current,
-                owner_user_id: VALID_USER_ID,
-              },
-              error: null,
-            },
-          });
-          const broadcastSpy = vi.fn();
-          const result = await updateRoomStatus(
-            { roomId: VALID_ROOM_ID, status: req, userId: VALID_USER_ID },
-            makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
-          );
-          expect(result).toMatchObject({
-            ok: false,
-            status: 409,
-            error: { code: "INVALID_TRANSITION" },
-          });
-          expect(mock.updatePatches).toEqual([]);
-          expect(broadcastSpy).not.toHaveBeenCalled();
-        });
-      }
+      expect(result).toMatchObject({
+        ok: false,
+        status: 409,
+        error: { code: "ROOM_NOT_VOTING" },
+      });
+      expect(mock.updatePatches).toEqual([]);
+      expect(broadcastSpy).not.toHaveBeenCalled();
     }
-  }
+  );
 });
 
-describe("updateRoomStatus — broadcast semantics", () => {
+describe("updateRoomNowPerforming — broadcast semantics", () => {
   it("does NOT roll back or 500 when the broadcast throws; logs a warning", async () => {
     const mock = makeSupabaseMock();
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const broadcastSpy = vi
       .fn()
       .mockRejectedValue(new Error("realtime channel disconnected"));
-    const result = await updateRoomStatus(
-      { roomId: VALID_ROOM_ID, status: "voting", userId: VALID_USER_ID },
+    const result = await updateRoomNowPerforming(
+      {
+        roomId: VALID_ROOM_ID,
+        contestantId: VALID_CONTESTANT_ID,
+        userId: VALID_USER_ID,
+      },
       makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
     );
-    expect(result).toMatchObject({ ok: true, room: { status: "voting" } });
+    expect(result).toMatchObject({
+      ok: true,
+      room: { nowPerformingId: VALID_CONTESTANT_ID },
+    });
     expect(broadcastSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy).toHaveBeenCalledTimes(1);
     warnSpy.mockRestore();
   });
 });
 
-describe("updateRoomStatus — UPDATE error", () => {
+describe("updateRoomNowPerforming — UPDATE error", () => {
   it("returns 500 INTERNAL_ERROR when the UPDATE fails; does NOT broadcast", async () => {
     const mock = makeSupabaseMock({
       roomUpdateResult: { data: null, error: { message: "write failed" } },
     });
     const broadcastSpy = vi.fn();
-    const result = await updateRoomStatus(
-      { roomId: VALID_ROOM_ID, status: "voting", userId: VALID_USER_ID },
+    const result = await updateRoomNowPerforming(
+      {
+        roomId: VALID_ROOM_ID,
+        contestantId: VALID_CONTESTANT_ID,
+        userId: VALID_USER_ID,
+      },
       makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
     );
     expect(result).toMatchObject({
