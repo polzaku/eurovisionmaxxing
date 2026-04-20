@@ -1,33 +1,80 @@
 "use client";
 
+import { useId, useState } from "react";
+
+export interface CategoryPreviewItem {
+  name: string;
+  hint?: string;
+}
+
 interface CategoriesPreviewProps {
-  categories: Array<{ name: string }>;
+  categories: CategoryPreviewItem[];
 }
 
 /**
  * Lobby-side sneak peek of what categories this room will vote on.
- * Names only — hints live on the voting card itself, where they're
- * contextually useful next to the 1-10 buttons.
+ * Renders names as chips; tapping a chip toggles a callout below with
+ * that category's hint (for predefined templates). Single-selection —
+ * opening one chip closes any other.
+ *
+ * Hints are intentionally hidden behind a tap rather than always shown:
+ * always-visible hints become a wall of text in the lobby, and the
+ * voting card will re-surface the hint next to the 1-10 buttons where
+ * it's contextually useful during scoring.
  */
 export default function CategoriesPreview({
   categories,
 }: CategoriesPreviewProps) {
+  const [open, setOpen] = useState<string | null>(null);
+  const calloutId = useId();
+
   if (categories.length === 0) return null;
+
+  const openCategory = categories.find((c) => c.name === open);
+  const hint = openCategory?.hint;
+
   return (
     <section className="space-y-2">
       <h2 className="text-sm uppercase tracking-wider text-muted-foreground">
         You&rsquo;ll be rating
       </h2>
       <ul className="flex flex-wrap gap-2">
-        {categories.map((c) => (
-          <li
-            key={c.name}
-            className="rounded-full border border-border bg-card px-3 py-1 text-sm"
-          >
-            {c.name}
-          </li>
-        ))}
+        {categories.map((c) => {
+          const isOpen = c.name === open;
+          const hasHint = Boolean(c.hint);
+          return (
+            <li key={c.name}>
+              <button
+                type="button"
+                onClick={() => setOpen(isOpen ? null : c.name)}
+                disabled={!hasHint}
+                aria-expanded={isOpen}
+                aria-controls={hasHint ? calloutId : undefined}
+                className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+                  isOpen
+                    ? "border-primary bg-primary/10 text-foreground"
+                    : "border-border bg-card hover:border-accent"
+                } ${hasHint ? "cursor-pointer" : "cursor-default"}`}
+              >
+                {c.name}
+              </button>
+            </li>
+          );
+        })}
       </ul>
+      {hint && (
+        <p
+          id={calloutId}
+          role="region"
+          aria-label={`About ${openCategory?.name ?? ""}`}
+          className="rounded-lg border border-border bg-muted px-3 py-2 text-xs text-muted-foreground animate-fade-in"
+        >
+          <span className="font-medium text-foreground">
+            {openCategory?.name}
+          </span>{" "}
+          &mdash; {hint}
+        </p>
+      )}
     </section>
   );
 }

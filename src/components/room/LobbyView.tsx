@@ -14,6 +14,7 @@ export interface LobbyMember {
 
 export interface LobbyCategory {
   name: string;
+  hint?: string;
 }
 
 export type StartVotingState =

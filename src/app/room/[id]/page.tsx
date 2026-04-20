@@ -30,7 +30,7 @@ interface RoomShape {
   pin: string;
   status: string;
   ownerUserId: string;
-  categories: Array<{ name: string }>;
+  categories: Array<{ name: string; hint?: string }>;
 }
 
 type Phase =
