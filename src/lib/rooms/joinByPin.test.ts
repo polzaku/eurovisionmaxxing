@@ -7,6 +7,7 @@ const VALID_USER_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
 interface MockOptions {
   roomSelectResult?: { data: unknown; error: { message: string } | null };
   membershipUpsertResult?: { error: { message: string } | null };
+  userSelectResult?: { data: unknown; error: { message: string } | null };
 }
 
 function makeSupabaseMock(opts: MockOptions = {}) {
@@ -17,6 +18,11 @@ function makeSupabaseMock(opts: MockOptions = {}) {
     };
   const membershipUpsertResult =
     opts.membershipUpsertResult ?? { error: null };
+  const userSelectResult =
+    opts.userSelectResult ?? {
+      data: { display_name: "Alice", avatar_seed: "seed-abc" },
+      error: null,
+    };
 
   const roomEqArgs: Array<{ col: string; val: unknown }> = [];
   const upsertRows: Array<Record<string, unknown>> = [];
@@ -43,6 +49,15 @@ function makeSupabaseMock(opts: MockOptions = {}) {
     if (table === "room_memberships") {
       return { upsert: membershipUpsertSpy };
     }
+    if (table === "users") {
+      return {
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            maybeSingle: vi.fn().mockResolvedValue(userSelectResult),
+          })),
+        })),
+      };
+    }
     throw new Error(`unexpected table: ${table}`);
   });
 
@@ -57,7 +72,10 @@ function makeSupabaseMock(opts: MockOptions = {}) {
 }
 
 function makeDeps(mock: ReturnType<typeof makeSupabaseMock>): JoinByPinDeps {
-  return { supabase: mock.supabase };
+  return {
+    supabase: mock.supabase,
+    broadcastRoomEvent: vi.fn().mockResolvedValue(undefined),
+  };
 }
 
 describe("joinByPin — happy path", () => {
@@ -76,6 +94,41 @@ describe("joinByPin — happy path", () => {
       ignoreDuplicates: true,
     });
     expect(mock.roomEqArgs).toEqual([{ col: "pin", val: "ABCDEF" }]);
+  });
+
+  it("broadcasts user_joined with the joining user's metadata", async () => {
+    const mock = makeSupabaseMock();
+    const deps = makeDeps(mock);
+    const result = await joinByPin(
+      { pin: "ABCDEF", userId: VALID_USER_ID },
+      deps
+    );
+    expect(result).toMatchObject({ ok: true });
+    expect(deps.broadcastRoomEvent).toHaveBeenCalledTimes(1);
+    expect(deps.broadcastRoomEvent).toHaveBeenCalledWith(VALID_ROOM_ID, {
+      type: "user_joined",
+      user: {
+        id: VALID_USER_ID,
+        displayName: "Alice",
+        avatarSeed: "seed-abc",
+      },
+    });
+  });
+
+  it("still succeeds (non-fatal) if the broadcast throws", async () => {
+    const mock = makeSupabaseMock();
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const deps = makeDeps(mock);
+    deps.broadcastRoomEvent = vi
+      .fn()
+      .mockRejectedValue(new Error("channel disconnected"));
+    const result = await joinByPin(
+      { pin: "ABCDEF", userId: VALID_USER_ID },
+      deps
+    );
+    expect(result).toMatchObject({ ok: true, roomId: VALID_ROOM_ID });
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    warnSpy.mockRestore();
   });
 });
 

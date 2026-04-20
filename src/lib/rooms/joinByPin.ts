@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import type { ApiErrorCode } from "@/lib/api-errors";
+import type { RoomEventPayload } from "@/lib/rooms/shared";
 import { PIN_CHARSET } from "@/types";
 
 const PIN_REGEX = new RegExp(`^[${PIN_CHARSET}]{6,7}$`);
@@ -25,6 +26,7 @@ export interface JoinByPinInput {
 
 export interface JoinByPinDeps {
   supabase: SupabaseClient<Database>;
+  broadcastRoomEvent: (roomId: string, event: RoomEventPayload) => Promise<void>;
 }
 
 export interface JoinByPinSuccess {
@@ -101,5 +103,33 @@ export async function joinByPin(
   if (upsertError) {
     return fail("INTERNAL_ERROR", "Could not join room. Please try again.", 500);
   }
+
+  const userQuery = await deps.supabase
+    .from("users")
+    .select("display_name, avatar_seed")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (userQuery.error || !userQuery.data) {
+    return fail("INTERNAL_ERROR", "Could not read user record.", 500);
+  }
+  const u = userQuery.data as { display_name: string; avatar_seed: string };
+
+  try {
+    await deps.broadcastRoomEvent(row.id, {
+      type: "user_joined",
+      user: {
+        id: userId,
+        displayName: u.display_name,
+        avatarSeed: u.avatar_seed,
+      },
+    });
+  } catch (err) {
+    console.warn(
+      `broadcast 'user_joined' failed for room ${row.id}; state committed regardless:`,
+      err
+    );
+  }
+
   return { ok: true, roomId: row.id };
 }

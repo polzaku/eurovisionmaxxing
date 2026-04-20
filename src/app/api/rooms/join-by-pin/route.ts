@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { joinByPin } from "@/lib/rooms/joinByPin";
+import { defaultBroadcastRoomEvent } from "@/lib/rooms/shared";
 import { apiError } from "@/lib/api-errors";
 import { createServiceClient } from "@/lib/supabase/server";
 
@@ -21,6 +22,7 @@ export async function POST(request: NextRequest) {
 
   const result = await joinByPin(body as Parameters<typeof joinByPin>[0], {
     supabase: createServiceClient(),
+    broadcastRoomEvent: defaultBroadcastRoomEvent,
   });
 
   if (result.ok) {

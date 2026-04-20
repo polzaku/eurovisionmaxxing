@@ -23,8 +23,24 @@ vi.mock("@/lib/supabase/server", () => ({
       if (table === "room_memberships") {
         return { upsert: vi.fn().mockResolvedValue({ error: null }) };
       }
+      if (table === "users") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { display_name: "Alice", avatar_seed: "seed-abc" },
+                error: null,
+              }),
+            })),
+          })),
+        };
+      }
       throw new Error(`unexpected table: ${table}`);
     }),
+    channel: vi.fn(() => ({
+      send: vi.fn().mockResolvedValue(undefined),
+    })),
+    removeChannel: vi.fn().mockResolvedValue(undefined),
   }),
 }));
 
