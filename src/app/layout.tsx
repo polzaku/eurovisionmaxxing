@@ -1,14 +1,17 @@
 import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
-import { getLocale, getMessages } from "next-intl/server";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import I18nProvider from "@/i18n/provider";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "eurovisionmaxxing",
-  description: "Eurovision watch party voting app — vote, announce, crown the winner.",
-  manifest: "/manifest.json",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("common");
+  return {
+    title: t("app.name"),
+    description: t("app.metaDescription"),
+    manifest: "/manifest.json",
+  };
+}
 
 export const viewport: Viewport = {
   width: "device-width",
