@@ -35,5 +35,11 @@ export async function POST(request: NextRequest) {
   if (result.ok) {
     return NextResponse.json(result.user, { status: 201 });
   }
-  return apiError(result.error.code, result.error.message, result.status, result.error.field);
+  return apiError(
+    result.error.code,
+    result.error.message,
+    result.status,
+    result.error.field,
+    result.error.params,
+  );
 }
