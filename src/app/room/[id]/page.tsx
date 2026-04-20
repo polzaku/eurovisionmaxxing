@@ -30,6 +30,7 @@ interface RoomShape {
   pin: string;
   status: string;
   ownerUserId: string;
+  categories: Array<{ name: string; hint?: string }>;
 }
 
 type Phase =
@@ -179,6 +180,14 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     void navigator.clipboard?.writeText(phase.room.pin);
   }, [phase]);
 
+  const handleCopyLink = useCallback(() => {
+    if (phase.kind !== "ready") return;
+    const base =
+      process.env.NEXT_PUBLIC_APP_URL ??
+      (typeof window !== "undefined" ? window.location.origin : "");
+    void navigator.clipboard?.writeText(`${base}/room/${phase.room.id}`);
+  }, [phase]);
+
   if (phase.kind === "loading") {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
@@ -209,15 +218,22 @@ export default function RoomPage({ params }: { params: { id: string } }) {
       displayName: m.displayName,
       avatarSeed: m.avatarSeed,
     }));
+    const shareBase =
+      process.env.NEXT_PUBLIC_APP_URL ??
+      (typeof window !== "undefined" ? window.location.origin : "");
+    const shareUrl = `${shareBase}/room/${phase.room.id}`;
     return (
       <LobbyView
         pin={phase.room.pin}
         ownerUserId={phase.room.ownerUserId}
         memberships={members}
+        categories={phase.room.categories ?? []}
         isAdmin={isAdmin}
         startVotingState={startVotingState}
+        shareUrl={shareUrl}
         onStartVoting={handleStartVoting}
         onCopyPin={handleCopyPin}
+        onCopyLink={handleCopyLink}
       />
     );
   }
