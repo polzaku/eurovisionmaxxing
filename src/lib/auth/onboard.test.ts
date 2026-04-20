@@ -242,7 +242,7 @@ describe("onboardUser — avatarSeed validation", () => {
     expect(result).toMatchObject({
       ok: false,
       status: 400,
-      error: { code: "INVALID_AVATAR_SEED", field: "avatarSeed" },
+      error: { code: "INVALID_AVATAR_SEED", field: "avatarSeed", params: { limit: 64 } },
     });
   });
 

@@ -8,11 +8,19 @@ export type ApiErrorCode =
   | "INVALID_TOKEN"
   | "INTERNAL_ERROR";
 
+// TODO(i18n-phase-b): extract this `error` shape into a shared `ApiErrorPayload` type
+// and reuse it in OnboardFailure.error and RejoinFailure.error to eliminate the
+// three-site structural duplication.
 export interface ApiErrorBody {
   error: {
     code: ApiErrorCode;
     message: string;
     field?: string;
+    /**
+     * ICU MessageFormat substitution values forwarded to the client for
+     * translation. Keys should match the placeholders in the corresponding
+     * `errors.<code>` message in each locale file.
+     */
     params?: Record<string, unknown>;
   };
 }
