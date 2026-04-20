@@ -57,6 +57,8 @@ export async function defaultBroadcastRoomEvent(
       "defaultBroadcastRoomEvent: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SECRET_KEY missing"
     );
   }
+  // eslint-disable-next-line no-console
+  console.log(`[broadcast] sending ${event.type} to room:${roomId}`);
   const res = await fetch(`${url}/realtime/v1/api/broadcast`, {
     method: "POST",
     headers: {
@@ -75,6 +77,10 @@ export async function defaultBroadcastRoomEvent(
       ],
     }),
   });
+  // eslint-disable-next-line no-console
+  console.log(
+    `[broadcast] ${event.type} → room:${roomId} response: ${res.status} ${res.statusText}`
+  );
   if (!res.ok) {
     throw new Error(
       `defaultBroadcastRoomEvent: Supabase returned ${res.status} ${res.statusText}`

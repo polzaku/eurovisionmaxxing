@@ -133,7 +133,11 @@ export default function RoomPage({ params }: { params: { id: string } }) {
   }, [loadRoom]);
 
   useRoomRealtime(roomId, (event) => {
+    // eslint-disable-next-line no-console
+    console.log(`[room page] event received:`, event);
     if (event.type === "status_changed") {
+      // eslint-disable-next-line no-console
+      console.log(`[room page] status_changed → calling loadRoom()`);
       void loadRoom();
       return;
     }
@@ -163,6 +167,8 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     const result = await patchRoomStatus(roomId, "voting", session.userId, {
       fetch: window.fetch.bind(window),
     });
+    // eslint-disable-next-line no-console
+    console.log(`[room page] patchRoomStatus result:`, result);
     if (result.ok) {
       // status_changed broadcast will drive a refetch; meanwhile stay as idle.
       setStartVotingState({ kind: "idle" });

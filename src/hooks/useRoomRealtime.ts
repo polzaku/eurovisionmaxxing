@@ -22,9 +22,14 @@ export function useRoomRealtime(
     const channel = supabase.current
       .channel(`room:${roomId}`)
       .on("broadcast", { event: "room_event" }, (payload) => {
+        // eslint-disable-next-line no-console
+        console.log(`[realtime] room:${roomId} received`, payload);
         callbackRef.current(payload.payload as RoomEvent);
       })
-      .subscribe();
+      .subscribe((status) => {
+        // eslint-disable-next-line no-console
+        console.log(`[realtime] room:${roomId} subscription status: ${status}`);
+      });
 
     return () => {
       supabase.current.removeChannel(channel);
