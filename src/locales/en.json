@@ -4,14 +4,12 @@
       "name": "eurovisionmaxxing",
       "tagline": "The group-chat way to watch Eurovision",
       "description": "Turn the contest into your own voting game. Rate every country, stir up the group chat live, and end the night with a proper 12-points announcement.",
-      "metaDescription": "Eurovision watch party voting app — vote, announce, crown the winner."
+      "metaDescription": "Eurovision watch party voting app — vote, announce, crown the winner.",
+      "featuresLine": "Vote live · Any device · Jury-style reveal"
     },
     "cta": {
       "startRoom": "Start a room",
       "joinRoom": "Join a room"
-    },
-    "tagline": {
-      "feature": "Vote live · Any device · Jury-style reveal"
     }
   },
   "onboarding": {},

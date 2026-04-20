@@ -51,7 +51,7 @@ export default async function HomePage() {
 
         {/* Micro-meta strip */}
         <p className="text-sm text-muted-foreground">
-          {t("tagline.feature")}
+          {t("app.featuresLine")}
         </p>
       </div>
     </main>
