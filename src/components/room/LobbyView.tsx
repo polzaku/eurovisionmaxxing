@@ -57,7 +57,7 @@ export default function LobbyView({
 
         <section className="space-y-3">
           <h2 className="text-sm uppercase tracking-wider text-muted-foreground">
-            Who's here ({memberships.length})
+            Who&rsquo;s here ({memberships.length})
           </h2>
           <div className="grid grid-cols-3 gap-4">
             {memberships.map((m) => (

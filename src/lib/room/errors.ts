@@ -2,9 +2,11 @@ const MESSAGES: Record<string, string> = {
   ROOM_NOT_FOUND: "This room doesn't exist or has been removed.",
   FORBIDDEN: "Only the host can do that.",
   INVALID_TRANSITION: "That action isn't available right now.",
+  INVALID_ROOM_ID: "That room link doesn't look right.",
   INVALID_USER_ID: "Your session is invalid. Please re-onboard.",
   ROOM_NOT_JOINABLE: "This room isn't accepting new members right now.",
   NETWORK: "We couldn't reach the server. Check your connection.",
+  INTERNAL_ERROR: "We hit a snag on our end. Please try again in a moment.",
 };
 
 const GENERIC = "Something went wrong. Please try again.";

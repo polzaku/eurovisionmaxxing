@@ -20,7 +20,7 @@ export default function StatusStub({ status }: StatusStubProps) {
       <div className="max-w-md w-full space-y-4 text-center animate-fade-in">
         <h1 className="text-2xl font-bold tracking-tight">{label}</h1>
         <p className="text-muted-foreground text-sm">
-          This part of the room isn't built yet — coming soon.
+          This part of the room isn&rsquo;t built yet &mdash; coming soon.
         </p>
         <p className="text-muted-foreground text-xs font-mono">
           Status: {status}

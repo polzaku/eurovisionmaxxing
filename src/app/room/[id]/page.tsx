@@ -41,6 +41,26 @@ type Phase =
       memberships: MembershipShape[];
     };
 
+/**
+ * Defensive: if the caller's membership isn't in the roster the server returned
+ * (can happen on fresh joins due to read-after-write latency), splice them in
+ * from session data so the user always sees themselves in the lobby.
+ */
+function ensureSelfInMemberships(
+  memberships: MembershipShape[],
+  session: { userId: string; displayName: string; avatarSeed: string }
+): MembershipShape[] {
+  if (memberships.some((m) => m.userId === session.userId)) return memberships;
+  return [
+    ...memberships,
+    {
+      userId: session.userId,
+      displayName: session.displayName,
+      avatarSeed: session.avatarSeed,
+    },
+  ];
+}
+
 export default function RoomPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
@@ -72,7 +92,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
 
     const data = fetchResult.data as FetchRoomData;
     const room = data.room as RoomShape;
-    const memberships = data.memberships as MembershipShape[];
+    let memberships = data.memberships as MembershipShape[];
 
     const isMember = memberships.some((m) => m.userId === session.userId);
     if (!isMember) {
@@ -92,15 +112,20 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         return;
       }
       const refetched = refetch.data as FetchRoomData;
+      memberships = refetched.memberships as MembershipShape[];
       setPhase({
         kind: "ready",
         room: refetched.room as RoomShape,
-        memberships: refetched.memberships as MembershipShape[],
+        memberships: ensureSelfInMemberships(memberships, session),
       });
       return;
     }
 
-    setPhase({ kind: "ready", room, memberships });
+    setPhase({
+      kind: "ready",
+      room,
+      memberships: ensureSelfInMemberships(memberships, session),
+    });
   }, [roomId]);
 
   useEffect(() => {
@@ -166,7 +191,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
         <div className="max-w-md w-full text-center space-y-3 animate-fade-in">
-          <h1 className="text-2xl font-bold tracking-tight">Can't open room</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Can&rsquo;t open room</h1>
           <p role="alert" className="text-sm text-destructive">
             {phase.message}
           </p>
