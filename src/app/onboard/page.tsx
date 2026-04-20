@@ -4,9 +4,9 @@ import { getTranslations } from "next-intl/server";
 import OnboardingForm from "@/components/onboarding/OnboardingForm";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const tCommon = await getTranslations("common");
+  const t = await getTranslations("onboarding");
   return {
-    title: `Join — ${tCommon("app.name")}`,
+    title: t("metaTitle"),
   };
 }
 
