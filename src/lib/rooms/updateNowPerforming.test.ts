@@ -201,3 +201,75 @@ describe("updateRoomNowPerforming — input validation", () => {
     });
   });
 });
+
+describe("updateRoomNowPerforming — room not found", () => {
+  it("returns 404 ROOM_NOT_FOUND when the room does not exist", async () => {
+    const mock = makeSupabaseMock({
+      roomSelectResult: { data: null, error: null },
+    });
+    const broadcastSpy = vi.fn();
+    const result = await updateRoomNowPerforming(
+      {
+        roomId: VALID_ROOM_ID,
+        contestantId: VALID_CONTESTANT_ID,
+        userId: VALID_USER_ID,
+      },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 404,
+      error: { code: "ROOM_NOT_FOUND" },
+    });
+    expect(mock.updatePatches).toEqual([]);
+    expect(broadcastSpy).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 ROOM_NOT_FOUND when the room SELECT errors", async () => {
+    const mock = makeSupabaseMock({
+      roomSelectResult: { data: null, error: { message: "boom" } },
+    });
+    const result = await updateRoomNowPerforming(
+      {
+        roomId: VALID_ROOM_ID,
+        contestantId: VALID_CONTESTANT_ID,
+        userId: VALID_USER_ID,
+      },
+      makeDeps(mock)
+    );
+    expect(result).toMatchObject({ ok: false, error: { code: "ROOM_NOT_FOUND" } });
+  });
+});
+
+describe("updateRoomNowPerforming — admin authorization", () => {
+  it("returns 403 FORBIDDEN when caller is not the owner", async () => {
+    const otherUserId = "bbbbbbbb-cccc-4ddd-8eee-ffffffffffff";
+    const mock = makeSupabaseMock({
+      roomSelectResult: {
+        data: {
+          id: VALID_ROOM_ID,
+          status: "voting",
+          owner_user_id: otherUserId,
+          allow_now_performing: true,
+        },
+        error: null,
+      },
+    });
+    const broadcastSpy = vi.fn();
+    const result = await updateRoomNowPerforming(
+      {
+        roomId: VALID_ROOM_ID,
+        contestantId: VALID_CONTESTANT_ID,
+        userId: VALID_USER_ID,
+      },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 403,
+      error: { code: "FORBIDDEN" },
+    });
+    expect(mock.updatePatches).toEqual([]);
+    expect(broadcastSpy).not.toHaveBeenCalled();
+  });
+});

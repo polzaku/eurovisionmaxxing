@@ -69,7 +69,32 @@ export async function updateRoomNowPerforming(
     );
   }
   const roomId = input.roomId;
+  const userId = input.userId;
   const contestantId = input.contestantId;
+
+  const roomQuery = await deps.supabase
+    .from("rooms")
+    .select("id, status, owner_user_id, allow_now_performing")
+    .eq("id", roomId)
+    .maybeSingle();
+
+  if (roomQuery.error || !roomQuery.data) {
+    return fail("ROOM_NOT_FOUND", "Room not found.", 404);
+  }
+  const row = roomQuery.data as {
+    id: string;
+    status: string;
+    owner_user_id: string;
+    allow_now_performing: boolean;
+  };
+
+  if (row.owner_user_id !== userId) {
+    return fail(
+      "FORBIDDEN",
+      "Only the room owner can set the currently-performing contestant.",
+      403
+    );
+  }
 
   const { data: updated } = await deps.supabase
     .from("rooms")
