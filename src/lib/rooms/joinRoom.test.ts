@@ -117,3 +117,166 @@ describe("joinRoomByMembership — happy path", () => {
     });
   });
 });
+
+describe("joinRoomByMembership — input validation", () => {
+  it("rejects non-UUID roomId with INVALID_ROOM_ID", async () => {
+    const mock = makeSupabaseMock();
+    const broadcastSpy = vi.fn();
+    const result = await joinRoomByMembership(
+      { roomId: "not-a-uuid", userId: VALID_USER_ID },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 400,
+      error: { code: "INVALID_ROOM_ID", field: "roomId" },
+    });
+    expect(mock.upsertRows).toEqual([]);
+    expect(broadcastSpy).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, null, 42, ""])(
+    "rejects missing/empty/non-string userId (%s) with INVALID_USER_ID",
+    async (userId) => {
+      const mock = makeSupabaseMock();
+      const result = await joinRoomByMembership(
+        { roomId: VALID_ROOM_ID, userId },
+        makeDeps(mock)
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        status: 400,
+        error: { code: "INVALID_USER_ID", field: "userId" },
+      });
+      expect(mock.upsertRows).toEqual([]);
+    }
+  );
+});
+
+describe("joinRoomByMembership — room not found", () => {
+  it("returns 404 ROOM_NOT_FOUND when room SELECT returns null", async () => {
+    const mock = makeSupabaseMock({
+      roomSelectResult: { data: null, error: null },
+    });
+    const broadcastSpy = vi.fn();
+    const result = await joinRoomByMembership(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 404,
+      error: { code: "ROOM_NOT_FOUND" },
+    });
+    expect(mock.upsertRows).toEqual([]);
+    expect(broadcastSpy).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 ROOM_NOT_FOUND when room SELECT errors", async () => {
+    const mock = makeSupabaseMock({
+      roomSelectResult: { data: null, error: { message: "boom" } },
+    });
+    const result = await joinRoomByMembership(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock)
+    );
+    expect(result).toMatchObject({ ok: false, error: { code: "ROOM_NOT_FOUND" } });
+  });
+});
+
+describe("joinRoomByMembership — status guard", () => {
+  it.each(["scoring", "announcing", "done"] as const)(
+    "rejects status=%s with 409 ROOM_NOT_JOINABLE",
+    async (status) => {
+      const mock = makeSupabaseMock({
+        roomSelectResult: {
+          data: { id: VALID_ROOM_ID, status },
+          error: null,
+        },
+      });
+      const broadcastSpy = vi.fn();
+      const result = await joinRoomByMembership(
+        { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+        makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        status: 409,
+        error: { code: "ROOM_NOT_JOINABLE" },
+      });
+      expect(mock.upsertRows).toEqual([]);
+      expect(broadcastSpy).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(["lobby", "voting"] as const)(
+    "accepts status=%s and upserts membership",
+    async (status) => {
+      const mock = makeSupabaseMock({
+        roomSelectResult: {
+          data: { id: VALID_ROOM_ID, status },
+          error: null,
+        },
+      });
+      const result = await joinRoomByMembership(
+        { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+        makeDeps(mock)
+      );
+      expect(result).toEqual({ ok: true });
+    }
+  );
+});
+
+describe("joinRoomByMembership — DB errors", () => {
+  it("returns 500 INTERNAL_ERROR when upsert fails", async () => {
+    const mock = makeSupabaseMock({
+      upsertResult: { error: { message: "fk violation" } },
+    });
+    const broadcastSpy = vi.fn();
+    const result = await joinRoomByMembership(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 500,
+      error: { code: "INTERNAL_ERROR" },
+    });
+    expect(broadcastSpy).not.toHaveBeenCalled();
+  });
+
+  it("returns 500 INTERNAL_ERROR when user SELECT returns null", async () => {
+    const mock = makeSupabaseMock({
+      userSelectResult: { data: null, error: null },
+    });
+    const broadcastSpy = vi.fn();
+    const result = await joinRoomByMembership(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 500,
+      error: { code: "INTERNAL_ERROR" },
+    });
+    expect(broadcastSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("joinRoomByMembership — broadcast semantics", () => {
+  it("does NOT 500 when the broadcast throws; logs a warning", async () => {
+    const mock = makeSupabaseMock();
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const broadcastSpy = vi
+      .fn()
+      .mockRejectedValue(new Error("realtime channel disconnected"));
+    const result = await joinRoomByMembership(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy })
+    );
+    expect(result).toEqual({ ok: true });
+    expect(broadcastSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    warnSpy.mockRestore();
+  });
+});
