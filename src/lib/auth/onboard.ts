@@ -65,7 +65,7 @@ export async function onboardUser(
     return fail(
       "INVALID_BODY",
       "Request body must include displayName and avatarSeed strings.",
-      400
+      400,
     );
   }
 
@@ -75,7 +75,7 @@ export async function onboardUser(
       "INVALID_DISPLAY_NAME",
       "displayName must be 2–24 characters and contain only letters, numbers, spaces, or hyphens.",
       400,
-      "displayName"
+      "displayName",
     );
   }
 
