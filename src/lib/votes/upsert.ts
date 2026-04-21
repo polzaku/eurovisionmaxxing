@@ -194,6 +194,85 @@ export async function upsertVote(
     }
   }
 
-  void scoresIn;
-  throw new Error("not implemented");
+  // Read existing row (may be null) for partial-merge semantics
+  const existingQuery = await deps.supabase
+    .from("votes")
+    .select("scores, missed, hot_take")
+    .eq("room_id", roomId)
+    .eq("user_id", userId)
+    .eq("contestant_id", contestantId)
+    .maybeSingle();
+
+  const existing = (existingQuery.data ?? null) as {
+    scores: Record<string, number> | null;
+    missed: boolean;
+    hot_take: string | null;
+  } | null;
+
+  // Merge per design §4
+  const mergedScores: Record<string, number> = {
+    ...(existing?.scores ?? {}),
+    ...(scoresIn ?? {}),
+  };
+  const mergedMissed =
+    typeof input.missed === "boolean" ? input.missed : (existing?.missed ?? false);
+
+  let mergedHotTake: string | null;
+  if (input.hotTake !== undefined) {
+    mergedHotTake = input.hotTake === null ? null : (input.hotTake as string);
+  } else {
+    mergedHotTake = existing?.hot_take ?? null;
+  }
+
+  const upsertPayload: Database["public"]["Tables"]["votes"]["Insert"] = {
+    room_id: roomId,
+    user_id: userId,
+    contestant_id: contestantId,
+    scores: mergedScores,
+    missed: mergedMissed,
+    hot_take: mergedHotTake,
+  };
+
+  const upsertResult = await deps.supabase
+    .from("votes")
+    .upsert(upsertPayload, { onConflict: "room_id,user_id,contestant_id" })
+    .select()
+    .single();
+
+  if (upsertResult.error || !upsertResult.data) {
+    return fail("INTERNAL_ERROR", "Could not save vote. Please try again.", 500);
+  }
+
+  const row = upsertResult.data as Database["public"]["Tables"]["votes"]["Row"];
+  const vote: Vote = {
+    id: row.id,
+    roomId: row.room_id,
+    userId: row.user_id,
+    contestantId: row.contestant_id,
+    scores: row.scores,
+    missed: row.missed,
+    hotTake: row.hot_take,
+    updatedAt: row.updated_at,
+  };
+
+  // §5 of design: missed row → broadcast 0 regardless of scores object
+  const scoredCount = vote.missed
+    ? 0
+    : Object.keys(vote.scores ?? {}).length;
+
+  try {
+    await deps.broadcastRoomEvent(roomId, {
+      type: "voting_progress",
+      userId,
+      contestantId,
+      scoredCount,
+    });
+  } catch (err) {
+    console.warn(
+      `broadcast 'voting_progress' failed for room ${roomId}; state committed regardless:`,
+      err
+    );
+  }
+
+  return { ok: true, vote, scoredCount };
 }

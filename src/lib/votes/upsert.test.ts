@@ -282,6 +282,110 @@ describe("upsertVote — body shape validation", () => {
   });
 });
 
+describe("upsertVote — happy path", () => {
+  const baseInput = {
+    roomId: VALID_ROOM_ID,
+    userId: VALID_USER_ID,
+    contestantId: VALID_CONTESTANT_ID,
+  };
+
+  it("first write (no existing row): UPSERTs with scores, returns vote + scoredCount", async () => {
+    const persisted = {
+      id: "dddddddd-eeee-4fff-8000-111111111111",
+      room_id: VALID_ROOM_ID,
+      user_id: VALID_USER_ID,
+      contestant_id: VALID_CONTESTANT_ID,
+      scores: { Vocals: 7, Staging: 9 },
+      missed: false,
+      hot_take: null,
+      updated_at: "2026-04-21T12:00:00Z",
+    };
+    const mock = makeSupabaseMock({
+      voteUpsertResult: { data: persisted, error: null },
+    });
+    const broadcast = vi.fn().mockResolvedValue(undefined);
+    const result = await upsertVote(
+      {
+        ...baseInput,
+        scores: { Vocals: 7, Staging: 9 },
+      },
+      makeDeps(mock, { broadcastRoomEvent: broadcast })
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.vote).toMatchObject({
+      roomId: VALID_ROOM_ID,
+      userId: VALID_USER_ID,
+      contestantId: VALID_CONTESTANT_ID,
+      scores: { Vocals: 7, Staging: 9 },
+      missed: false,
+      hotTake: null,
+    });
+    expect(result.scoredCount).toBe(2);
+
+    expect(mock.upsertPayloads).toHaveLength(1);
+    expect(mock.upsertPayloads[0]).toMatchObject({
+      room_id: VALID_ROOM_ID,
+      user_id: VALID_USER_ID,
+      contestant_id: VALID_CONTESTANT_ID,
+      scores: { Vocals: 7, Staging: 9 },
+      missed: false,
+      hot_take: null,
+    });
+    expect(mock.upsertOptions[0]).toMatchObject({
+      onConflict: "room_id,user_id,contestant_id",
+    });
+
+    expect(broadcast).toHaveBeenCalledTimes(1);
+    expect(broadcast).toHaveBeenCalledWith(VALID_ROOM_ID, {
+      type: "voting_progress",
+      userId: VALID_USER_ID,
+      contestantId: VALID_CONTESTANT_ID,
+      scoredCount: 2,
+    });
+  });
+
+  it("empty body (just identity fields): upserts empty row, broadcasts scoredCount=0", async () => {
+    const persisted = {
+      id: "eeeeeeee-ffff-4000-8111-222222222222",
+      room_id: VALID_ROOM_ID,
+      user_id: VALID_USER_ID,
+      contestant_id: VALID_CONTESTANT_ID,
+      scores: {},
+      missed: false,
+      hot_take: null,
+      updated_at: "2026-04-21T12:00:00Z",
+    };
+    const mock = makeSupabaseMock({
+      voteUpsertResult: { data: persisted, error: null },
+    });
+    const broadcast = vi.fn().mockResolvedValue(undefined);
+    const result = await upsertVote(baseInput, makeDeps(mock, { broadcastRoomEvent: broadcast }));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.scoredCount).toBe(0);
+    expect(broadcast).toHaveBeenCalledWith(VALID_ROOM_ID, {
+      type: "voting_progress",
+      userId: VALID_USER_ID,
+      contestantId: VALID_CONTESTANT_ID,
+      scoredCount: 0,
+    });
+  });
+
+  it("returns 500 INTERNAL_ERROR when the UPSERT errors", async () => {
+    const mock = makeSupabaseMock({
+      voteUpsertResult: { data: null, error: { message: "boom" } },
+    });
+    const result = await upsertVote(baseInput, makeDeps(mock));
+    expect(result).toMatchObject({
+      ok: false,
+      status: 500,
+      error: { code: "INTERNAL_ERROR" },
+    });
+  });
+});
+
 describe("upsertVote — room & membership guards", () => {
   it("returns 404 ROOM_NOT_FOUND when the room does not exist", async () => {
     const mock = makeSupabaseMock({
