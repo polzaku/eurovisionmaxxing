@@ -53,7 +53,7 @@ function fail(
   return { ok: false, error, status };
 }
 
-function normalizeDisplayName(raw: string): string {
+export function normalizeDisplayName(raw: string): string {
   return raw.trim().replace(/\s+/g, " ");
 }
 

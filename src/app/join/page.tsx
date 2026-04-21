@@ -1,13 +1,75 @@
 "use client";
 
-/**
- * PIN entry page — single large input, auto-uppercase, 6-char limit.
- * On submit: POST /api/rooms/join-by-pin → redirect to room URL.
- *
- * TODO: Implement full PIN entry UI
- */
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import PinInput from "@/components/ui/PinInput";
+import { getSession } from "@/lib/session";
+import { mapJoinError } from "@/lib/join/errors";
+import {
+  stashPendingPin,
+  readPendingPin,
+  clearPendingPin,
+} from "@/lib/join/pendingPin";
+import { submitPinToApi } from "@/lib/join/submitPin";
+
+type UiState =
+  | { kind: "idle" }
+  | { kind: "submitting" }
+  | { kind: "error"; message: string };
 
 export default function JoinPage() {
+  const router = useRouter();
+  const [ui, setUi] = useState<UiState>({ kind: "idle" });
+  const [resumePin, setResumePin] = useState<string | null>(null);
+
+  async function submit(pin: string): Promise<void> {
+    const session = getSession();
+    if (!session) {
+      stashPendingPin(window.sessionStorage, pin);
+      router.push("/onboard?next=/join");
+      return;
+    }
+    setUi({ kind: "submitting" });
+    const result = await submitPinToApi(
+      { pin, userId: session.userId },
+      { fetch: window.fetch.bind(window) }
+    );
+    if (result.ok) {
+      router.push(`/room/${result.roomId}`);
+      return;
+    }
+    setUi({ kind: "error", message: mapJoinError(result.code) });
+  }
+
+  // On mount: run the four-case decision table (session × pending PIN).
+  useEffect(() => {
+    const session = getSession();
+    const pending = readPendingPin(window.sessionStorage);
+    if (pending) {
+      clearPendingPin(window.sessionStorage);
+    }
+    if (session && pending) {
+      setResumePin(pending);
+      void submit(pending);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // During submit or auto-resume, hide the form and show a spinner so the PIN
+  // form doesn't briefly re-render with the resumed value while the redirect
+  // is in flight.
+  const isBusy = ui.kind === "submitting" || resumePin !== null;
+
+  if (isBusy) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
+        <div className="max-w-md w-full text-center animate-fade-in space-y-3">
+          <p className="text-muted-foreground animate-shimmer">Joining room&hellip;</p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
       <div className="max-w-md w-full space-y-6 text-center animate-fade-in">
@@ -19,7 +81,12 @@ export default function JoinPage() {
             Enter the 6-character room PIN to join.
           </p>
         </div>
-        {/* TODO: PIN input component */}
+        <PinInput onComplete={(pin) => void submit(pin)} />
+        {ui.kind === "error" && (
+          <p role="alert" className="text-sm text-destructive">
+            {ui.message}
+          </p>
+        )}
       </div>
     </main>
   );
