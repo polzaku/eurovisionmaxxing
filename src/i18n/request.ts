@@ -6,6 +6,33 @@ import {
   isSupportedLocale,
   type SupportedLocale,
 } from "@/i18n/config";
+import enMessages from "@/locales/en.json";
+
+export function deepMerge(
+  base: Record<string, unknown>,
+  overlay: Record<string, unknown>,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...base };
+  for (const [key, value] of Object.entries(overlay)) {
+    const existing = result[key];
+    if (
+      value !== null &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      existing !== null &&
+      typeof existing === "object" &&
+      !Array.isArray(existing)
+    ) {
+      result[key] = deepMerge(
+        existing as Record<string, unknown>,
+        value as Record<string, unknown>,
+      );
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
 
 // requestLocale (X-NEXT-INTL-LOCALE header) is intentionally unused — our middleware
 // writes NEXT_LOCALE cookie instead of setting that header. The cookie is the SoT.
@@ -14,14 +41,18 @@ export default getRequestConfig(async () => {
   const raw = cookies().get(LOCALE_COOKIE)?.value;
   const locale: SupportedLocale = isSupportedLocale(raw) ? raw : DEFAULT_LOCALE;
 
-  // Always load en.json as the base; overlay locale-specific keys on top.
-  // This means stub locales (e.g. es.json = {}) transparently fall back to English
-  // without surfacing MISSING_MESSAGE errors.
-  const enMessages = (await import("@/locales/en.json")).default;
-  const localeMessages =
-    locale === DEFAULT_LOCALE
-      ? enMessages
-      : { ...enMessages, ...(await import(`@/locales/${locale}.json`)).default };
-
-  return { locale, messages: localeMessages };
+  // Always merge the requested locale on top of en so partial translations
+  // don't surface MISSING_MESSAGE errors. en is the canonical fallback per SPEC §21.1.
+  if (locale === DEFAULT_LOCALE) {
+    return { locale, messages: enMessages };
+  }
+  const overlay = (await import(`@/locales/${locale}.json`)).default as Record<
+    string,
+    unknown
+  >;
+  const messages = deepMerge(
+    enMessages as Record<string, unknown>,
+    overlay,
+  ) as typeof enMessages;
+  return { locale, messages };
 });

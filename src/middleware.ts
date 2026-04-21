@@ -18,7 +18,7 @@ export function middleware(request: NextRequest): NextResponse {
   // server components for the current request but is never sent to the client).
   response.headers.append(
     "Set-Cookie",
-    `${LOCALE_COOKIE}=${detected}; Path=/; Max-Age=${ONE_YEAR_SECONDS}; SameSite=Lax`,
+    `${LOCALE_COOKIE}=${detected}; Path=/; Max-Age=${ONE_YEAR_SECONDS}; SameSite=Lax${process.env.NODE_ENV === "production" ? "; Secure" : ""}`,
   );
   return response;
 }
