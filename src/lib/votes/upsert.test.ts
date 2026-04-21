@@ -525,6 +525,44 @@ describe("upsertVote — happy path", () => {
     expect(result.ok).toBe(true);
     expect(mock.upsertPayloads[0]).toMatchObject({ hot_take: null });
   });
+
+  it("commits the DB write even when the broadcast throws (logs warning)", async () => {
+    const persisted = {
+      id: "44444444-dddd-4eee-8fff-555555555555",
+      room_id: VALID_ROOM_ID,
+      user_id: VALID_USER_ID,
+      contestant_id: VALID_CONTESTANT_ID,
+      scores: { Vocals: 4 },
+      missed: false,
+      hot_take: null,
+      updated_at: "2026-04-21T12:00:00Z",
+    };
+    const mock = makeSupabaseMock({
+      voteUpsertResult: { data: persisted, error: null },
+    });
+    const broadcast = vi
+      .fn()
+      .mockRejectedValue(new Error("ws closed"));
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const result = await upsertVote(
+        {
+          roomId: VALID_ROOM_ID,
+          userId: VALID_USER_ID,
+          contestantId: VALID_CONTESTANT_ID,
+          scores: { Vocals: 4 },
+        },
+        makeDeps(mock, { broadcastRoomEvent: broadcast })
+      );
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.scoredCount).toBe(1);
+      expect(mock.upsertPayloads).toHaveLength(1);
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
 });
 
 describe("upsertVote — room & membership guards", () => {
