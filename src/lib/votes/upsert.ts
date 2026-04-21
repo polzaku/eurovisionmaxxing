@@ -11,12 +11,6 @@ export interface UpsertVoteInput {
   scores?: unknown;
   missed?: unknown;
   hotTake?: unknown;
-  /**
-   * True when the caller omitted `hotTake` entirely. False when they sent
-   * `hotTake: null` (which clears) or a string (which overwrites). The
-   * route adapter sets this by inspecting `Object.prototype.hasOwnProperty`
-   * on the parsed body.
-   */
   hotTakeOmitted?: boolean;
 }
 
@@ -39,9 +33,28 @@ export interface UpsertVoteFailure {
 
 export type UpsertVoteResult = UpsertVoteSuccess | UpsertVoteFailure;
 
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function fail(
+  code: ApiErrorCode,
+  message: string,
+  status: number,
+  field?: string
+): UpsertVoteFailure {
+  return {
+    ok: false,
+    error: field ? { code, message, field } : { code, message },
+    status,
+  };
+}
+
 export async function upsertVote(
-  _input: UpsertVoteInput,
+  input: UpsertVoteInput,
   _deps: UpsertVoteDeps
 ): Promise<UpsertVoteResult> {
+  if (typeof input.roomId !== "string" || !UUID_REGEX.test(input.roomId)) {
+    return fail("INVALID_ROOM_ID", "roomId must be a UUID.", 400, "roomId");
+  }
   throw new Error("not implemented");
 }
