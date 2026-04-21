@@ -130,7 +130,7 @@ export type RoomEvent =
   | { type: "user_joined"; user: { id: string; displayName: string; avatarSeed: string } }
   | { type: "user_left"; userId: string }
   | { type: "now_performing"; contestantId: string }
-  | { type: "voting_progress"; userId: string; scoredCount: number }
+  | { type: "voting_progress"; userId: string; contestantId: string; scoredCount: number }
   | { type: "announce_next"; contestantId: string; points: number; announcingUserId: string }
   | { type: "announce_turn"; userId: string }
   | { type: "score_update"; contestantId: string; newTotal: number; newRank: number };

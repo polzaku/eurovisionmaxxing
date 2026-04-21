@@ -8,6 +8,12 @@ export type RoomEventPayload =
   | {
       type: "user_joined";
       user: { id: string; displayName: string; avatarSeed: string };
+    }
+  | {
+      type: "voting_progress";
+      userId: string;
+      contestantId: string;
+      scoredCount: number;
     };
 
 type RoomRow = Database["public"]["Tables"]["rooms"]["Row"];
