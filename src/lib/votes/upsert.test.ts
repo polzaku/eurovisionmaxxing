@@ -384,6 +384,147 @@ describe("upsertVote — happy path", () => {
       error: { code: "INTERNAL_ERROR" },
     });
   });
+
+  it("merges partial scores into existing row (preserves untouched categories)", async () => {
+    const existing = {
+      scores: { Vocals: 5, Staging: 5 },
+      missed: false,
+      hot_take: "ok",
+    };
+    const persisted = {
+      id: "ffffffff-0000-4111-8222-333333333333",
+      room_id: VALID_ROOM_ID,
+      user_id: VALID_USER_ID,
+      contestant_id: VALID_CONTESTANT_ID,
+      scores: { Vocals: 9, Staging: 5 },
+      missed: false,
+      hot_take: "ok",
+      updated_at: "2026-04-21T12:00:00Z",
+    };
+    const mock = makeSupabaseMock({
+      existingVoteSelectResult: { data: existing, error: null },
+      voteUpsertResult: { data: persisted, error: null },
+    });
+    const result = await upsertVote(
+      {
+        roomId: VALID_ROOM_ID,
+        userId: VALID_USER_ID,
+        contestantId: VALID_CONTESTANT_ID,
+        scores: { Vocals: 9 }, // only Vocals this time
+      },
+      makeDeps(mock)
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(mock.upsertPayloads[0]).toMatchObject({
+      scores: { Vocals: 9, Staging: 5 },
+      missed: false,
+      hot_take: "ok",
+    });
+    expect(result.scoredCount).toBe(2);
+  });
+
+  it("missed: true → broadcasts scoredCount=0 even with scores present", async () => {
+    const persisted = {
+      id: "11111111-aaaa-4bbb-8ccc-222222222222",
+      room_id: VALID_ROOM_ID,
+      user_id: VALID_USER_ID,
+      contestant_id: VALID_CONTESTANT_ID,
+      scores: { Vocals: 7, Staging: 8 },
+      missed: true,
+      hot_take: null,
+      updated_at: "2026-04-21T12:00:00Z",
+    };
+    const mock = makeSupabaseMock({
+      voteUpsertResult: { data: persisted, error: null },
+    });
+    const broadcast = vi.fn().mockResolvedValue(undefined);
+    const result = await upsertVote(
+      {
+        roomId: VALID_ROOM_ID,
+        userId: VALID_USER_ID,
+        contestantId: VALID_CONTESTANT_ID,
+        missed: true,
+        scores: { Vocals: 7, Staging: 8 },
+      },
+      makeDeps(mock, { broadcastRoomEvent: broadcast })
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.scoredCount).toBe(0);
+    expect(broadcast).toHaveBeenCalledWith(VALID_ROOM_ID, {
+      type: "voting_progress",
+      userId: VALID_USER_ID,
+      contestantId: VALID_CONTESTANT_ID,
+      scoredCount: 0,
+    });
+  });
+
+  it("omitting hotTake preserves existing hot_take", async () => {
+    const existing = {
+      scores: { Vocals: 5 },
+      missed: false,
+      hot_take: "keep me",
+    };
+    const persisted = {
+      id: "22222222-bbbb-4ccc-8ddd-333333333333",
+      room_id: VALID_ROOM_ID,
+      user_id: VALID_USER_ID,
+      contestant_id: VALID_CONTESTANT_ID,
+      scores: { Vocals: 9 },
+      missed: false,
+      hot_take: "keep me",
+      updated_at: "2026-04-21T12:00:00Z",
+    };
+    const mock = makeSupabaseMock({
+      existingVoteSelectResult: { data: existing, error: null },
+      voteUpsertResult: { data: persisted, error: null },
+    });
+    const result = await upsertVote(
+      {
+        roomId: VALID_ROOM_ID,
+        userId: VALID_USER_ID,
+        contestantId: VALID_CONTESTANT_ID,
+        scores: { Vocals: 9 },
+      },
+      makeDeps(mock)
+    );
+    expect(result.ok).toBe(true);
+    expect(mock.upsertPayloads[0]).toMatchObject({ hot_take: "keep me" });
+  });
+
+  it("hotTake: null clears existing hot_take", async () => {
+    const existing = {
+      scores: {},
+      missed: false,
+      hot_take: "gone soon",
+    };
+    const persisted = {
+      id: "33333333-cccc-4ddd-8eee-444444444444",
+      room_id: VALID_ROOM_ID,
+      user_id: VALID_USER_ID,
+      contestant_id: VALID_CONTESTANT_ID,
+      scores: {},
+      missed: false,
+      hot_take: null,
+      updated_at: "2026-04-21T12:00:00Z",
+    };
+    const mock = makeSupabaseMock({
+      existingVoteSelectResult: { data: existing, error: null },
+      voteUpsertResult: { data: persisted, error: null },
+    });
+    const result = await upsertVote(
+      {
+        roomId: VALID_ROOM_ID,
+        userId: VALID_USER_ID,
+        contestantId: VALID_CONTESTANT_ID,
+        hotTake: null,
+      },
+      makeDeps(mock)
+    );
+    expect(result.ok).toBe(true);
+    expect(mock.upsertPayloads[0]).toMatchObject({ hot_take: null });
+  });
 });
 
 describe("upsertVote — room & membership guards", () => {
