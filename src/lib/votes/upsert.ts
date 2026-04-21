@@ -36,6 +36,8 @@ export type UpsertVoteResult = UpsertVoteSuccess | UpsertVoteFailure;
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const CONTESTANT_ID_REGEX = /^\d{4}-[a-z]{2}$/;
+
 function fail(
   code: ApiErrorCode,
   message: string,
@@ -55,6 +57,25 @@ export async function upsertVote(
 ): Promise<UpsertVoteResult> {
   if (typeof input.roomId !== "string" || !UUID_REGEX.test(input.roomId)) {
     return fail("INVALID_ROOM_ID", "roomId must be a UUID.", 400, "roomId");
+  }
+  if (typeof input.userId !== "string" || input.userId.length === 0) {
+    return fail(
+      "INVALID_USER_ID",
+      "userId must be a non-empty string.",
+      400,
+      "userId"
+    );
+  }
+  if (
+    typeof input.contestantId !== "string" ||
+    !CONTESTANT_ID_REGEX.test(input.contestantId)
+  ) {
+    return fail(
+      "INVALID_CONTESTANT_ID",
+      "contestantId must look like '{year}-{countryCode}' (e.g. '2026-gb').",
+      400,
+      "contestantId"
+    );
   }
   throw new Error("not implemented");
 }

@@ -135,4 +135,54 @@ describe("upsertVote — input validation", () => {
     expect(mock.upsertPayloads).toEqual([]);
     expect(broadcast).not.toHaveBeenCalled();
   });
+
+  it.each([undefined, null, 42, ""])(
+    "rejects missing/empty/non-string userId (%s) with INVALID_USER_ID",
+    async (userId) => {
+      const mock = makeSupabaseMock();
+      const result = await upsertVote(
+        {
+          roomId: VALID_ROOM_ID,
+          userId,
+          contestantId: VALID_CONTESTANT_ID,
+        },
+        makeDeps(mock)
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        status: 400,
+        error: { code: "INVALID_USER_ID", field: "userId" },
+      });
+      expect(mock.upsertPayloads).toEqual([]);
+    }
+  );
+
+  it.each([
+    undefined,
+    null,
+    42,
+    "",
+    "2026",
+    "2026-",
+    "2026-united-kingdom",
+    "2026-GB",
+    "26-gb",
+    "2026-g",
+    "2026-gbr",
+  ])(
+    "rejects bad contestantId (%s) with INVALID_CONTESTANT_ID",
+    async (contestantId) => {
+      const mock = makeSupabaseMock();
+      const result = await upsertVote(
+        { roomId: VALID_ROOM_ID, userId: VALID_USER_ID, contestantId },
+        makeDeps(mock)
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        status: 400,
+        error: { code: "INVALID_CONTESTANT_ID", field: "contestantId" },
+      });
+      expect(mock.upsertPayloads).toEqual([]);
+    }
+  );
 });
