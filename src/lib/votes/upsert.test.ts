@@ -187,6 +187,101 @@ describe("upsertVote — input validation", () => {
   );
 });
 
+describe("upsertVote — body shape validation", () => {
+  const baseInput = {
+    roomId: VALID_ROOM_ID,
+    userId: VALID_USER_ID,
+    contestantId: VALID_CONTESTANT_ID,
+  };
+
+  it("rejects non-object scores with INVALID_BODY", async () => {
+    const mock = makeSupabaseMock();
+    const result = await upsertVote(
+      { ...baseInput, scores: "not-an-object" },
+      makeDeps(mock)
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 400,
+      error: { code: "INVALID_BODY", field: "scores" },
+    });
+    expect(mock.upsertPayloads).toEqual([]);
+  });
+
+  it.each([0, 11, 5.5, -1, "7", null, NaN])(
+    "rejects score value %s with INVALID_BODY",
+    async (bad) => {
+      const mock = makeSupabaseMock();
+      const result = await upsertVote(
+        { ...baseInput, scores: { Vocals: bad } },
+        makeDeps(mock)
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        status: 400,
+        error: { code: "INVALID_BODY", field: "scores.Vocals" },
+      });
+      expect(mock.upsertPayloads).toEqual([]);
+    }
+  );
+
+  it("rejects score key not present in rooms.categories with INVALID_CATEGORY", async () => {
+    const mock = makeSupabaseMock();
+    const result = await upsertVote(
+      { ...baseInput, scores: { NotACategory: 7 } },
+      makeDeps(mock)
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 400,
+      error: { code: "INVALID_CATEGORY", field: "scores.NotACategory" },
+    });
+    expect(mock.upsertPayloads).toEqual([]);
+  });
+
+  it.each(["yes", 1, []])(
+    "rejects non-boolean missed (%s) with INVALID_BODY",
+    async (bad) => {
+      const mock = makeSupabaseMock();
+      const result = await upsertVote(
+        { ...baseInput, missed: bad },
+        makeDeps(mock)
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        status: 400,
+        error: { code: "INVALID_BODY", field: "missed" },
+      });
+    }
+  );
+
+  it("rejects non-string, non-null hotTake with INVALID_BODY", async () => {
+    const mock = makeSupabaseMock();
+    const result = await upsertVote(
+      { ...baseInput, hotTake: 42 },
+      makeDeps(mock)
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 400,
+      error: { code: "INVALID_BODY", field: "hotTake" },
+    });
+  });
+
+  it("rejects hotTake longer than 140 chars with INVALID_BODY", async () => {
+    const mock = makeSupabaseMock();
+    const result = await upsertVote(
+      { ...baseInput, hotTake: "x".repeat(141) },
+      makeDeps(mock)
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 400,
+      error: { code: "INVALID_BODY", field: "hotTake" },
+    });
+  });
+});
+
 describe("upsertVote — room & membership guards", () => {
   it("returns 404 ROOM_NOT_FOUND when the room does not exist", async () => {
     const mock = makeSupabaseMock({

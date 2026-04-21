@@ -125,5 +125,75 @@ export async function upsertVote(
     );
   }
 
+  // Body-shape validation (runs after room load so we can check category names)
+  let scoresIn: Record<string, number> | undefined;
+  if (input.scores !== undefined) {
+    if (
+      typeof input.scores !== "object" ||
+      input.scores === null ||
+      Array.isArray(input.scores)
+    ) {
+      return fail(
+        "INVALID_BODY",
+        "scores must be an object mapping category names to integers 1-10.",
+        400,
+        "scores"
+      );
+    }
+    const categoryNames = new Set(roomRow.categories.map((c) => c.name));
+    const parsed: Record<string, number> = {};
+    for (const [key, value] of Object.entries(
+      input.scores as Record<string, unknown>
+    )) {
+      if (!categoryNames.has(key)) {
+        return fail(
+          "INVALID_CATEGORY",
+          `'${key}' is not a voting category for this room.`,
+          400,
+          `scores.${key}`
+        );
+      }
+      if (
+        typeof value !== "number" ||
+        !Number.isInteger(value) ||
+        value < 1 ||
+        value > 10
+      ) {
+        return fail(
+          "INVALID_BODY",
+          `Score for '${key}' must be an integer between 1 and 10.`,
+          400,
+          `scores.${key}`
+        );
+      }
+      parsed[key] = value;
+    }
+    scoresIn = parsed;
+  }
+
+  if (input.missed !== undefined && typeof input.missed !== "boolean") {
+    return fail("INVALID_BODY", "missed must be a boolean.", 400, "missed");
+  }
+
+  if (input.hotTake !== undefined) {
+    if (input.hotTake !== null && typeof input.hotTake !== "string") {
+      return fail(
+        "INVALID_BODY",
+        "hotTake must be a string, null, or omitted.",
+        400,
+        "hotTake"
+      );
+    }
+    if (typeof input.hotTake === "string" && input.hotTake.length > 140) {
+      return fail(
+        "INVALID_BODY",
+        "hotTake must be at most 140 characters.",
+        400,
+        "hotTake"
+      );
+    }
+  }
+
+  void scoresIn;
   throw new Error("not implemented");
 }
