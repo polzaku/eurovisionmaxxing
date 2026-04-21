@@ -29,7 +29,12 @@ export interface OnboardSuccess {
 
 export interface OnboardFailure {
   ok: false;
-  error: { code: ApiErrorCode; message: string; field?: string };
+  error: {
+    code: ApiErrorCode;
+    message: string;
+    field?: string;
+    params?: Record<string, unknown>;
+  };
   status: number;
 }
 
@@ -39,13 +44,13 @@ function fail(
   code: ApiErrorCode,
   message: string,
   status: number,
-  field?: string
+  field?: string,
+  params?: Record<string, unknown>,
 ): OnboardFailure {
-  return {
-    ok: false,
-    error: field ? { code, message, field } : { code, message },
-    status,
-  };
+  const error: OnboardFailure["error"] = { code, message };
+  if (field !== undefined) error.field = field;
+  if (params !== undefined) error.params = params;
+  return { ok: false, error, status };
 }
 
 export function normalizeDisplayName(raw: string): string {
@@ -60,7 +65,7 @@ export async function onboardUser(
     return fail(
       "INVALID_BODY",
       "Request body must include displayName and avatarSeed strings.",
-      400
+      400,
     );
   }
 
@@ -70,7 +75,7 @@ export async function onboardUser(
       "INVALID_DISPLAY_NAME",
       "displayName must be 2–24 characters and contain only letters, numbers, spaces, or hyphens.",
       400,
-      "displayName"
+      "displayName",
     );
   }
 
@@ -80,7 +85,8 @@ export async function onboardUser(
       "INVALID_AVATAR_SEED",
       `avatarSeed must be 1–${AVATAR_SEED_MAX_LEN} characters.`,
       400,
-      "avatarSeed"
+      "avatarSeed",
+      { limit: AVATAR_SEED_MAX_LEN },
     );
   }
 

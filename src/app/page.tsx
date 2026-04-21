@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import Logo from "@/components/ui/Logo";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const t = await getTranslations("common");
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
       <div className="max-w-md w-full text-center space-y-10 animate-fade-in">
@@ -20,15 +22,13 @@ export default function HomePage() {
               ever needs to wrap.
             */}
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight emx-wordmark text-balance leading-tight break-words">
-              eurovisionmaxxing
+              {t("app.name")}
             </h1>
             <p className="text-lg sm:text-xl font-semibold text-foreground text-balance">
-              The group-chat way to watch Eurovision.
+              {t("app.tagline")}
             </p>
             <p className="text-muted-foreground text-base sm:text-lg leading-relaxed text-balance pt-1">
-              Turn the contest into your own voting game. Rate every country,
-              stir up the group chat live, and end the night with a proper
-              12-points announcement.
+              {t("app.description")}
             </p>
           </div>
         </div>
@@ -39,19 +39,19 @@ export default function HomePage() {
             href="/create"
             className="block w-full rounded-xl bg-primary px-6 py-4 text-lg font-semibold text-primary-foreground text-center transition-all duration-200 hover:scale-[1.02] hover:emx-glow-gold active:scale-[0.98]"
           >
-            Start a room
+            {t("cta.startRoom")}
           </Link>
           <Link
             href="/join"
             className="block w-full rounded-xl border-2 border-border px-6 py-4 text-lg font-semibold text-foreground text-center transition-all duration-200 hover:scale-[1.02] hover:border-accent hover:emx-glow-pink active:scale-[0.98]"
           >
-            Join a room
+            {t("cta.joinRoom")}
           </Link>
         </div>
 
         {/* Micro-meta strip */}
         <p className="text-sm text-muted-foreground">
-          Vote live · Any device · Jury-style reveal
+          {t("app.featuresLine")}
         </p>
       </div>
     </main>

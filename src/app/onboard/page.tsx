@@ -1,9 +1,14 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
+import { getTranslations } from "next-intl/server";
 import OnboardingForm from "@/components/onboarding/OnboardingForm";
 
-export const metadata = {
-  title: "Join — eurovisionmaxxing",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("onboarding");
+  return {
+    title: t("metaTitle"),
+  };
+}
 
 export default function OnboardPage() {
   return (

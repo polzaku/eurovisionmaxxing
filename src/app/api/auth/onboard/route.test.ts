@@ -65,4 +65,18 @@ describe("POST /api/auth/onboard (route adapter)", () => {
     expect(body.error.code).toBe("INVALID_DISPLAY_NAME");
     expect(body.error.field).toBe("displayName");
   });
+
+  it("returns INVALID_AVATAR_SEED with params.limit when avatarSeed exceeds 64 chars", async () => {
+    const longSeed = "x".repeat(65);
+    const res = await POST(
+      makeRequest({ displayName: "Lia Bear", avatarSeed: longSeed }),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as {
+      error: { code: string; field?: string; params?: { limit?: number } };
+    };
+    expect(body.error.code).toBe("INVALID_AVATAR_SEED");
+    expect(body.error.field).toBe("avatarSeed");
+    expect(body.error.params).toEqual({ limit: 64 });
+  });
 });

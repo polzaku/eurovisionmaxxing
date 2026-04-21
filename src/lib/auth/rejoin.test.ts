@@ -225,7 +225,7 @@ describe("rejoinUser — body validation", () => {
     expect(result).toMatchObject({
       ok: false,
       status: 400,
-      error: { code: "INVALID_BODY", field: "rejoinToken" },
+      error: { code: "INVALID_BODY", field: "rejoinToken", params: { limit: 512 } },
     });
   });
 

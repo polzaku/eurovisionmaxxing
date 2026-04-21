@@ -25,7 +25,12 @@ export interface RejoinSuccess {
 
 export interface RejoinFailure {
   ok: false;
-  error: { code: ApiErrorCode; message: string; field?: string };
+  error: {
+    code: ApiErrorCode;
+    message: string;
+    field?: string;
+    params?: Record<string, unknown>;
+  };
   status: number;
 }
 
@@ -35,13 +40,13 @@ function fail(
   code: ApiErrorCode,
   message: string,
   status: number,
-  field?: string
+  field?: string,
+  params?: Record<string, unknown>,
 ): RejoinFailure {
-  return {
-    ok: false,
-    error: field ? { code, message, field } : { code, message },
-    status,
-  };
+  const error: RejoinFailure["error"] = { code, message };
+  if (field !== undefined) error.field = field;
+  if (params !== undefined) error.params = params;
+  return { ok: false, error, status };
 }
 
 export async function rejoinUser(
@@ -52,7 +57,7 @@ export async function rejoinUser(
     return fail(
       "INVALID_BODY",
       "Request body must include userId and rejoinToken strings.",
-      400
+      400,
     );
   }
 
@@ -64,7 +69,8 @@ export async function rejoinUser(
       "INVALID_BODY",
       `rejoinToken must be at most ${REJOIN_TOKEN_MAX_LEN} characters.`,
       400,
-      "rejoinToken"
+      "rejoinToken",
+      { limit: REJOIN_TOKEN_MAX_LEN },
     );
   }
 

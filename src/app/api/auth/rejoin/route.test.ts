@@ -68,4 +68,21 @@ describe("POST /api/auth/rejoin (route adapter)", () => {
     const body = (await res.json()) as { error: { code: string } };
     expect(body.error.code).toBe("INVALID_TOKEN");
   });
+
+  it("returns INVALID_BODY with params.limit when rejoinToken exceeds 512 chars", async () => {
+    const longToken = "x".repeat(513);
+    const res = await POST(
+      makeRequest({
+        userId: "11111111-1111-4111-8111-111111111111",
+        rejoinToken: longToken,
+      }),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as {
+      error: { code: string; field?: string; params?: { limit?: number } };
+    };
+    expect(body.error.code).toBe("INVALID_BODY");
+    expect(body.error.field).toBe("rejoinToken");
+    expect(body.error.params).toEqual({ limit: 512 });
+  });
 });

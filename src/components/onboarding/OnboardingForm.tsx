@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import Avatar from "@/components/ui/Avatar";
 import AvatarCarousel from "@/components/onboarding/AvatarCarousel";
 import CandidatePicker from "@/components/onboarding/CandidatePicker";
@@ -33,7 +34,12 @@ interface Candidate {
 }
 
 interface ApiErrorShape {
-  error: { code: string; message: string; field?: string };
+  error: {
+    code: string;
+    message: string;
+    field?: string;
+    params?: Record<string, unknown>;
+  };
 }
 
 export default function OnboardingForm() {
@@ -43,6 +49,8 @@ export default function OnboardingForm() {
     () => sanitizeNextPath(searchParams.get("next")),
     [searchParams],
   );
+  const tErrors = useTranslations("errors");
+  const tOnboarding = useTranslations("onboarding");
   const roomId = useMemo(() => extractRoomId(nextPath), [nextPath]);
 
   const [redirectChecked, setRedirectChecked] = useState(false);
@@ -110,9 +118,9 @@ export default function OnboardingForm() {
     }
     const body = (await res.json().catch(() => null)) as ApiErrorShape | null;
     if (res.status === 400 && body?.error?.code === "INVALID_DISPLAY_NAME") {
-      setFieldError(body.error.message);
+      setFieldError(renderApiError(body.error));
     } else {
-      setGeneralError("Couldn't create your identity. Try again.");
+      setGeneralError(tOnboarding("submit.error"));
     }
   }
 
@@ -130,7 +138,7 @@ export default function OnboardingForm() {
       }
       const body = (await res.json().catch(() => null)) as ApiErrorShape | null;
       if (res.status === 400 && body?.error?.code === "INVALID_DISPLAY_NAME") {
-        setFieldError(body.error.message);
+        setFieldError(renderApiError(body.error));
         return null;
       }
       setGeneralError("Couldn't check the room. Try again.");
@@ -146,7 +154,7 @@ export default function OnboardingForm() {
     setFieldError(null);
     setGeneralError(null);
     if (!nameValid) {
-      setFieldError("Use 2–24 letters, numbers, spaces, or hyphens.");
+      setFieldError(tOnboarding("displayName.hint"));
       return;
     }
     setSubmitting(true);
@@ -160,7 +168,7 @@ export default function OnboardingForm() {
       }
       await createNewIdentity(normalized, effectiveSeed);
     } catch {
-      setGeneralError("Couldn't create your identity. Try again.");
+      setGeneralError(tOnboarding("submit.error"));
     } finally {
       setSubmitting(false);
     }
@@ -217,10 +225,22 @@ export default function OnboardingForm() {
     try {
       await createNewIdentity(normalized, effectiveSeed);
     } catch {
-      setGeneralError("Couldn't create your identity. Try again.");
+      setGeneralError(tOnboarding("submit.error"));
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function renderApiError(error: ApiErrorShape["error"]): string {
+    // next-intl returns "errors.<code>" when the key is missing (defaultGetMessageFallback).
+    const key = `errors.${error.code}`;
+    // `as never`: error.code is a runtime string; next-intl's generic key constraint
+    // requires a literal type. The fallback check below handles any miss safely.
+    const translated = tErrors(error.code as never, (error.params ?? {}) as never);
+    if (translated === key) {
+      return error.message;
+    }
+    return translated;
   }
 
   function onChangeName() {
@@ -261,17 +281,17 @@ export default function OnboardingForm() {
         <button
           type="button"
           onClick={openOrShuffleCarousel}
-          aria-label="Change avatar"
+          aria-label={tOnboarding("avatar.changeAria")}
           className="rounded-full border-2 border-border p-1 transition-colors hover:border-accent"
         >
           <Avatar seed={effectiveSeed} size={128} />
         </button>
-        <p className="text-sm text-muted-foreground">Tap your avatar to change it.</p>
+        <p className="text-sm text-muted-foreground">{tOnboarding("avatar.tapHint")}</p>
       </div>
 
       <div className="space-y-2">
         <label htmlFor="displayName" className="text-sm font-semibold text-foreground">
-          Your display name
+          {tOnboarding("displayName.label")}
         </label>
         <input
           id="displayName"
@@ -287,7 +307,7 @@ export default function OnboardingForm() {
           aria-invalid={fieldError != null}
           aria-describedby={fieldError ? "displayName-error" : undefined}
           className="w-full rounded-xl border-2 border-border bg-background px-4 py-3 text-lg text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none"
-          placeholder="e.g. Alice"
+          placeholder={tOnboarding("displayName.placeholder")}
         />
         {fieldError && (
           <p
@@ -321,7 +341,7 @@ export default function OnboardingForm() {
         disabled={!nameValid || submitting}
         className="block w-full rounded-xl bg-primary px-6 py-4 text-lg font-semibold text-primary-foreground transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
       >
-        {submitting ? "Joining…" : "Join"}
+        {submitting ? tOnboarding("submit.busy") : tOnboarding("submit.idle")}
       </button>
     </form>
   );
