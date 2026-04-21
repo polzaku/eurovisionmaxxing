@@ -11,13 +11,6 @@ export interface UpsertVoteInput {
   scores?: unknown;
   missed?: unknown;
   hotTake?: unknown;
-  /**
-   * True when the caller omitted `hotTake` entirely. False when they sent
-   * `hotTake: null` (which clears) or a string (which overwrites). The
-   * route adapter sets this by inspecting `Object.prototype.hasOwnProperty`
-   * on the parsed body.
-   */
-  hotTakeOmitted?: boolean;
 }
 
 export interface UpsertVoteDeps {
