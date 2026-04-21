@@ -53,7 +53,7 @@ function fail(
 
 export async function upsertVote(
   input: UpsertVoteInput,
-  _deps: UpsertVoteDeps
+  deps: UpsertVoteDeps
 ): Promise<UpsertVoteResult> {
   if (typeof input.roomId !== "string" || !UUID_REGEX.test(input.roomId)) {
     return fail("INVALID_ROOM_ID", "roomId must be a UUID.", 400, "roomId");
@@ -77,5 +77,47 @@ export async function upsertVote(
       "contestantId"
     );
   }
+  const roomId = input.roomId;
+  const userId = input.userId;
+  const contestantId = input.contestantId;
+
+  const roomQuery = await deps.supabase
+    .from("rooms")
+    .select("id, status, categories")
+    .eq("id", roomId)
+    .maybeSingle();
+
+  if (roomQuery.error || !roomQuery.data) {
+    return fail("ROOM_NOT_FOUND", "Room not found.", 404);
+  }
+  const roomRow = roomQuery.data as {
+    id: string;
+    status: string;
+    categories: Array<{ name: string; weight: number; hint?: string }>;
+  };
+
+  const membershipQuery = await deps.supabase
+    .from("room_memberships")
+    .select("room_id")
+    .eq("room_id", roomId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (membershipQuery.error || !membershipQuery.data) {
+    return fail(
+      "FORBIDDEN",
+      "You must join this room before voting.",
+      403
+    );
+  }
+
+  if (roomRow.status !== "voting") {
+    return fail(
+      "ROOM_NOT_VOTING",
+      "Votes can only be cast while the room is in 'voting' status.",
+      409
+    );
+  }
+
   throw new Error("not implemented");
 }

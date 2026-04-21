@@ -186,3 +186,94 @@ describe("upsertVote — input validation", () => {
     }
   );
 });
+
+describe("upsertVote — room & membership guards", () => {
+  it("returns 404 ROOM_NOT_FOUND when the room does not exist", async () => {
+    const mock = makeSupabaseMock({
+      roomSelectResult: { data: null, error: null },
+    });
+    const broadcast = vi.fn();
+    const result = await upsertVote(
+      {
+        roomId: VALID_ROOM_ID,
+        userId: VALID_USER_ID,
+        contestantId: VALID_CONTESTANT_ID,
+      },
+      makeDeps(mock, { broadcastRoomEvent: broadcast })
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 404,
+      error: { code: "ROOM_NOT_FOUND" },
+    });
+    expect(mock.upsertPayloads).toEqual([]);
+    expect(broadcast).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 ROOM_NOT_FOUND when the room SELECT errors", async () => {
+    const mock = makeSupabaseMock({
+      roomSelectResult: { data: null, error: { message: "db boom" } },
+    });
+    const result = await upsertVote(
+      {
+        roomId: VALID_ROOM_ID,
+        userId: VALID_USER_ID,
+        contestantId: VALID_CONTESTANT_ID,
+      },
+      makeDeps(mock)
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 404,
+      error: { code: "ROOM_NOT_FOUND" },
+    });
+  });
+
+  it("returns 403 FORBIDDEN when caller is not a room member", async () => {
+    const mock = makeSupabaseMock({
+      membershipSelectResult: { data: null, error: null },
+    });
+    const broadcast = vi.fn();
+    const result = await upsertVote(
+      {
+        roomId: VALID_ROOM_ID,
+        userId: VALID_USER_ID,
+        contestantId: VALID_CONTESTANT_ID,
+      },
+      makeDeps(mock, { broadcastRoomEvent: broadcast })
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 403,
+      error: { code: "FORBIDDEN" },
+    });
+    expect(mock.upsertPayloads).toEqual([]);
+    expect(broadcast).not.toHaveBeenCalled();
+  });
+
+  it.each(["lobby", "scoring", "announcing", "done"])(
+    "returns 409 ROOM_NOT_VOTING when room status is %s",
+    async (status) => {
+      const mock = makeSupabaseMock({
+        roomSelectResult: {
+          data: { ...defaultRoomRow, status },
+          error: null,
+        },
+      });
+      const result = await upsertVote(
+        {
+          roomId: VALID_ROOM_ID,
+          userId: VALID_USER_ID,
+          contestantId: VALID_CONTESTANT_ID,
+        },
+        makeDeps(mock)
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        status: 409,
+        error: { code: "ROOM_NOT_VOTING" },
+      });
+      expect(mock.upsertPayloads).toEqual([]);
+    }
+  );
+});
