@@ -16,6 +16,8 @@ export function middleware(request: NextRequest): NextResponse {
   // response to the browser. response.cookies.set() only writes to
   // x-middleware-set-cookie (an internal Next.js header that is forwarded to
   // server components for the current request but is never sent to the client).
+  // HttpOnly intentionally omitted: Phase B switcher writes this cookie from client JS.
+  // Locale is not a secret, so SameSite=Lax + Secure (in prod) provide sufficient protection.
   response.headers.append(
     "Set-Cookie",
     `${LOCALE_COOKIE}=${detected}; Path=/; Max-Age=${ONE_YEAR_SECONDS}; SameSite=Lax${process.env.NODE_ENV === "production" ? "; Secure" : ""}`,

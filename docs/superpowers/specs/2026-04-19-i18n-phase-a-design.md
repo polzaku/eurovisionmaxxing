@@ -65,9 +65,9 @@ common.app.name           "eurovisionmaxxing"
 common.app.tagline        "The group-chat way to watch Eurovision"
 common.app.description    "Turn the contest into your own voting game…"
 common.app.metaDescription "Eurovision watch party voting app — vote, announce, crown the winner."
+common.app.featuresLine   "Vote live · Any device · Jury-style reveal"
 common.cta.startRoom      "Start a room"
 common.cta.joinRoom       "Join a room"
-common.tagline.feature    "Vote live · Any device · Jury-style reveal"
 ```
 
 ### `onboarding` (~12 keys)
