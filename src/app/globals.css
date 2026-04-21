@@ -149,3 +149,14 @@
     filter: drop-shadow(0 0 16px color-mix(in oklab, var(--hot-pink) 45%, transparent));
   }
 }
+
+/*
+ * Reduced-motion gate (SPEC §3.3, Phase U cross-cutting).
+ * Introduced with ScoreRow — future animations (rank-shift, shimmer,
+ * fade-in) should be added to this block as they land.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .animate-score-pop {
+    animation: none;
+  }
+}
