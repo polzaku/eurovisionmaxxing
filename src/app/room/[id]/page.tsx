@@ -16,6 +16,8 @@ import LobbyView, {
   type StartVotingState,
 } from "@/components/room/LobbyView";
 import StatusStub from "@/components/room/StatusStub";
+import VotingView from "@/components/voting/VotingView";
+import type { Contestant } from "@/types";
 
 interface MembershipShape {
   userId: string;
@@ -30,7 +32,7 @@ interface RoomShape {
   pin: string;
   status: string;
   ownerUserId: string;
-  categories: Array<{ name: string; hint?: string }>;
+  categories: Array<{ name: string; weight: number; hint?: string }>;
 }
 
 type Phase =
@@ -40,6 +42,7 @@ type Phase =
       kind: "ready";
       room: RoomShape;
       memberships: MembershipShape[];
+      contestants: Contestant[];
     };
 
 /**
@@ -118,6 +121,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         kind: "ready",
         room: refetched.room as RoomShape,
         memberships: ensureSelfInMemberships(memberships, session),
+        contestants: (refetched.contestants ?? []) as Contestant[],
       });
       return;
     }
@@ -126,6 +130,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
       kind: "ready",
       room,
       memberships: ensureSelfInMemberships(memberships, session),
+      contestants: (data.contestants ?? []) as Contestant[],
     });
   }, [roomId]);
 
@@ -234,6 +239,16 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         onStartVoting={handleStartVoting}
         onCopyPin={handleCopyPin}
         onCopyLink={handleCopyLink}
+      />
+    );
+  }
+
+  if (phase.room.status === "voting") {
+    return (
+      <VotingView
+        contestants={phase.contestants}
+        categories={phase.room.categories ?? []}
+        isAdmin={isAdmin}
       />
     );
   }
