@@ -105,8 +105,49 @@
     "INVALID_BODY": "Something about your request was invalid.",
     "INVALID_DISPLAY_NAME": "Display name must be 2–24 characters: letters, numbers, spaces, or hyphens.",
     "INVALID_AVATAR_SEED": "Avatar identifier must be 1–{limit} characters.",
+    "INVALID_ROOM_ID": "That room link doesn't look right. Double-check the URL?",
+    "ROOM_NOT_FOUND": "We couldn't find that room.",
     "USER_NOT_FOUND": "We couldn't find that session.",
     "INVALID_TOKEN": "Your session has expired. Please rejoin.",
     "INTERNAL_ERROR": "Something went wrong on our end. Please try again."
+  },
+  "results": {
+    "title": "Results",
+    "placeholders": {
+      "lobby": "This room hasn't started voting yet. Check back after the show.",
+      "lobbyCountdown": "Show starts in {countdown}",
+      "voting": "Voting is still in progress. Results will be available once the admin ends voting.",
+      "votingCta": "Join this room",
+      "scoring": "Tallying results…",
+      "roomNotFound": "We couldn't find that room. Double-check the link?"
+    },
+    "announcing": {
+      "banner": "Live — announcements in progress"
+    },
+    "headings": {
+      "leaderboard": "Leaderboard",
+      "breakdowns": "Who gave what",
+      "hotTakes": "Hot takes"
+    },
+    "leaderboard": {
+      "points": "{count, plural, one {# pt} other {# pts}}",
+      "noPoints": "—"
+    },
+    "breakdown": {
+      "gave": "gave {points} to {country}"
+    },
+    "copySummary": {
+      "idle": "Copy text summary",
+      "done": "Copied!"
+    },
+    "summary": {
+      "topLine": "Our room's top 10:",
+      "fullResults": "Full results"
+    },
+    "eventTitle": {
+      "final": "Eurovision {year} — Grand Final",
+      "semi1": "Eurovision {year} — Semi-final 1",
+      "semi2": "Eurovision {year} — Semi-final 2"
+    }
   }
 }
