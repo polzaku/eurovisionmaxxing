@@ -18,6 +18,8 @@ import LobbyView, {
 import StatusStub from "@/components/room/StatusStub";
 import VotingView from "@/components/voting/VotingView";
 import type { Contestant } from "@/types";
+import { useVoteAutosave } from "@/components/voting/useVoteAutosave";
+import { postVote } from "@/lib/voting/postVote";
 
 interface MembershipShape {
   userId: string;
@@ -193,6 +195,17 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     void navigator.clipboard?.writeText(`${base}/room/${phase.room.id}`);
   }, [phase]);
 
+  const memoizedPostVote = useCallback(
+    (payload: Parameters<typeof postVote>[0]) =>
+      postVote(payload, { fetch: window.fetch.bind(window) }),
+    []
+  );
+  const autosave = useVoteAutosave({
+    roomId,
+    userId: getSession()?.userId ?? null,
+    post: memoizedPostVote,
+  });
+
   if (phase.kind === "loading") {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
@@ -249,6 +262,8 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         contestants={phase.contestants}
         categories={phase.room.categories ?? []}
         isAdmin={isAdmin}
+        onScoreChange={autosave.onScoreChange}
+        saveStatus={autosave.status}
       />
     );
   }
