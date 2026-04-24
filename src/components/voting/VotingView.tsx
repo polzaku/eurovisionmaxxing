@@ -6,16 +6,26 @@ import { SCORE_ANCHORS } from "@/types";
 import Button from "@/components/ui/Button";
 import ScoreRow from "@/components/voting/ScoreRow";
 import { scoredCount } from "@/components/voting/scoredCount";
+import SaveChip from "@/components/voting/SaveChip";
+import type { SaveStatus } from "@/lib/voting/Autosaver";
 
 export interface VotingViewProps {
   contestants: Contestant[];
   categories: VotingCategory[];
   isAdmin?: boolean;
+  onScoreChange?: (
+    contestantId: string,
+    categoryName: string,
+    next: number | null
+  ) => void;
+  saveStatus?: SaveStatus;
 }
 
 export default function VotingView({
   contestants,
   categories,
+  onScoreChange,
+  saveStatus,
 }: VotingViewProps) {
   const sortedContestants = useMemo(
     () => [...contestants].sort((a, b) => a.runningOrder - b.runningOrder),
@@ -36,8 +46,9 @@ export default function VotingView({
           [categoryName]: next,
         },
       }));
+      onScoreChange?.(contestantId, categoryName, next);
     },
-    []
+    [onScoreChange]
   );
 
   if (categories.length === 0) {
@@ -93,6 +104,7 @@ export default function VotingView({
             </p>
           </div>
           <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            {saveStatus !== undefined && <SaveChip status={saveStatus} />}
             <span className="text-sm font-mono text-muted-foreground tabular-nums">
               {contestant.runningOrder}/{totalContestants}
             </span>
