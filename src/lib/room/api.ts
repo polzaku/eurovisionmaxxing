@@ -61,14 +61,19 @@ export type FetchRoomData = {
   room: unknown;
   memberships: unknown[];
   contestants: unknown[];
+  votes: unknown[];
 };
 
 export async function fetchRoomData(
   roomId: string,
+  userId: string | null,
   deps: Deps
 ): Promise<ApiOk<FetchRoomData> | ApiFail> {
+  const url = userId
+    ? `/api/rooms/${roomId}?userId=${encodeURIComponent(userId)}`
+    : `/api/rooms/${roomId}`;
   return runRequest<FetchRoomData>(
-    () => deps.fetch(`/api/rooms/${roomId}`),
+    () => deps.fetch(url),
     (body) => body as FetchRoomData
   );
 }

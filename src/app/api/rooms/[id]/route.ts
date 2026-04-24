@@ -10,11 +10,15 @@ import { fetchContestants } from "@/lib/contestants";
  * the resolved contestant list for the room's year/event.
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const userIdParam = request.nextUrl.searchParams.get("userId");
   const result = await getRoom(
-    { roomId: params.id },
+    {
+      roomId: params.id,
+      ...(userIdParam !== null ? { userId: userIdParam } : {}),
+    },
     {
       supabase: createServiceClient(),
       fetchContestants,

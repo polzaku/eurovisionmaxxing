@@ -7,6 +7,14 @@ import { mapRoom } from "@/lib/rooms/shared";
 
 export interface GetRoomInput {
   roomId: unknown;
+  userId?: unknown;
+}
+
+export interface VoteView {
+  contestantId: string;
+  scores: Record<string, number | null> | null;
+  missed: boolean;
+  hotTake: string | null;
 }
 
 export interface GetRoomDeps {
@@ -26,6 +34,7 @@ export interface GetRoomData {
   room: Room;
   memberships: MembershipView[];
   contestants: Contestant[];
+  votes: VoteView[];
 }
 
 export interface GetRoomSuccess {
@@ -124,5 +133,32 @@ export async function getRoom(
     throw err;
   }
 
-  return { ok: true, data: { room, memberships, contestants } };
+  let votes: VoteView[] = [];
+  if (input.userId !== undefined) {
+    if (typeof input.userId !== "string" || !UUID_REGEX.test(input.userId)) {
+      return fail("INVALID_USER_ID", "userId must be a valid UUID.", 400, "userId");
+    }
+    const userId = input.userId;
+    const votesQuery = await deps.supabase
+      .from("votes")
+      .select("contestant_id, scores, missed, hot_take")
+      .eq("room_id", roomId)
+      .eq("user_id", userId);
+
+    if (!votesQuery.error && Array.isArray(votesQuery.data)) {
+      votes = (votesQuery.data as Array<{
+        contestant_id: string;
+        scores: Record<string, number | null> | null;
+        missed: boolean;
+        hot_take: string | null;
+      }>).map((row) => ({
+        contestantId: row.contestant_id,
+        scores: row.scores,
+        missed: row.missed,
+        hotTake: row.hot_take,
+      }));
+    }
+  }
+
+  return { ok: true, data: { room, memberships, contestants, votes } };
 }

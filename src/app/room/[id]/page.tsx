@@ -20,6 +20,8 @@ import VotingView from "@/components/voting/VotingView";
 import type { Contestant } from "@/types";
 import { useVoteAutosave } from "@/components/voting/useVoteAutosave";
 import { postVote } from "@/lib/voting/postVote";
+import type { VoteView } from "@/lib/rooms/get";
+import { seedScoresFromVotes } from "@/lib/voting/seedScoresFromVotes";
 
 interface MembershipShape {
   userId: string;
@@ -45,6 +47,7 @@ type Phase =
       room: RoomShape;
       memberships: MembershipShape[];
       contestants: Contestant[];
+      votes: VoteView[];
     };
 
 /**
@@ -88,7 +91,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
 
     setPhase({ kind: "loading" });
 
-    const fetchResult = await fetchRoomData(roomId, {
+    const fetchResult = await fetchRoomData(roomId, session.userId, {
       fetch: window.fetch.bind(window),
     });
     if (!fetchResult.ok) {
@@ -110,7 +113,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         return;
       }
       // Refetch so we render with the new membership list.
-      const refetch = await fetchRoomData(roomId, {
+      const refetch = await fetchRoomData(roomId, session.userId, {
         fetch: window.fetch.bind(window),
       });
       if (!refetch.ok) {
@@ -124,6 +127,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         room: refetched.room as RoomShape,
         memberships: ensureSelfInMemberships(memberships, session),
         contestants: (refetched.contestants ?? []) as Contestant[],
+        votes: (refetched.votes ?? []) as VoteView[],
       });
       return;
     }
@@ -133,6 +137,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
       room,
       memberships: ensureSelfInMemberships(memberships, session),
       contestants: (data.contestants ?? []) as Contestant[],
+      votes: (data.votes ?? []) as VoteView[],
     });
   }, [roomId]);
 
@@ -257,6 +262,11 @@ export default function RoomPage({ params }: { params: { id: string } }) {
   }
 
   if (phase.room.status === "voting") {
+    const initialScores = seedScoresFromVotes(
+      phase.votes,
+      (phase.room.categories ?? []).map((c) => c.name),
+      phase.contestants.map((c) => c.id)
+    );
     return (
       <VotingView
         contestants={phase.contestants}
@@ -264,6 +274,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         isAdmin={isAdmin}
         onScoreChange={autosave.onScoreChange}
         saveStatus={autosave.status}
+        initialScores={initialScores}
       />
     );
   }

@@ -54,15 +54,22 @@ const contestants: Contestant[] = [
 interface MockOptions {
   roomResult?: { data: unknown; error: { message: string } | null };
   membershipsResult?: { data: unknown; error: { message: string } | null };
+  votesResult?: { data: unknown; error: { message: string } | null };
 }
 
 function makeSupabaseMock(opts: MockOptions = {}) {
   const roomResult = opts.roomResult ?? { data: roomRow, error: null };
   const membershipsResult =
     opts.membershipsResult ?? { data: membershipRows, error: null };
+  const votesResult = opts.votesResult ?? { data: [], error: null };
 
   const roomSelectCalls: Array<{ table: string; eq?: { col: string; val: unknown } }> = [];
   const membershipSelectCalls: Array<{ table: string; eq?: { col: string; val: unknown }; select: string }> = [];
+  const votesSelectCalls: Array<{
+    table: string;
+    eq1: { col: string; val: unknown };
+    eq2: { col: string; val: unknown };
+  }> = [];
 
   const from = vi.fn((table: string) => {
     if (table === "rooms") {
@@ -87,6 +94,22 @@ function makeSupabaseMock(opts: MockOptions = {}) {
         })),
       };
     }
+    if (table === "votes") {
+      return {
+        select: vi.fn(() => ({
+          eq: vi.fn((col1: string, val1: unknown) => ({
+            eq: vi.fn((col2: string, val2: unknown) => {
+              votesSelectCalls.push({
+                table,
+                eq1: { col: col1, val: val1 },
+                eq2: { col: col2, val: val2 },
+              });
+              return Promise.resolve(votesResult);
+            }),
+          })),
+        })),
+      };
+    }
     throw new Error(`unexpected table: ${table}`);
   });
 
@@ -94,6 +117,7 @@ function makeSupabaseMock(opts: MockOptions = {}) {
     supabase: { from } as unknown as GetRoomDeps["supabase"],
     roomSelectCalls,
     membershipSelectCalls,
+    votesSelectCalls,
   };
 }
 
@@ -295,5 +319,102 @@ describe("getRoom — contest data errors", () => {
     await expect(
       getRoom({ roomId: VALID_ROOM_ID }, makeDeps(mock, { fetchContestants: fetchSpy }))
     ).rejects.toThrow(TypeError);
+  });
+});
+
+// ─── votes rehydration ──────────────────────────────────────────────────────
+
+const VALID_USER_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+
+describe("getRoom — votes rehydration", () => {
+  it("omits the votes query and returns votes: [] when userId is not provided", async () => {
+    const mock = makeSupabaseMock();
+    const result = await getRoom({ roomId: VALID_ROOM_ID }, makeDeps(mock));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.votes).toEqual([]);
+    expect(mock.votesSelectCalls).toEqual([]);
+  });
+
+  it("queries votes by (room_id, user_id) when userId is provided", async () => {
+    const mock = makeSupabaseMock();
+    await getRoom(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock)
+    );
+    expect(mock.votesSelectCalls).toHaveLength(1);
+    expect(mock.votesSelectCalls[0]).toEqual({
+      table: "votes",
+      eq1: { col: "room_id", val: VALID_ROOM_ID },
+      eq2: { col: "user_id", val: VALID_USER_ID },
+    });
+  });
+
+  it("maps vote rows to VoteView and returns them when userId matches", async () => {
+    const mock = makeSupabaseMock({
+      votesResult: {
+        data: [
+          {
+            contestant_id: "2026-ua",
+            scores: { Vocals: 7, Staging: 9 },
+            missed: false,
+            hot_take: "iconic",
+          },
+          {
+            contestant_id: "2026-se",
+            scores: null,
+            missed: true,
+            hot_take: null,
+          },
+        ],
+        error: null,
+      },
+    });
+    const result = await getRoom(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock)
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.votes).toEqual([
+      {
+        contestantId: "2026-ua",
+        scores: { Vocals: 7, Staging: 9 },
+        missed: false,
+        hotTake: "iconic",
+      },
+      {
+        contestantId: "2026-se",
+        scores: null,
+        missed: true,
+        hotTake: null,
+      },
+    ]);
+  });
+
+  it("rejects a non-UUID userId with INVALID_USER_ID", async () => {
+    const mock = makeSupabaseMock();
+    const result = await getRoom(
+      { roomId: VALID_ROOM_ID, userId: "not-a-uuid" },
+      makeDeps(mock)
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 400,
+      error: { code: "INVALID_USER_ID", field: "userId" },
+    });
+  });
+
+  it("falls back to votes: [] when the votes query errors (progressive enhancement)", async () => {
+    const mock = makeSupabaseMock({
+      votesResult: { data: null, error: { message: "db boom" } },
+    });
+    const result = await getRoom(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock)
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.votes).toEqual([]);
   });
 });

@@ -26,7 +26,7 @@ describe("fetchRoomData", () => {
       })
     ) as unknown as typeof globalThis.fetch;
 
-    const result = await fetchRoomData(VALID_ROOM_ID, { fetch: fetchSpy });
+    const result = await fetchRoomData(VALID_ROOM_ID, null, { fetch: fetchSpy });
     expect(result).toMatchObject({
       ok: true,
       data: {
@@ -47,7 +47,7 @@ describe("fetchRoomData", () => {
       })
     ) as unknown as typeof globalThis.fetch;
 
-    const result = await fetchRoomData(VALID_ROOM_ID, { fetch: fetchSpy });
+    const result = await fetchRoomData(VALID_ROOM_ID, null, { fetch: fetchSpy });
     expect(result).toMatchObject({
       ok: false,
       code: "ROOM_NOT_FOUND",
@@ -58,7 +58,7 @@ describe("fetchRoomData", () => {
     const fetchSpy = vi.fn(async () => {
       throw new TypeError("Failed to fetch");
     }) as unknown as typeof globalThis.fetch;
-    const result = await fetchRoomData(VALID_ROOM_ID, { fetch: fetchSpy });
+    const result = await fetchRoomData(VALID_ROOM_ID, null, { fetch: fetchSpy });
     expect(result).toMatchObject({ ok: false, code: "NETWORK" });
   });
 });
