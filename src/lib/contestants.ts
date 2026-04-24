@@ -132,3 +132,38 @@ export class ContestDataError extends Error {
     this.name = "ContestDataError";
   }
 }
+
+export interface ContestantsMeta {
+  broadcastStartUtc: string | null;
+}
+
+/**
+ * Reads only the event-level metadata from the hardcoded contestants JSON.
+ * Supports both shapes: a bare array (legacy) → `{ broadcastStartUtc: null }`,
+ * or `{ broadcastStartUtc?: string, contestants: [...] }` (future, per TODO R2).
+ */
+export async function fetchContestantsMeta(
+  year: number,
+  event: EventType,
+): Promise<ContestantsMeta> {
+  let parsed: unknown;
+  try {
+    const mod = await import(`../../data/contestants/${year}/${event}.json`);
+    parsed = mod.default ?? mod;
+  } catch {
+    throw new ContestDataError(
+      `Contest data not found for ${year} ${event}`,
+    );
+  }
+
+  if (Array.isArray(parsed)) {
+    return { broadcastStartUtc: null };
+  }
+  if (parsed && typeof parsed === "object") {
+    const raw = (parsed as { broadcastStartUtc?: unknown }).broadcastStartUtc;
+    return {
+      broadcastStartUtc: typeof raw === "string" ? raw : null,
+    };
+  }
+  return { broadcastStartUtc: null };
+}

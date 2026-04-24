@@ -1,0 +1,429 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/database";
+import type { Contestant, EventType, RoomAward } from "@/types";
+import type { ApiErrorCode } from "@/lib/api-errors";
+import { ContestDataError } from "@/lib/contestants";
+import type { LeaderboardEntry } from "@/lib/results/formatRoomSummary";
+
+export interface UserBreakdownPick {
+  contestantId: string;
+  pointsAwarded: number;
+}
+
+export interface UserBreakdown {
+  userId: string;
+  displayName: string;
+  avatarSeed: string;
+  picks: UserBreakdownPick[]; // sorted desc by points
+}
+
+export interface HotTakeEntry {
+  userId: string;
+  displayName: string;
+  avatarSeed: string;
+  contestantId: string;
+  hotTake: string;
+}
+
+// Discriminated union per SPEC §12.5. `voting_ending` is forward-compat
+// with TODO R0; current schema's CHECK constraint means it never appears.
+export type ResultsData =
+  | { status: "lobby"; pin: string; broadcastStartUtc: string | null }
+  | { status: "voting" | "voting_ending"; pin: string }
+  | { status: "scoring" }
+  | {
+      status: "announcing";
+      year: number;
+      event: EventType;
+      pin: string;
+      leaderboard: LeaderboardEntry[];
+      contestants: Contestant[];
+    }
+  | {
+      status: "done";
+      year: number;
+      event: EventType;
+      pin: string;
+      leaderboard: LeaderboardEntry[];
+      contestants: Contestant[];
+      breakdowns: UserBreakdown[];
+      hotTakes: HotTakeEntry[];
+      awards: RoomAward[];
+    };
+
+export interface LoadResultsInput {
+  roomId: unknown;
+}
+
+export interface LoadResultsDeps {
+  supabase: SupabaseClient<Database>;
+  fetchContestants: (year: number, event: EventType) => Promise<Contestant[]>;
+  fetchContestantsMeta: (
+    year: number,
+    event: EventType,
+  ) => Promise<{ broadcastStartUtc: string | null }>;
+}
+
+export interface LoadResultsSuccess {
+  ok: true;
+  data: ResultsData;
+}
+
+export interface LoadResultsFailure {
+  ok: false;
+  error: { code: ApiErrorCode; message: string; field?: string };
+  status: number;
+}
+
+export type LoadResultsResult = LoadResultsSuccess | LoadResultsFailure;
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function fail(
+  code: ApiErrorCode,
+  message: string,
+  status: number,
+  field?: string,
+): LoadResultsFailure {
+  return {
+    ok: false,
+    error: field ? { code, message, field } : { code, message },
+    status,
+  };
+}
+
+type RoomBase = {
+  id: string;
+  status: string;
+  pin: string;
+  year: number;
+  event: string;
+};
+
+type ResultRow = {
+  user_id: string;
+  contestant_id: string;
+  points_awarded: number;
+  announced: boolean;
+};
+
+interface MembershipWithUser {
+  user_id: string;
+  users: { display_name: string; avatar_seed: string } | null;
+}
+
+interface VoteHotTakeRow {
+  user_id: string;
+  contestant_id: string;
+  hot_take: string | null;
+}
+
+/**
+ * Build a leaderboard from raw result rows. Competition ranking
+ * (ties share the position; subsequent ranks skip, e.g. 1, 2, 2, 4).
+ * Order: totalPoints desc, contestant_id asc as a deterministic tiebreak.
+ */
+function buildLeaderboard(rows: ResultRow[]): LeaderboardEntry[] {
+  const totals = new Map<string, number>();
+  for (const r of rows) {
+    totals.set(
+      r.contestant_id,
+      (totals.get(r.contestant_id) ?? 0) + r.points_awarded,
+    );
+  }
+  const sorted = [...totals.entries()]
+    .map(([contestantId, totalPoints]) => ({ contestantId, totalPoints }))
+    .sort((a, b) => {
+      if (a.totalPoints !== b.totalPoints) return b.totalPoints - a.totalPoints;
+      return a.contestantId.localeCompare(b.contestantId);
+    });
+
+  const leaderboard: LeaderboardEntry[] = [];
+  let prevPoints: number | null = null;
+  let prevRank = 0;
+  sorted.forEach((e, idx) => {
+    const rank = prevPoints !== null && e.totalPoints === prevPoints
+      ? prevRank
+      : idx + 1;
+    leaderboard.push({ ...e, rank });
+    prevPoints = e.totalPoints;
+    prevRank = rank;
+  });
+  return leaderboard;
+}
+
+/**
+ * §12.5 results loader. Returns one of five discriminated shapes keyed by
+ * `rooms.status`. Never throws; all failures surface as `LoadResultsFailure`.
+ */
+export async function loadResults(
+  input: LoadResultsInput,
+  deps: LoadResultsDeps,
+): Promise<LoadResultsResult> {
+  if (typeof input.roomId !== "string" || !UUID_REGEX.test(input.roomId)) {
+    return fail("INVALID_ROOM_ID", "roomId must be a UUID.", 400, "roomId");
+  }
+  const roomId = input.roomId;
+
+  const roomQuery = await deps.supabase
+    .from("rooms")
+    .select("id, status, pin, year, event")
+    .eq("id", roomId)
+    .maybeSingle();
+
+  if (roomQuery.error) {
+    return fail("INTERNAL_ERROR", "Could not load room.", 500);
+  }
+  if (!roomQuery.data) {
+    return fail("ROOM_NOT_FOUND", "Room not found.", 404);
+  }
+  const room = roomQuery.data as RoomBase;
+  const event = room.event as EventType;
+
+  switch (room.status) {
+    case "lobby": {
+      try {
+        const meta = await deps.fetchContestantsMeta(room.year, event);
+        return {
+          ok: true,
+          data: {
+            status: "lobby",
+            pin: room.pin,
+            broadcastStartUtc: meta.broadcastStartUtc,
+          },
+        };
+      } catch (err) {
+        if (err instanceof ContestDataError) {
+          return {
+            ok: true,
+            data: { status: "lobby", pin: room.pin, broadcastStartUtc: null },
+          };
+        }
+        throw err;
+      }
+    }
+    case "voting":
+    case "voting_ending":
+      return {
+        ok: true,
+        data: { status: room.status, pin: room.pin },
+      };
+    case "scoring":
+      return { ok: true, data: { status: "scoring" } };
+    case "announcing":
+      return loadAnnouncing(room, event, deps);
+    case "done":
+      return loadDone(room, event, deps);
+    default:
+      // Unknown status — treat as voting placeholder rather than 500.
+      return {
+        ok: true,
+        data: { status: "voting", pin: room.pin },
+      };
+  }
+}
+
+async function loadAnnouncing(
+  room: RoomBase,
+  event: EventType,
+  deps: LoadResultsDeps,
+): Promise<LoadResultsResult> {
+  const resultsQuery = await deps.supabase
+    .from("results")
+    .select("user_id, contestant_id, points_awarded, announced")
+    .eq("room_id", room.id)
+    .eq("announced", true);
+
+  if (resultsQuery.error) {
+    return fail("INTERNAL_ERROR", "Could not load live leaderboard.", 500);
+  }
+
+  let contestants: Contestant[];
+  try {
+    contestants = await deps.fetchContestants(room.year, event);
+  } catch (err) {
+    if (err instanceof ContestDataError) {
+      return fail("INTERNAL_ERROR", "Could not load contestants.", 500);
+    }
+    throw err;
+  }
+
+  const rows = (resultsQuery.data ?? []) as ResultRow[];
+  const leaderboard = buildLeaderboardSeeded(rows, contestants);
+
+  return {
+    ok: true,
+    data: {
+      status: "announcing",
+      year: room.year,
+      event,
+      pin: room.pin,
+      leaderboard,
+      contestants,
+    },
+  };
+}
+
+async function loadDone(
+  room: RoomBase,
+  event: EventType,
+  deps: LoadResultsDeps,
+): Promise<LoadResultsResult> {
+  const resultsQuery = await deps.supabase
+    .from("results")
+    .select("user_id, contestant_id, points_awarded, announced")
+    .eq("room_id", room.id);
+
+  if (resultsQuery.error) {
+    return fail("INTERNAL_ERROR", "Could not load results.", 500);
+  }
+  const resultRows = (resultsQuery.data ?? []) as ResultRow[];
+
+  const membershipsQuery = await deps.supabase
+    .from("room_memberships")
+    .select("user_id, users(display_name, avatar_seed)")
+    .eq("room_id", room.id);
+
+  if (membershipsQuery.error) {
+    return fail("INTERNAL_ERROR", "Could not load room memberships.", 500);
+  }
+  const memberRows = (membershipsQuery.data ?? []) as MembershipWithUser[];
+  const userLookup = new Map<
+    string,
+    { displayName: string; avatarSeed: string }
+  >();
+  for (const m of memberRows) {
+    if (m.users) {
+      userLookup.set(m.user_id, {
+        displayName: m.users.display_name,
+        avatarSeed: m.users.avatar_seed,
+      });
+    }
+  }
+
+  const hotTakesQuery = await deps.supabase
+    .from("votes")
+    .select("user_id, contestant_id, hot_take")
+    .eq("room_id", room.id)
+    .not("hot_take", "is", null);
+
+  if (hotTakesQuery.error) {
+    return fail("INTERNAL_ERROR", "Could not load hot takes.", 500);
+  }
+  const hotTakeRows = (hotTakesQuery.data ?? []) as VoteHotTakeRow[];
+
+  const awardsQuery = await deps.supabase
+    .from("room_awards")
+    .select("*")
+    .eq("room_id", room.id);
+
+  if (awardsQuery.error) {
+    return fail("INTERNAL_ERROR", "Could not load awards.", 500);
+  }
+  const awardRows = (awardsQuery.data ?? []) as Array<
+    Database["public"]["Tables"]["room_awards"]["Row"]
+  >;
+  const awards: RoomAward[] = awardRows.map((row) => ({
+    roomId: row.room_id,
+    awardKey: row.award_key,
+    awardName: row.award_name,
+    winnerUserId: row.winner_user_id,
+    winnerContestantId: row.winner_contestant_id,
+    statValue: row.stat_value,
+    statLabel: row.stat_label,
+  }));
+
+  let contestants: Contestant[];
+  try {
+    contestants = await deps.fetchContestants(room.year, event);
+  } catch (err) {
+    if (err instanceof ContestDataError) {
+      return fail("INTERNAL_ERROR", "Could not load contestants.", 500);
+    }
+    throw err;
+  }
+
+  const leaderboard = buildLeaderboardSeeded(resultRows, contestants);
+
+  // Breakdowns: per user, drop rows with pointsAwarded === 0 (ranks 11+).
+  const byUser = new Map<string, UserBreakdownPick[]>();
+  for (const r of resultRows) {
+    if (r.points_awarded <= 0) continue;
+    const list = byUser.get(r.user_id) ?? [];
+    list.push({
+      contestantId: r.contestant_id,
+      pointsAwarded: r.points_awarded,
+    });
+    byUser.set(r.user_id, list);
+  }
+  const breakdowns: UserBreakdown[] = [];
+  for (const [userId, picks] of byUser.entries()) {
+    const info = userLookup.get(userId);
+    if (!info) continue;
+    picks.sort((a, b) => b.pointsAwarded - a.pointsAwarded);
+    breakdowns.push({
+      userId,
+      displayName: info.displayName,
+      avatarSeed: info.avatarSeed,
+      picks,
+    });
+  }
+  breakdowns.sort((a, b) => a.displayName.localeCompare(b.displayName));
+
+  const hotTakes: HotTakeEntry[] = [];
+  for (const row of hotTakeRows) {
+    if (!row.hot_take || row.hot_take.trim() === "") continue;
+    const info = userLookup.get(row.user_id);
+    if (!info) continue;
+    hotTakes.push({
+      userId: row.user_id,
+      displayName: info.displayName,
+      avatarSeed: info.avatarSeed,
+      contestantId: row.contestant_id,
+      hotTake: row.hot_take,
+    });
+  }
+
+  return {
+    ok: true,
+    data: {
+      status: "done",
+      year: room.year,
+      event,
+      pin: room.pin,
+      leaderboard,
+      contestants,
+      breakdowns,
+      hotTakes,
+      awards,
+    },
+  };
+}
+
+/**
+ * Build the leaderboard including every contestant in the room's field, not
+ * just the ones that currently have points. Missing contestants appear with
+ * 0 pts at the tail (alphabetical).
+ */
+function buildLeaderboardSeeded(
+  rows: ResultRow[],
+  contestants: Contestant[],
+): LeaderboardEntry[] {
+  const totals = new Map<string, number>();
+  for (const c of contestants) totals.set(c.id, 0);
+  for (const r of rows) {
+    totals.set(
+      r.contestant_id,
+      (totals.get(r.contestant_id) ?? 0) + r.points_awarded,
+    );
+  }
+  return buildLeaderboard(
+    [...totals.entries()].map(([contestant_id, points]) => ({
+      user_id: "",
+      contestant_id,
+      points_awarded: points,
+      announced: true,
+    })),
+  );
+}
