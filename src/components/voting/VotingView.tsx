@@ -19,6 +19,7 @@ export interface VotingViewProps {
     next: number | null
   ) => void;
   saveStatus?: SaveStatus;
+  initialScores?: Record<string, Record<string, number | null>>;
 }
 
 export default function VotingView({
@@ -26,6 +27,7 @@ export default function VotingView({
   categories,
   onScoreChange,
   saveStatus,
+  initialScores,
 }: VotingViewProps) {
   const sortedContestants = useMemo(
     () => [...contestants].sort((a, b) => a.runningOrder - b.runningOrder),
@@ -35,7 +37,7 @@ export default function VotingView({
   const [idx, setIdx] = useState(0);
   const [scoresByContestant, setScoresByContestant] = useState<
     Record<string, Record<string, number | null>>
-  >({});
+  >(() => initialScores ?? {});
 
   const updateScore = useCallback(
     (contestantId: string, categoryName: string, next: number | null) => {
