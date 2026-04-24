@@ -3,11 +3,17 @@
 import { useMemo, useState, useCallback } from "react";
 import type { Contestant, VotingCategory } from "@/types";
 import { SCORE_ANCHORS } from "@/types";
+import { useEffect } from "react";
 import Button from "@/components/ui/Button";
 import ScoreRow from "@/components/voting/ScoreRow";
 import { scoredCount } from "@/components/voting/scoredCount";
 import SaveChip from "@/components/voting/SaveChip";
 import type { SaveStatus } from "@/lib/voting/Autosaver";
+import {
+  loadVotingPosition,
+  saveVotingPosition,
+  indexOfContestant,
+} from "@/lib/voting/votingPosition";
 
 export interface VotingViewProps {
   contestants: Contestant[];
@@ -20,6 +26,18 @@ export interface VotingViewProps {
   ) => void;
   saveStatus?: SaveStatus;
   initialScores?: Record<string, Record<string, number | null>>;
+  /** When both roomId and userId are provided, persists the current contestant in localStorage so reloads land on the same card. */
+  roomId?: string;
+  userId?: string;
+}
+
+function getPersistentStorage() {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
 }
 
 export default function VotingView({
@@ -28,13 +46,28 @@ export default function VotingView({
   onScoreChange,
   saveStatus,
   initialScores,
+  roomId,
+  userId,
 }: VotingViewProps) {
   const sortedContestants = useMemo(
     () => [...contestants].sort((a, b) => a.runningOrder - b.runningOrder),
     [contestants]
   );
 
-  const [idx, setIdx] = useState(0);
+  const [idx, setIdx] = useState<number>(() => {
+    if (!roomId || !userId) return 0;
+    const savedId = loadVotingPosition(getPersistentStorage(), roomId, userId);
+    const found = indexOfContestant(sortedContestants, savedId);
+    return found >= 0 ? found : 0;
+  });
+
+  useEffect(() => {
+    if (!roomId || !userId) return;
+    const current = sortedContestants[idx];
+    if (!current) return;
+    saveVotingPosition(getPersistentStorage(), roomId, userId, current.id);
+  }, [idx, roomId, userId, sortedContestants]);
+
   const [scoresByContestant, setScoresByContestant] = useState<
     Record<string, Record<string, number | null>>
   >(() => initialScores ?? {});

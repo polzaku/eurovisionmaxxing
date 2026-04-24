@@ -275,6 +275,8 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         onScoreChange={autosave.onScoreChange}
         saveStatus={autosave.status}
         initialScores={initialScores}
+        roomId={phase.room.id}
+        userId={getSession()?.userId ?? undefined}
       />
     );
   }
