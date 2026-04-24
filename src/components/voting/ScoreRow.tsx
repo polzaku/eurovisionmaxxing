@@ -75,13 +75,15 @@ export default function ScoreRow({
       )}
 
       <div
-        className="grid grid-cols-5 sm:grid-cols-10 gap-2"
+        className="relative grid grid-cols-10 w-full h-11 rounded-lg overflow-hidden border border-border bg-muted"
         role="group"
         aria-label={`${categoryName} — score from 1 to 10`}
       >
-        {BUTTONS.map((n) => {
+        {BUTTONS.map((n, i) => {
+          const filled = value !== null && n <= value;
           const selected = value === n;
           const pop = lastPressed === n;
+          const isLast = i === BUTTONS.length - 1;
           return (
             <button
               key={n}
@@ -92,15 +94,11 @@ export default function ScoreRow({
               aria-pressed={selected}
               aria-describedby={hint ? hintId : undefined}
               className={`
-                min-w-[44px] min-h-[44px] aspect-square rounded-lg font-semibold
-                transition-colors
-                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background
+                h-11 font-semibold text-sm transition-colors
+                focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring
                 disabled:cursor-not-allowed
-                ${
-                  selected
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground border border-border hover:bg-muted/80"
-                }
+                ${!isLast ? "border-r border-border/30" : ""}
+                ${filled ? "bg-primary text-primary-foreground" : "text-muted-foreground"}
                 ${pop ? "animate-score-pop" : ""}
               `.trim()}
             >
