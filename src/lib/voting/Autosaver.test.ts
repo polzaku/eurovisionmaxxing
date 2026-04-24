@@ -143,6 +143,38 @@ describe("Autosaver", () => {
     expect(statuses[statuses.length - 1]).toBe("saved");
   });
 
+  it("binds default setTimeout to globalThis (regression: browsers throw 'Illegal invocation' without this)", () => {
+    vi.useRealTimers();
+    const originalSetTimeout = globalThis.setTimeout;
+    // Simulate the browser's strict `this` check on window.setTimeout.
+    const strictSetTimeout = function (
+      this: unknown,
+      ...args: Parameters<typeof setTimeout>
+    ) {
+      if (this !== globalThis && this !== undefined) {
+        throw new TypeError("Illegal invocation");
+      }
+      return (originalSetTimeout as (...a: unknown[]) => unknown).apply(
+        globalThis,
+        args
+      );
+    };
+    (globalThis as unknown as { setTimeout: typeof setTimeout }).setTimeout =
+      strictSetTimeout as unknown as typeof setTimeout;
+    try {
+      const post = vi.fn(async (): Promise<PostVoteResult> => makeSuccess());
+      const saver = new Autosaver(ROOM_ID, USER_ID, {
+        post,
+        onStatusChange: () => {},
+      });
+      expect(() => saver.schedule("c1", "Vocals", 7)).not.toThrow();
+      saver.dispose();
+    } finally {
+      (globalThis as unknown as { setTimeout: typeof setTimeout }).setTimeout =
+        originalSetTimeout;
+    }
+  });
+
   it("dispose cancels pending timers and suppresses status updates from later resolutions", async () => {
     let resolvePost: ((r: PostVoteResult) => void) | null = null;
     const pending = new Promise<PostVoteResult>((r) => {

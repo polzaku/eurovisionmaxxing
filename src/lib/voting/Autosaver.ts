@@ -37,8 +37,14 @@ export class Autosaver {
     private readonly userId: string,
     private readonly deps: AutosaverDeps
   ) {
-    this.setTimeoutFn = deps.setTimeout ?? globalThis.setTimeout;
-    this.clearTimeoutFn = deps.clearTimeout ?? globalThis.clearTimeout;
+    // Bind the defaults to globalThis so browsers don't throw "Illegal
+    // invocation" when we later call these as instance-method expressions
+    // (`this.setTimeoutFn(...)` would otherwise pass the Autosaver instance
+    // as `this`, which window.setTimeout rejects in strict mode).
+    this.setTimeoutFn =
+      deps.setTimeout ?? globalThis.setTimeout.bind(globalThis);
+    this.clearTimeoutFn =
+      deps.clearTimeout ?? globalThis.clearTimeout.bind(globalThis);
     this.debounceMs = deps.debounceMs ?? DEFAULT_DEBOUNCE_MS;
   }
 
