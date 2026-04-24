@@ -1,18 +1,18 @@
 const GENERIC_MESSAGE = "Something went wrong. Please try again.";
 
-interface ApiOk<T> {
+export interface ApiOk<T> {
   ok: true;
   data?: T;
 }
 
-interface ApiFail {
+export interface ApiFail {
   ok: false;
   code: string;
   field?: string;
   message: string;
 }
 
-interface Deps {
+export interface Deps {
   fetch: typeof globalThis.fetch;
 }
 
@@ -44,7 +44,7 @@ async function unwrap<T>(
   }
 }
 
-async function runRequest<T>(
+export async function runRequest<T>(
   req: () => Promise<Response>,
   extract?: (body: unknown) => T
 ): Promise<ApiOk<T> | ApiFail> {
