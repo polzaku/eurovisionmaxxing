@@ -567,25 +567,33 @@ These anchors appear on every voting card regardless of template. Anchor copy is
 - Footer: "I missed this" button + Prev/Next navigation + jump-to drawer button.
 - Jump-to: small button opens a scrollable drawer of all countries (flag + name + per-contestant **scored-chip** from §8.8), tapping any navigates directly.
 
-### 8.2 Category score buttons
-Each category renders as a row of **10 tappable buttons** labelled 1 through 10. No slider.
+### 8.2 Category score bar
 
-- **Values:** integer 1–10. Each button represents one discrete value.
-- **Touch targets:** min 44×44 CSS px per button. On narrow viewports the row wraps to two lines (1–5 top, 6–10 bottom); on wider viewports it renders as a single row.
+Each category renders as a **single-row fill-bar of 10 tappable segments** labelled 1 through 10. Cumulative-fill metaphor: selecting N fills segments 1..N gold, like a strength meter. Supersedes the earlier 5×2 button grid, which wrapped on narrow viewports and communicated less at a glance.
+
+- **Values:** integer 1–10. Each segment represents one discrete value; selecting it also fills every lower segment.
+- **Touch targets:** each segment is at least 32×44 CSS px (width × height). The horizontal dimension is relaxed from the 44-px accessibility floor because the whole bar is a single thumb-reachable strip — mistaps land on an adjacent value rather than a destructive action. Vertical dimension keeps the 44-px floor. 10 × 32 = 320 px → fits iPhone SE width with no scroll.
+- **Visible numbers inside every segment.** Each segment shows its value (1–10) as the primary label. Text is the cue to scale; fill length alone is not enough — users would not reliably count bars. Font weight + colour update based on state (see below).
+- **Single row always.** The bar never wraps to two rows. On viewports narrower than 320 px (vanishingly rare), the bar gets `overflow-x: auto` with a subtle scroll cue. No two-row fallback.
 - **Category row header:** each row shows the category **name** on the left and a **status label** on the right, aligned baseline-to-baseline:
   - *Unscored* → label reads `Not scored` in `text-muted-foreground` (locale key `voting.status.unscored`).
   - *Scored* → label reads `✓ scored N` where N is the selected value, rendered in `text-primary` (gold) (locale key `voting.status.scored` with `{value}`).
   - Rationale: moves the scored/unscored signal to an explicit, scannable label on every row. Replaces the earlier "ghost Tap to score" line and the per-row anchor repetition.
 - **Weight badge (only when weights are non-uniform):** when the room's category weights are not all equal, categories with `weight > 1` render a pill next to their name: `counts 2×` (or `counts 3×`, etc., locale key `voting.weight.badge` with `{multiplier}`). Categories with `weight = 1` render no badge. For rooms where **every** category has `weight = 1` (all predefined templates by default), the badge is suppressed entirely — no visual noise in the common case. Percentages (§7.2 admin builder) remain the primary authoring display; **voters see weight as a multiplier, not a percentage**.
 - **Hint:** the category hint (from §7.2 for custom, from the template definition for predefined) renders inline below the category name, always visible, in `text-muted-foreground` at a smaller size. Unchanged from §7.2.
-- **Unset state:** no button selected. Buttons render with `bg-muted` fill and `text-muted-foreground` labels.
-- **Selected state:** the pressed button fills with `bg-primary` (gold), its label flips to `text-background`, and `animate-score-pop` fires on press.
+- **Unset state:** no segments filled. All segments render with `bg-muted` fill + `text-muted-foreground` numerals.
+- **Selected state (score = N):** segments 1..N fill with `bg-primary` (gold) and their numerals flip to `text-primary-foreground`; segments N+1..10 stay `bg-muted` with muted numerals. The tapped segment (N) fires `animate-score-pop` on press — not the whole bar, just the segment the user touched, so the animation reinforces the tap point.
 - **Interaction:**
-  - Tapping a button sets the score to that value.
-  - Tapping a different button updates the score to the new value.
-  - Tapping the currently-selected button **clears** the score (returns to unset). Rationale: no separate "clear" control needed.
-- **Scored definition:** a category is considered scored whenever exactly one button is pressed. The progress bar in §8.1 and the per-contestant chip in §8.8 count only categories in this state.
+  - Tapping segment N while unscored → score becomes N (1..N fill).
+  - Tapping segment M while score is N (M ≠ N) → score becomes M. If M > N, additional segments fill; if M < N, segments M+1..N clear.
+  - Tapping segment N while score is N → **clears** the score (returns to unset). Rationale: no separate "clear" control needed; matches the previous grid's tap-to-clear affordance.
+- **Scored definition:** a category is considered scored whenever any segment is in the filled state. The progress bar in §8.1 and the per-contestant chip in §8.8 count only categories in this state.
 - **No per-row anchors:** the 1/5/10 anchor copy lives once in the §8.1 global scale strip, not under every row. Removes ~15 lines of repeated text per voting card for a 5-category template.
+- **Why the change from the 5×2 grid:**
+  1. *Single row on every viewport* — the 5×2 wrap made narrow screens feel cramped and broke the "scale" mental model by splitting 5 and 6.
+  2. *Cumulative fill communicates "N out of 10" at a glance* — closer to how humans think about scores ("I'd give it a 7") than a discrete checkbox grid.
+  3. *Numbers stay visible inside segments* — viewers never have to count bars, avoiding the common failure mode of pure progress-bar-style pickers.
+  4. *Same tap semantics and same reducer* — the underlying `nextScore(current, clicked)` function from the grid implementation ports directly; only the render changes.
 
 ### 8.3 "I missed this" button
 - Shown per-contestant in the footer.
