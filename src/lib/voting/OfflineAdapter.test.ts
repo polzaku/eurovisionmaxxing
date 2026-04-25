@@ -266,4 +266,61 @@ describe("OfflineAdapter", () => {
     fx.fireOnline();
     expect(fx.states.length).toBe(countBefore);
   });
+
+  it("polls periodically while queue is non-empty and online (catches missed `online` events)", async () => {
+    // Use injected timer hooks so we don't depend on real time.
+    const intervalCbRef: { current: (() => void) | null } = { current: null };
+    const setIntervalFn = vi.fn((cb: () => void, _ms: number) => {
+      intervalCbRef.current = cb;
+      return 1 as unknown as ReturnType<typeof globalThis.setInterval>;
+    }) as unknown as typeof globalThis.setInterval;
+    const clearIntervalFn = vi.fn(() => {
+      intervalCbRef.current = null;
+    }) as unknown as typeof globalThis.clearInterval;
+
+    const states: OfflineAdapterState[] = [];
+    const online = { value: true };
+    const storageMock = makeStorage([
+      { id: "stuck", timestamp: 1, payload: payload() },
+    ]);
+
+    // Force drain failure on first attempt so the queue stays populated.
+    let firstAttempt = true;
+    const flakyPost = vi.fn(async (_p: PostVoteInput) => {
+      if (firstAttempt) {
+        firstAttempt = false;
+        throw new Error("transient");
+      }
+      return ok();
+    });
+
+    const adapter = new OfflineAdapter({
+      realPost: flakyPost,
+      storage: storageMock.storage,
+      onStateChange: (s) => states.push(s),
+      isOnline: () => online.value,
+      addOnlineListener: () => () => {},
+      now: () => 1000,
+      uuid: () => "test",
+      pollIntervalMs: 5000,
+      setInterval: setIntervalFn,
+      clearInterval: clearIntervalFn,
+    });
+
+    // Wait for the initial drain attempt to throw and unset draining.
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(storageMock.read()).toHaveLength(1); // entry still there
+    expect(setIntervalFn).toHaveBeenCalled(); // poll started
+
+    // Simulate the interval firing — should retry drain and succeed.
+    intervalCbRef.current?.();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(storageMock.read()).toEqual([]);
+    expect(clearIntervalFn).toHaveBeenCalled(); // poll stopped after queue empty
+    adapter.dispose();
+  });
 });
