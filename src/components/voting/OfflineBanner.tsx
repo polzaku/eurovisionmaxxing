@@ -12,7 +12,7 @@ export default function OfflineBanner({ visible }: OfflineBannerProps) {
     <div
       role="status"
       aria-live="polite"
-      className="sticky top-0 z-10 w-full bg-accent text-accent-foreground text-center px-4 py-2 text-sm font-medium"
+      className="sticky top-2 mx-4 z-10 rounded-lg border border-accent/30 bg-accent/10 text-accent text-center px-4 py-2 text-sm font-medium backdrop-blur-sm"
     >
       You&rsquo;re offline — changes will sync when you reconnect.
     </div>
