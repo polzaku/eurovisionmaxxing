@@ -8,6 +8,7 @@ import Button from "@/components/ui/Button";
 import ScoreRow from "@/components/voting/ScoreRow";
 import MissedCard from "@/components/voting/MissedCard";
 import MissedToast from "@/components/voting/MissedToast";
+import HotTakeField from "@/components/voting/HotTakeField";
 import { useMissedUndo } from "@/hooks/useMissedUndo";
 import { scoredCount } from "@/components/voting/scoredCount";
 import SaveChip, { type DisplaySaveStatus } from "@/components/voting/SaveChip";
@@ -38,6 +39,8 @@ export interface VotingViewProps {
   initialScores?: Record<string, Record<string, number | null>>;
   initialMissed?: Record<string, boolean>;
   onMissedChange?: (contestantId: string, missed: boolean) => void;
+  initialHotTakes?: Record<string, string>;
+  onHotTakeChange?: (contestantId: string, hotTake: string | null) => void;
   /** When both roomId and userId are provided, persists the current contestant in localStorage so reloads land on the same card. */
   roomId?: string;
   userId?: string;
@@ -64,6 +67,8 @@ export default function VotingView({
   initialScores,
   initialMissed,
   onMissedChange,
+  initialHotTakes,
+  onHotTakeChange,
   roomId,
   userId,
   offlineBannerVisible,
@@ -123,6 +128,23 @@ export default function VotingView({
       onMissedChange?.(contestantId, missed);
     },
     [onMissedChange]
+  );
+
+  const [hotTakesByContestant, setHotTakesByContestant] = useState<
+    Record<string, string>
+  >(() => initialHotTakes ?? {});
+
+  const setHotTake = useCallback(
+    (contestantId: string, next: string) => {
+      setHotTakesByContestant((prev) => {
+        const map = { ...prev };
+        if (next === "") delete map[contestantId];
+        else map[contestantId] = next;
+        return map;
+      });
+      onHotTakeChange?.(contestantId, next === "" ? null : next);
+    },
+    [onHotTakeChange]
   );
 
   const undo = useMissedUndo({
@@ -259,6 +281,12 @@ export default function VotingView({
             ))}
           </div>
         )}
+
+        <HotTakeField
+          key={contestant.id}
+          value={hotTakesByContestant[contestant.id] ?? ""}
+          onChange={(next) => setHotTake(contestant.id, next)}
+        />
 
         <nav className="grid grid-cols-3 gap-3 pt-4">
           <Button
