@@ -22,6 +22,7 @@ import { useVoteAutosave } from "@/components/voting/useVoteAutosave";
 import { postVote } from "@/lib/voting/postVote";
 import type { VoteView } from "@/lib/rooms/get";
 import { seedScoresFromVotes } from "@/lib/voting/seedScoresFromVotes";
+import { seedMissedFromVotes } from "@/lib/voting/seedMissedFromVotes";
 
 interface MembershipShape {
   userId: string;
@@ -288,14 +289,20 @@ export default function RoomPage({ params }: { params: { id: string } }) {
       (phase.room.categories ?? []).map((c) => c.name),
       phase.contestants.map((c) => c.id)
     );
+    const initialMissed = seedMissedFromVotes(
+      phase.votes,
+      phase.contestants.map((c) => c.id)
+    );
     return (
       <VotingView
         contestants={phase.contestants}
         categories={phase.room.categories ?? []}
         isAdmin={isAdmin}
         onScoreChange={autosave.onScoreChange}
+        onMissedChange={autosave.onMissedChange}
         saveStatus={autosave.status}
         initialScores={initialScores}
+        initialMissed={initialMissed}
         roomId={phase.room.id}
         userId={getSession()?.userId ?? undefined}
         offlineBannerVisible={autosave.offlineBannerVisible}

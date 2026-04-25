@@ -6,12 +6,19 @@ import { SCORE_ANCHORS } from "@/types";
 import { useEffect } from "react";
 import Button from "@/components/ui/Button";
 import ScoreRow from "@/components/voting/ScoreRow";
+import MissedCard from "@/components/voting/MissedCard";
+import MissedToast from "@/components/voting/MissedToast";
+import { useMissedUndo } from "@/hooks/useMissedUndo";
 import { scoredCount } from "@/components/voting/scoredCount";
 import SaveChip, { type DisplaySaveStatus } from "@/components/voting/SaveChip";
 import OfflineBanner from "@/components/voting/OfflineBanner";
 import DrainNotice from "@/components/voting/DrainNotice";
 import QueueOverflowBanner from "@/components/voting/QueueOverflowBanner";
 import type { DrainNotice as DrainNoticePayload } from "@/lib/voting/OfflineAdapter";
+import {
+  computeProjectedAverage,
+  type ProjectedAverage,
+} from "@/lib/voting/computeProjectedAverage";
 import {
   loadVotingPosition,
   saveVotingPosition,
@@ -29,6 +36,8 @@ export interface VotingViewProps {
   ) => void;
   saveStatus?: DisplaySaveStatus;
   initialScores?: Record<string, Record<string, number | null>>;
+  initialMissed?: Record<string, boolean>;
+  onMissedChange?: (contestantId: string, missed: boolean) => void;
   /** When both roomId and userId are provided, persists the current contestant in localStorage so reloads land on the same card. */
   roomId?: string;
   userId?: string;
@@ -53,6 +62,8 @@ export default function VotingView({
   onScoreChange,
   saveStatus,
   initialScores,
+  initialMissed,
+  onMissedChange,
   roomId,
   userId,
   offlineBannerVisible,
@@ -83,6 +94,10 @@ export default function VotingView({
     Record<string, Record<string, number | null>>
   >(() => initialScores ?? {});
 
+  const [missedByContestant, setMissedByContestant] = useState<
+    Record<string, boolean>
+  >(() => initialMissed ?? {});
+
   const updateScore = useCallback(
     (contestantId: string, categoryName: string, next: number | null) => {
       setScoresByContestant((prev) => ({
@@ -95,6 +110,50 @@ export default function VotingView({
       onScoreChange?.(contestantId, categoryName, next);
     },
     [onScoreChange]
+  );
+
+  const setMissed = useCallback(
+    (contestantId: string, missed: boolean) => {
+      setMissedByContestant((prev) => {
+        const next = { ...prev };
+        if (missed) next[contestantId] = true;
+        else delete next[contestantId];
+        return next;
+      });
+      onMissedChange?.(contestantId, missed);
+    },
+    [onMissedChange]
+  );
+
+  const undo = useMissedUndo({
+    onUndo: useCallback(
+      (contestantId: string) => setMissed(contestantId, false),
+      [setMissed]
+    ),
+  });
+
+  const handleMarkMissed = useCallback(
+    (contestantId: string) => {
+      const nextMissed = { ...missedByContestant, [contestantId]: true };
+      const projection = computeProjectedAverage(
+        scoresByContestant,
+        nextMissed,
+        categories
+      );
+      setMissed(contestantId, true);
+      undo.trigger(contestantId, projection.overall);
+    },
+    [missedByContestant, scoresByContestant, categories, setMissed, undo]
+  );
+
+  const projected: ProjectedAverage = useMemo(
+    () =>
+      computeProjectedAverage(
+        scoresByContestant,
+        missedByContestant,
+        categories
+      ),
+    [scoresByContestant, missedByContestant, categories]
   );
 
   if (categories.length === 0) {
@@ -133,6 +192,8 @@ export default function VotingView({
 
   const canPrev = idx > 0;
   const canNext = idx < totalContestants - 1;
+
+  const isMissed = !!missedByContestant[contestant.id];
 
   return (
     <main className="flex min-h-screen flex-col items-center px-4 py-6 sm:px-6 sm:py-10">
@@ -178,20 +239,28 @@ export default function VotingView({
           <span className="font-medium">10</span> {SCORE_ANCHORS[10].split(".")[0]}
         </p>
 
-        <div className="space-y-6">
-          {categories.map((cat) => (
-            <ScoreRow
-              key={cat.name}
-              categoryName={cat.name}
-              hint={cat.hint}
-              value={scoresByContestant[contestant.id]?.[cat.name] ?? null}
-              weightMultiplier={nonUniformWeights ? cat.weight : undefined}
-              onChange={(next) => updateScore(contestant.id, cat.name, next)}
-            />
-          ))}
-        </div>
+        {isMissed ? (
+          <MissedCard
+            projected={projected}
+            categories={categories}
+            onRescore={() => setMissed(contestant.id, false)}
+          />
+        ) : (
+          <div className="space-y-6">
+            {categories.map((cat) => (
+              <ScoreRow
+                key={cat.name}
+                categoryName={cat.name}
+                hint={cat.hint}
+                value={scoresByContestant[contestant.id]?.[cat.name] ?? null}
+                weightMultiplier={nonUniformWeights ? cat.weight : undefined}
+                onChange={(next) => updateScore(contestant.id, cat.name, next)}
+              />
+            ))}
+          </div>
+        )}
 
-        <nav className="grid grid-cols-2 gap-4 pt-4">
+        <nav className="grid grid-cols-3 gap-3 pt-4">
           <Button
             variant="secondary"
             onClick={() => setIdx((i) => Math.max(0, i - 1))}
@@ -199,6 +268,14 @@ export default function VotingView({
             aria-label="Previous contestant"
           >
             ← Prev
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => handleMarkMissed(contestant.id)}
+            disabled={isMissed}
+            aria-label="Mark this contestant as missed"
+          >
+            I missed this
           </Button>
           <Button
             variant="secondary"
@@ -210,6 +287,7 @@ export default function VotingView({
           </Button>
         </nav>
       </div>
+      <MissedToast toast={undo.toast} onUndo={undo.undo} />
     </main>
   );
 }

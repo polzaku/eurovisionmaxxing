@@ -67,6 +67,21 @@
     "lyrics":            { "name": "Lyrics",            "hint": "What are they actually saying? Does it hold up?" },
     "originality":       { "name": "Originality",       "hint": "Has Eurovision heard this before?" }
   },
+  "voting": {
+    "missed": {
+      "button": "I missed this",
+      "buttonAria": "Mark this contestant as missed",
+      "cardLabel": "This one's marked as missed",
+      "estimatedLabel": "Estimated score",
+      "perCategoryLabel": "Per category (estimated)",
+      "rescoreButton": "Rescore this contestant",
+      "toast": {
+        "body": "Marked missed — we'll estimate your scores as ~{overall}.",
+        "undo": "Undo",
+        "dismissAria": "Dismiss"
+      }
+    }
+  },
   "errors": {
     "INVALID_BODY": "Something about your request was invalid.",
     "INVALID_DISPLAY_NAME": "Display name must be 2–24 characters: letters, numbers, spaces, or hyphens.",
