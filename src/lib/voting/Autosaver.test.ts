@@ -232,6 +232,31 @@ describe("Autosaver", () => {
     });
   });
 
+  it("scheduleHotTake flushes a hotTake-only payload after the debounce window", async () => {
+    const { saver, post } = makeSaver(async () => makeSuccess());
+    saver.scheduleHotTake("c1", "this slaps");
+    await vi.advanceTimersByTimeAsync(500);
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledWith({
+      roomId: ROOM_ID,
+      userId: USER_ID,
+      contestantId: "c1",
+      hotTake: "this slaps",
+    });
+  });
+
+  it("scheduleHotTake transmits null faithfully (cleared hot-take)", async () => {
+    const { saver, post } = makeSaver(async () => makeSuccess());
+    saver.scheduleHotTake("c1", null);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(post).toHaveBeenCalledWith({
+      roomId: ROOM_ID,
+      userId: USER_ID,
+      contestantId: "c1",
+      hotTake: null,
+    });
+  });
+
   it("dispose cancels pending timers and suppresses status updates from later resolutions", async () => {
     let resolvePost: ((r: PostVoteResult) => void) | null = null;
     const pending = new Promise<PostVoteResult>((r) => {

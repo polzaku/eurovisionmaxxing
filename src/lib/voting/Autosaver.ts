@@ -14,14 +14,16 @@ interface PendingEntry {
   timerId: ReturnType<typeof globalThis.setTimeout>;
   scores: Record<string, number | null>;
   missed?: boolean;
+  hotTake?: string | null;
 }
 
 const DEFAULT_DEBOUNCE_MS = 500;
 
 /**
  * Per-contestant debounced autosave coordinator.
- * See docs/superpowers/specs/2026-04-24-voting-autosave-design.md §4
- * and docs/superpowers/specs/2026-04-25-i-missed-this-design.md §4 (PR1).
+ * See docs/superpowers/specs/2026-04-24-voting-autosave-design.md §4,
+ * docs/superpowers/specs/2026-04-25-i-missed-this-design.md §4 (PR1),
+ * and docs/superpowers/specs/2026-04-26-hot-take-design.md §4 (PR1).
  */
 export class Autosaver {
   private readonly setTimeoutFn: typeof globalThis.setTimeout;
@@ -60,6 +62,7 @@ export class Autosaver {
       timerId,
       scores: nextScores,
       missed: existing?.missed,
+      hotTake: existing?.hotTake,
     });
     this.emitStatus();
   }
@@ -77,6 +80,25 @@ export class Autosaver {
       timerId,
       scores: existing?.scores ?? {},
       missed,
+      hotTake: existing?.hotTake,
+    });
+    this.emitStatus();
+  }
+
+  scheduleHotTake(contestantId: string, hotTake: string | null): void {
+    if (this.disposed) return;
+    this.hasWritten = true;
+    const existing = this.pending.get(contestantId);
+    if (existing) this.clearTimeoutFn(existing.timerId);
+    const timerId = this.setTimeoutFn(
+      () => this.flushContestant(contestantId),
+      this.debounceMs
+    );
+    this.pending.set(contestantId, {
+      timerId,
+      scores: existing?.scores ?? {},
+      missed: existing?.missed,
+      hotTake,
     });
     this.emitStatus();
   }
@@ -104,6 +126,7 @@ export class Autosaver {
       };
       if (Object.keys(entry.scores).length > 0) payload.scores = entry.scores;
       if (entry.missed !== undefined) payload.missed = entry.missed;
+      if (entry.hotTake !== undefined) payload.hotTake = entry.hotTake;
       const result = await this.deps.post(payload);
       this.inflight -= 1;
       if (this.disposed) return;
