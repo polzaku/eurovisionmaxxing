@@ -341,10 +341,12 @@ Admin goes through a 3-step wizard:
 - If both the EurovisionAPI call **and** the hardcoded-JSON fallback fail (§5.1 step 4), the wizard renders an inline error: *"We couldn't load contestant data for this event. Try a different year or event."* with a "Back" CTA that returns to year/event selection (it does not silently fail).
 
 **Step 2: Voting configuration**
-- Template selection: four cards (Classic / Spectacle / Banger Test / Custom). Each predefined card is **expandable to preview its categories and hints inline before commit** — tap the card to expand/collapse; tap "Use this template" to select.
-- Announcement mode: two large radio cards with explanatory copy —
-  - **Live:** *"Take turns announcing your points, Eurovision-style. Great with a TV."*
-  - **Instant:** *"Reveal the winner in one shot. Great if you're short on time."*
+- Template selection: four **compact** cards (Classic / Spectacle / Banger Test / Custom). Each card collapses to **template name + one-line tagline + ⓘ icon + "Use this template" CTA** by default. Rationale: the long category + hint list under every card produced too much vertical text for a hurried admin scanning the wizard. Detail moves behind the ⓘ.
+  - **ⓘ behaviour:** tap ⓘ → categories + hints expand inline beneath the card (same content as the previous "expand the card" UX, just gated). Tap ⓘ again → collapse. Only one card's detail is open at a time within Step 2 (opening a second auto-collapses the first).
+  - The Custom card's ⓘ shows a short *"Build your own categories from scratch"* explainer; the actual builder opens after "Use this template".
+- Announcement mode: **two compact radio cards** — each shows a one-line tagline + ⓘ. Tap ⓘ → the longer plain-language explainer expands inline.
+  - **Live:** *"Take turns announcing your points, Eurovision-style."* (ⓘ: *"Great with a TV. Each user reveals their 1 → 12 in turn.")*
+  - **Instant:** *"Reveal the winner in one shot."* (ⓘ: *"Great if you're short on time. Everyone marks themselves ready, then the leaderboard appears.")*
 - **Room bets (optional, off by default)** — toggle *"Add a betting sidegame"*. When enabled, the admin picks **exactly 3 bets** from the catalog in §22.1, or taps **"Surprise me"** for 3 random picks. Bets lock at the `lobby → voting` transition. Separate leaderboard from the main Eurovision-points game. Full mechanic in §22.
 - **"Now performing" broadcast** (internal name: `allow_now_performing`) — when enabled, the admin can tap the currently-performing country. Guests see an opt-in *"Jump to [Country]"* pill at the top of their voting view (not a forced snap). The `/present` screen always follows the broadcast. Off by default. Info icon copy: *"Shows guests a pill to jump; it never auto-snaps them while they're scoring."* See §6.5.
 
@@ -356,7 +358,7 @@ Admin goes through a 3-step wizard:
 - "Start lobby" button → transitions room to `lobby` status and navigates admin to room view.
 
 **Editing after creation (admin-only, in-lobby):**
-While `rooms.status = 'lobby'`, the admin can re-open a limited wizard from the lobby view to change **categories** (add, remove, rename, edit weight/hint, **drag-reorder** via the same grip-handle UX as §7.2), **announcement mode**, the **now-performing toggle**, and the **room bets** (swap/replace/toggle off — see §22.2). Year and event are **not** editable post-creation (contestant data and PIN don't change; for contestant-list updates after an allocation-draw update, use §5.1d). All edits lock permanently once status transitions to `voting`. The lobby view surfaces the entry point as an "Edit room" control, visible only to the owner (and co-admins, §6.7).
+While `rooms.status = 'lobby'`, the admin can re-open a limited wizard from the lobby view to change **categories** (add, remove, rename, edit weight/hint, **drag-reorder** via the same grip-handle UX as §7.2), **announcement mode**, the **now-performing toggle**, and the **room bets** (swap/replace/toggle off — see §22.2). Year and event are **not** editable post-creation (contestant data and PIN don't change; for contestant-list updates after an allocation-draw update, use §5.1d). All edits lock permanently once status transitions to `voting`. The lobby view surfaces the entry point as an "Edit room" control, visible only to the owner (and co-admins, §6.7). The lobby-edit surface uses the **same compact + ⓘ template-card and announcement-mode UX** as Step 2 above — no second design.
 
 ### 6.2 Room PIN generation
 - 6 chars from charset: `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (no O, 0, I, 1)
@@ -451,6 +453,7 @@ The lobby is no longer a dead "waiting for admin" screen. Guests arrive 20–30 
 - Horizontally scrollable card deck showing every contestant in running order: flag · country · song · artist. Tapping a card flips it to reveal the category hints that will apply (pulled from the selected template) plus a "Preview song" external link to YouTube if available (deep-link only — no embed, no media rights required).
 - Deep-link source: the `artistPreviewUrl` optional field on the hardcoded JSON (`data/contestants/{year}/{event}.json`). When absent, the "Preview song" link is hidden.
 - Useful for late joiners who missed early acts, and for early arrivers who want to warm up.
+- **Hints-seen signal.** The first time the user flips any primer card to read hints, the client writes `localStorage.emx_hints_seen_{roomId} = true`. This flag is consumed by the voting card's hint-collapse default (§8.2): users who pre-read in the lobby never see hints expanded again on the voting card.
 
 **6.6.4 Room bets preview**
 - If the admin enabled bets (§6.1 Step 2, §22), the three bet questions render as a read-only card in the lobby showing what will be asked when bets open. Guests can place their picks from this card (see §22.3 interaction). Un-picked bets remain in a guest's *"Still to pick"* list.
@@ -539,7 +542,7 @@ Admin builds from scratch. See §7.2.
 - Each category:
   - Name: required, 2–24 chars, no special characters. Duplicate names (case-insensitive, trimmed) within the same room are rejected.
   - Weight: optional integer input, blank = 1, min 1, max 5, step 1. (Half-unit weights deferred to V2.)
-  - Hint: optional, max 80 chars. Rendered **inline below the category name on the voting card**, permanently visible. Not a hover tooltip.
+  - Hint: optional, max 80 chars. Rendered inline below the category name on the voting card, **collapsed by default behind a ⓘ icon** per the hint-collapse rules in §8.2. Not a hover tooltip. (Lobby-time hint reading uses the primer carousel from §6.6.3, not the voting card.)
 - Reorder via a dedicated drag handle (grip icon on the left of each row); touch-and-hold (300ms) to activate dragging on mobile.
 - **Percentage is the primary display** next to each category name — e.g. "Vocals · 33%". Weights are the underlying input (1–5); percentages are computed live as `weight[i] / Σ(weights)` and always sum to 100%.
   - Examples: 5 categories of equal weight 1 → 20% each. Vocals=2 with four others at 1 → Vocals = 33%, others = 17% each.
@@ -558,14 +561,17 @@ These anchors appear on every voting card regardless of template. Anchor copy is
 ## 8. Voting interface
 
 ### 8.1 Layout (mobile-first)
-- Full-screen single-contestant view.
+- Full-screen single-contestant view. Designed to fit on iPhone 12+ (390×750 CSS px) **without vertical scroll** with a typical 5-category template + collapsed hints + collapsed hot-take. Older iPhone SE (568 px tall) may scroll one row — accepted MVP trade-off.
 - Header:
   - Left: contestant flag emoji + country name + song title + artist name.
   - Right: a compact progress cluster — the running-order label `3/17` stacked above a thin **progress bar** (`bg-muted` track, `bg-primary` fill) whose fill ratio is `scoredCount / totalContestants`, with the smaller label `2 scored` underneath the bar. Rationale: progress-bar + one numeric label communicates both "where am I in the running order" and "how far through voting am I" without two competing integer labels as in earlier drafts.
-- **Global scale strip** directly below the header, above the category rows: a single line reading `Scale: 1 Devastating · 5 Fine · 10 Iconic` (locale keys `voting.scale.1|5|10`). Replaces the per-row anchor repetition that appeared in earlier spec drafts — shown once per card.
-- Body: category score rows per §8.2 (hints always inline below each category name, per §7.2).
-- Footer: "I missed this" button + Prev/Next navigation + jump-to drawer button.
-- Jump-to: small button opens a scrollable drawer of all countries (flag + name + per-contestant **scored-chip** from §8.8), tapping any navigates directly.
+  - **Scale ⓘ icon** next to the progress cluster: tap → bottom-sheet (or popover) showing the three anchor labels — `1 — Devastating`, `5 — Fine`, `10 — Iconic` (locale keys `voting.scale.1|5|10`). Supersedes the earlier "global scale strip" line above the category rows. Rationale: most users only need to see the anchors once; keeping them on every card consumed scarce vertical space.
+  - **Calibration drawer button** (icon: ⚖️ or list-icon, locale label `voting.calibration.openButton`) — opens the per-user vote-review drawer described in §8.10.
+  - **Lock chip** — when the user has tapped *"Lock my scores"* the chip reads `🔒 Locked` (tap → unlock); otherwise the lock affordance lives at the bottom of the calibration drawer. See §8.10.
+- Body: category score rows per §8.2 (hints collapsed under ⓘ on each category row).
+- Footer: a slim icon-bar — **Prev** (←) · **Missed** (👻 / "I missed this", §8.3) · **Jump-to** (☰) · **Next** (→). Icon-only; labels render via `aria-label` for screen readers and as tooltips on long-press. Reduces the previous three-button text footer to ~44 px tall.
+- Hot-take area is a single pill button *"+ Add a hot take"* below the score rows by default; tap → expands inline into the §8.7 input. Once a hot-take exists, the rendered text + edit/delete affordances replace the pill (no extra "+" tap to edit).
+- Jump-to: drawer of all countries (flag + name + per-contestant **scored-chip** from §8.8), tapping any navigates directly.
 
 ### 8.2 Category score bar
 
@@ -575,12 +581,16 @@ Each category renders as a **single-row fill-bar of 10 tappable segments** label
 - **Touch targets:** each segment is at least 32×44 CSS px (width × height). The horizontal dimension is relaxed from the 44-px accessibility floor because the whole bar is a single thumb-reachable strip — mistaps land on an adjacent value rather than a destructive action. Vertical dimension keeps the 44-px floor. 10 × 32 = 320 px → fits iPhone SE width with no scroll.
 - **Visible numbers inside every segment.** Each segment shows its value (1–10) as the primary label. Text is the cue to scale; fill length alone is not enough — users would not reliably count bars. Font weight + colour update based on state (see below).
 - **Single row always.** The bar never wraps to two rows. On viewports narrower than 320 px (vanishingly rare), the bar gets `overflow-x: auto` with a subtle scroll cue. No two-row fallback.
-- **Category row header:** each row shows the category **name** on the left and a **status label** on the right, aligned baseline-to-baseline:
-  - *Unscored* → label reads `Not scored` in `text-muted-foreground` (locale key `voting.status.unscored`).
-  - *Scored* → label reads `✓ scored N` where N is the selected value, rendered in `text-primary` (gold) (locale key `voting.status.scored` with `{value}`).
-  - Rationale: moves the scored/unscored signal to an explicit, scannable label on every row. Replaces the earlier "ghost Tap to score" line and the per-row anchor repetition.
+- **Category row header (single line):** category **name** + ⓘ icon (only when a hint exists) + optional weight badge — left-aligned. The status label is **inline with the name**, separated by a middle dot:
+  - *Unscored* → `Vocals · Not scored` in `text-muted-foreground` (locale key `voting.status.unscored`).
+  - *Scored* → `Vocals · ✓ scored N` with the *Vocals* portion in `text-foreground` and the suffix in `text-primary` (gold) (locale key `voting.status.scored` with `{value}`).
+  - Rationale: collapsing the row header from a two-baseline layout to a single line saves ~16 px per row. Replaces the earlier right-aligned status pill.
 - **Weight badge (only when weights are non-uniform):** when the room's category weights are not all equal, categories with `weight > 1` render a pill next to their name: `counts 2×` (or `counts 3×`, etc., locale key `voting.weight.badge` with `{multiplier}`). Categories with `weight = 1` render no badge. For rooms where **every** category has `weight = 1` (all predefined templates by default), the badge is suppressed entirely — no visual noise in the common case. Percentages (§7.2 admin builder) remain the primary authoring display; **voters see weight as a multiplier, not a percentage**.
-- **Hint:** the category hint (from §7.2 for custom, from the template definition for predefined) renders inline below the category name, always visible, in `text-muted-foreground` at a smaller size. Unchanged from §7.2.
+- **Hint (collapsed-by-default behind ⓘ):** the category hint renders inline below the category name **only when expanded**. The ⓘ icon next to the category name is the toggle. Default state on each voting card:
+  - If `localStorage.emx_hints_seen_{roomId} === true` (set by either the lobby primer carousel, §6.6.3, or by completing the first voting card's onboarding below) → all hints **collapsed** by default.
+  - Else, on the **first voting card the user lands on**, hints render **expanded** as one-time onboarding. Tapping any segment to score, navigating to the next card, or tapping any hint's ⓘ to collapse it sets `emx_hints_seen_{roomId} = true`; from then on, all subsequent cards default to collapsed.
+  - Once collapsed, expanding a hint on one card does NOT keep it expanded on the next card — the per-card state is independent. Users can re-open ⓘ any time.
+  - Rationale: combines the original *"hint always visible"* educational intent with a no-scroll vertical budget. Power users skip the hints entirely; first-time voters get one card of "training wheels" on whichever contestant they enter on.
 - **Unset state:** no segments filled. All segments render with `bg-muted` fill + `text-muted-foreground` numerals.
 - **Selected state (score = N):** segments 1..N fill with `bg-primary` (gold) and their numerals flip to `text-primary-foreground`; segments N+1..10 stay `bg-muted` with muted numerals. The tapped segment (N) fires `animate-score-pop` on press — not the whole bar, just the segment the user touched, so the animation reinforces the tap point.
 - **Interaction:**
@@ -588,7 +598,7 @@ Each category renders as a **single-row fill-bar of 10 tappable segments** label
   - Tapping segment M while score is N (M ≠ N) → score becomes M. If M > N, additional segments fill; if M < N, segments M+1..N clear.
   - Tapping segment N while score is N → **clears** the score (returns to unset). Rationale: no separate "clear" control needed; matches the previous grid's tap-to-clear affordance.
 - **Scored definition:** a category is considered scored whenever any segment is in the filled state. The progress bar in §8.1 and the per-contestant chip in §8.8 count only categories in this state.
-- **No per-row anchors:** the 1/5/10 anchor copy lives once in the §8.1 global scale strip, not under every row. Removes ~15 lines of repeated text per voting card for a 5-category template.
+- **No per-row anchors:** the 1/5/10 anchor copy lives behind the §8.1 header **scale ⓘ** icon, not under every row. Removes ~15 lines of repeated text per voting card for a 5-category template.
 - **Why the change from the 5×2 grid:**
   1. *Single row on every viewport* — the 5×2 wrap made narrow screens feel cramped and broke the "scale" mental model by splitting 5 and 6.
   2. *Cumulative fill communicates "N out of 10" at a glance* — closer to how humans think about scores ("I'd give it a 7") than a discrete checkbox grid.
@@ -640,14 +650,16 @@ While the client was offline, the admin may have transitioned the room out of `v
 - Max 200 queued operations per room. On overflow, the oldest entries are evicted and a persistent banner warns *"Too many offline changes — oldest may be lost. Reconnect to save."* Unlikely in practice but prevents unbounded localStorage growth.
 
 ### 8.6 Navigation
-- Prev/Next arrows in footer; swipe gesture also works (left = next, right = prev).
+- **Slim icon footer (~44 px tall):** four icon-only controls in order — `← Prev` · `👻 I missed this` · `☰ Jump-to` · `Next →`. Each carries an `aria-label` for screen readers and reveals a tooltip on long-press; no inline text in the default state. Replaces the earlier text-button row to claw back vertical space (§8.1 no-scroll target).
+- Swipe gesture also works (left = next, right = prev).
 - **Swipe only activates outside the category score-button area** — horizontal swipes initiated on a score row do not trigger navigation (prevents accidental nav while users are selecting scores). The header, footer, between-row gaps, and hot-take area are all valid swipe origins.
 - Running order determines default sequence.
-- If admin broadcasts "now performing", UI snaps to that contestant per §6.5; user can navigate back.
+- If admin broadcasts "now performing", UI shows the opt-in pill per §6.5; user can navigate back.
 - Progress indicator: number of scored entries / total entries shown in header (see §8.1 for the separation from the running-order indicator).
 
 ### 8.7 Hot takes
 - Optional per-contestant free-text field below the score rows (§8.2).
+- **Collapsed by default behind a *"+ Add a hot take"* pill button.** Tap → the input expands inline with focus and the keyboard opens. Once a hot-take is written and saved, the pill is replaced by the rendered hot-take text + a small edit/delete affordance row (§8.7.1, §8.7.2) — no extra "+" tap needed to edit. Rationale: ~80 px of vertical space reclaimed on the typical voting card where most users skip the hot-take.
 - 140 character limit, emoji-aware (emoji count as 2 chars). A live counter renders below the input as `120 / 140`; the counter switches to `text-accent` (hot pink) once the user is within 10 characters of the limit, and the input visibly clamps at 140 (extra keystrokes do nothing).
 - Placeholder: *"Your one-liner"*.
 - Shown in results screen next to user's avatar.
@@ -690,6 +702,46 @@ Phones aggressively sleep during a multi-hour show. The voting view and the `/pr
 - If the lock is released by the browser (user switches tabs, phone lid closes, etc.), re-acquire automatically on `visibilitychange` → visible. Listen for `wakeLock.onrelease` to detect the release.
 - Never hold the wake lock on `/` , `/create`, `/join`, `/results/{id}`, or during `rooms.status = 'lobby'` — no reason to prevent the phone from sleeping during idle phases.
 - No user-visible toggle in MVP (implicit). A "disable wake lock" toggle is deferred to V2 if battery complaints emerge.
+
+### 8.10 Calibration drawer & soft lock-in
+
+A 3-hour Eurovision broadcast produces real **scale drift**: the 8/10 a guest gave to act 2 may bear no relation to the 8/10 they gave to act 19. This section defines the always-available *recalibration* surface plus an admin-side *soft prompt* and *lock counter*, without introducing a new room-status state machine — calibration layers on top of `voting` / `voting_ending` and never blocks the flow.
+
+**8.10.1 Calibration drawer (per user, always available)**
+
+- Entry point: a header icon button (⚖️ or list-icon, locale label `voting.calibration.openButton`) on `/room/{id}` whenever `rooms.status ∈ { voting, voting_ending }`. Opens a full-height bottom sheet titled *"Review your scores"* (locale key `voting.calibration.title`).
+- **Layout:** vertical list, one row per scored contestant in running order. Each row shows: flag · country · song · the user's per-category score chips · the user's overall **weighted score** (the same number computed by §9.2 for a hypothetical end-of-voting). For `missed: true` contestants the row shows `~estimated` chips dimmed-italic per §8.4. For unscored contestants the row appears greyed at the bottom of the list with a *"Not scored yet"* tag and a "Score now" button that closes the drawer and navigates to that card.
+- **Inline edit:** tapping any score chip opens an in-place mini fill-bar (the same component as §8.2, condensed). Edit → debounced save per §8.5. Edits propagate via Realtime to the user's other devices and to the admin's lock counter (any edit auto-unlocks; see §8.10.3).
+- **Filters:** two pills above the list — *"Highest scores"* (sorts the user's scored contestants by weighted score descending; helpful for spotting a 10 that no longer feels like one) and *"Lowest scores"* (ascending; helpful for spotting a too-harsh early score). Tap a pill to toggle; default sort is running order.
+- **Lock CTA at the bottom of the drawer:** a sticky-footer button reading either:
+  - *"🔒 Lock my scores"* — when the user's `room_memberships.scores_locked_at IS NULL`. Tap → calls `POST /api/rooms/{id}/lock-scores` (§14), which sets the timestamp and broadcasts `scores_locked` (§15). Drawer remains open; button flips to the second state below.
+  - *"🔓 Unlock to edit"* — when the user is currently locked. Tap → calls `POST /api/rooms/{id}/unlock-scores`, clears the timestamp, broadcasts `scores_unlocked`. Note: locking is **advisory** — a locked user can still edit scores from the drawer or the voting cards; any score edit while locked auto-calls the unlock endpoint server-side, so the lock counter remains an honest signal of "who's actually still polishing their votes". The `Lock` chip in the page header (§8.1) mirrors the drawer's button state.
+- **No timer.** Calibration is never time-bounded for users; the only bound is the admin's eventual "End voting" tap (§6.3.1), which still has its own 5-second undo countdown.
+
+**8.10.2 Admin "Prompt review" broadcast**
+
+- A button labelled *"Prompt everyone to review"* (locale key `admin.calibration.promptButton`) lives in the admin control panel on `/room/{id}` while `rooms.status ∈ { voting, voting_ending }`. Owner-or-co-admin only (§6.7).
+- Tap → calls `POST /api/rooms/{id}/calibration/prompt` (§14). Server broadcasts `calibration_prompt` (§15) with `{ promptedAt: ISO }`. Admin gets a 2-second confirmation toast.
+- Each guest's client renders a one-time toast (locale key `voting.calibration.promptToast`): *"⏰ Final chance to recalibrate — review your scores"* with an inline *"Open review"* CTA that opens the calibration drawer. Toast auto-dismisses after 6 s; the inline CTA persists in a small banner above the score rows for 60 s after the prompt arrives.
+- **Soft only.** No countdown. No auto-close. No forced drawer-open. No effect on `voting_ends_at`. The admin can re-prompt — each broadcast is independent and shows a fresh toast.
+- Rate limit: server rejects a re-prompt within 30 s of the previous one with HTTP 429 (avoids prompt spam if the admin double-taps).
+
+**8.10.3 Admin lock counter & roster**
+
+- The admin's header on `/room/{id}` during `voting` / `voting_ending` shows a live chip: `🔒 N / M locked` (locale key `admin.calibration.lockCounter` with `{locked}` and `{total}`). Updated in realtime from `scores_locked` / `scores_unlocked` broadcasts; rebuilt on reconnect from `room_memberships`.
+- Tap the chip → opens the **lock roster panel**: list of every room member with avatar + display name + lock state (`🔒 Locked at HH:MM` or *"Editing"*). Greyed rows for users who unlocked. Updated live.
+- Purpose: the chip answers "can I end voting yet?" at a glance; the roster lets the admin nudge specific holdouts ("Anna, you good?") face-to-face in the room. No in-app DM. The admin still presses "End voting" manually when ready — the lock counter never auto-triggers a state transition.
+- **Auto-unlock invariant:** any vote write (score change, missed toggle, hot-take edit) by a locked user clears `scores_locked_at` server-side as part of the same UPSERT transaction. Both `votes` row and `room_memberships` row are updated atomically; broadcast emits `scores_unlocked` to all subscribers (and the user's own device, which updates the header chip). Rationale: a locked counter that doesn't reflect actual voting state is worse than no counter.
+
+**8.10.4 Reset on lifecycle transition**
+
+- On `voting → voting_ending`: locks are preserved (the 5 s undo window may still produce edits, which auto-unlock as above).
+- On `voting_ending → scoring`: `scores_locked_at` is no longer meaningful (votes are frozen) and is left as-is for audit purposes; the chip and drawer surface vanish with the §6.3 *"Tallying results…"* shimmer.
+- Late joiners (§6.3.2) start with `scores_locked_at = NULL` like everyone else.
+
+**8.10.5 Why no new room status**
+
+This pattern was chosen over a dedicated `calibrating` lifecycle state because (a) the pain point is *anywhere in the show*, not just at the end — having the drawer always available solves the act-2 vs. act-19 drift even before "End voting" is in sight, (b) avoiding a state-machine fork keeps the §6.3.1 voting-undo flow simple, and (c) lock-in is *advisory* — no schema enum churn, just one nullable timestamp on `room_memberships`.
 
 ---
 
@@ -989,6 +1041,43 @@ Shareable links may be opened (accidentally or prematurely) while the room is st
 - Share URL during `lobby` is safe to copy early — the countdown doubles as a "save the date" surface.
 - Exports (§12.3, §12.4) remain gated to `done` — partial exports would be misleading.
 
+### 12.6 Drill-down detail views (post-`done` only)
+
+The full results page (§12.1) ships two drill-down surfaces — one per **contestant**, one per **participant** — so guests can answer the two arguments that always come up after a Eurovision watch party: *"who liked Sweden?"* and *"who did Anna give her 12 to?"*. Both surfaces are read-only and **only available when `rooms.status = 'done'`** — never during `announcing`, to preserve the tension of the live reveal. Drill-downs are surfaced on `/results/{id}` and on `/room/{id}` once the room transitions to `done`. Source data is the existing `votes` + `results` tables — no new endpoint, no new DB shape.
+
+**12.6.1 Contestant drill-down**
+
+- Trigger: tap any row on the leaderboard.
+- Modal/sheet header: contestant flag · country · song · artist · final group total (e.g. `🇸🇪 Sweden — 142 pts`).
+- Body: a **vertical list, one row per room member**, sorted by `points_awarded` for that contestant descending (so the contestant's biggest fans render first). Each row shows:
+  - Avatar + display name.
+  - The user's per-category scores as small chips, e.g. `Vocals 8 · Music 7 · Outfit 9 · Stage 8 · Vibes 9`. For `missed: true` rows, chips render dimmed-italic with the `~` prefix per §8.4 — same convention as the voting card.
+  - The user's overall **weighted score** for this contestant (`§9.2`, e.g. `8.2`).
+  - The **points awarded** by this user (12, 10, 8, 7, 6, 5, 4, 3, 2, 1, or 0), rendered as a small medal-style pill on the right.
+  - The user's hot-take (if any), rendered inline below the chip row, with the *"edited"* tag from §8.7.1 when applicable. Deleted hot-takes (§8.7.2) are absent.
+- Aggregates pinned at the top of the body: room **mean** weighted score, **median** weighted score, **highest** scorer (avatar + value), **lowest** scorer (avatar + value).
+- Always-with-names: no anonymisation in MVP. Rationale: this is friends-watching-together, transparency is the joy.
+
+**12.6.2 Participant drill-down**
+
+- Trigger: tap any user's avatar in the per-user breakdowns section of the results page (§12.1).
+- Modal/sheet header: user avatar · display name · their total points awarded (`Σ points_awarded` across all contestants — note this is fixed by the §9.3 rank → points mapping and equal across all users, but rendered for symmetry) · their hot-take count.
+- Body: a **vertical list, one row per contestant the user voted on**, sorted by the user's **weighted score** descending (so each user's "their own personal #1" renders first). Each row shows:
+  - Contestant flag · country · song.
+  - The user's per-category score chips for that contestant.
+  - The user's overall **weighted score** for that contestant.
+  - The **points the user awarded** to that contestant — the same medal-style pill as in 12.6.1, on the right.
+  - The user's hot-take for that contestant (if any), inline below.
+- Aggregates pinned at the top: this user's **mean** score given, **harshness rating** (computed as `mean(allUsersMeanScore) − thisUsersMeanScore`, the same metric used by the §11.2 *harshest_critic* award), **alignment with room** (Spearman vs. group leaderboard, the same number used by *hive_mind_master* in §11.2). All numbers reuse the existing scoring primitives — no new math.
+- Always-with-names. Visible to anyone with the share link, same authorisation as the rest of `/results/{id}`.
+
+**12.6.3 Implementation notes**
+
+- Both drill-downs render from the existing `GET /api/results/{id}` payload — extend it (if needed) to include the per-user per-contestant `scores` blob already in `votes`. No new endpoint.
+- HTML and PDF exports (§12.3, §12.4) include drill-down sections **expanded inline** — the print artefact has no interactivity, so each contestant section embeds the per-member rows below the leaderboard, and each participant section embeds their per-contestant ranking. The text summary (§12.2) is **unaffected** — keeping it short for chat-paste is the whole point.
+- Performance budget: a 15-user / 26-contestant final means 390 (user × contestant) rows total — comfortably within a single client render. No pagination.
+- Drill-downs are **suppressed** while `rooms.status = 'announcing'` — the §12.5 "live leaderboard" view shows running totals but no drill-down affordance. The leaderboard rows simply aren't tappable until `done`.
+
 ---
 
 ## 13. Database schema
@@ -1038,11 +1127,12 @@ CREATE TABLE rooms (
 ### `room_memberships`
 ```sql
 CREATE TABLE room_memberships (
-  room_id     UUID REFERENCES rooms(id) ON DELETE CASCADE,
-  user_id     UUID REFERENCES users(id),
-  joined_at   TIMESTAMPTZ DEFAULT NOW(),
-  is_ready    BOOLEAN DEFAULT FALSE,            -- for instant mode "ready to reveal"
-  is_co_admin BOOLEAN DEFAULT FALSE,            -- admin delegate with same powers as owner, except ownership transfer (§6.7)
+  room_id           UUID REFERENCES rooms(id) ON DELETE CASCADE,
+  user_id           UUID REFERENCES users(id),
+  joined_at         TIMESTAMPTZ DEFAULT NOW(),
+  is_ready          BOOLEAN DEFAULT FALSE,            -- for instant mode "ready to reveal"
+  is_co_admin       BOOLEAN DEFAULT FALSE,            -- admin delegate with same powers as owner, except ownership transfer (§6.7)
+  scores_locked_at  TIMESTAMPTZ,                      -- soft lock-in for vote calibration (§8.10); NULL = unlocked / never locked. Cleared automatically on any vote write by this user.
   PRIMARY KEY (room_id, user_id)
 );
 ```
@@ -1246,8 +1336,11 @@ All routes in `app/api/` as Next.js Route Handlers.
 | POST | `/api/rooms/{id}/refresh-contestants` | Admin, lobby-only: re-run the §5.1 cascade and update the room's cached list (§5.1d). |
 | PATCH | `/api/rooms/{id}/ownership` | **Owner-only**: transfer `owner_user_id` to another member; old owner becomes a co-admin (§6.7). |
 | PATCH | `/api/rooms/{id}/co-admins` | Owner-only: promote/demote a member's `is_co_admin` flag (§6.7). |
-| POST | `/api/rooms/{id}/votes` | Upsert a user's vote for a contestant |
+| POST | `/api/rooms/{id}/votes` | Upsert a user's vote for a contestant. As a side effect, clears `room_memberships.scores_locked_at` for the writer if set (auto-unlock on edit, §8.10.3) and broadcasts `scores_unlocked`. |
 | DELETE | `/api/rooms/{id}/votes/{contestantId}/hot-take` | Delete a hot-take. Author, owner, or co-admin (§8.7.2). |
+| POST | `/api/rooms/{id}/lock-scores` | User: set own `room_memberships.scores_locked_at = NOW()`. Allowed only when `rooms.status ∈ { voting, voting_ending }`. Broadcasts `scores_locked`. Idempotent — already-locked is 200 with the existing timestamp. |
+| POST | `/api/rooms/{id}/unlock-scores` | User: clear own `room_memberships.scores_locked_at`. Same status guard as above. Broadcasts `scores_unlocked`. Idempotent. |
+| POST | `/api/rooms/{id}/calibration/prompt` | Owner-or-co-admin (§6.7): broadcast `calibration_prompt` to the room (§8.10.2). 30 s rate limit per room. 429 on burst. |
 | POST | `/api/rooms/{id}/bets` | Admin, lobby-only: set the 3 bet `bet_keys` for the room (§22.2). Replaces any existing set. |
 | PATCH | `/api/rooms/{id}/bets/{bet_key}` | Admin-only: resolve an admin-adjudicated bet to `yes`/`no`/`unknown` (§22.5). |
 | POST | `/api/rooms/{id}/bet-picks` | User: upsert one or more `bet_picks` rows. Allowed only while `rooms.status = 'lobby'` (§22.3). |
@@ -1288,6 +1381,9 @@ type RoomEvent =
   | { type: 'score_update'; contestantId: string; newTotal: number; newRank: number }
   | { type: 'bet_resolution'; betKey: string; resolution: 'yes' | 'no' | 'unknown' }
   | { type: 'hot_take_deleted'; voteId: string; deletedByUserId: string }
+  | { type: 'scores_locked'; userId: string; lockedAt: string }      // §8.10 — user tapped "Lock my scores"
+  | { type: 'scores_unlocked'; userId: string }                       // §8.10 — user explicitly unlocked, OR auto-unlock on a vote write
+  | { type: 'calibration_prompt'; promptedAt: string; promptedByUserId: string }  // §8.10.2 — admin nudge to review scores
 ```
 
 In addition, Postgres Changes for `rooms`, `room_memberships`, `votes`, `results`, `room_bets`, `bet_picks` are exposed via the `supabase_realtime` publication (see §13) so clients can optionally subscribe directly for DB-level signals (used as a fallback if a broadcast is missed during reconnect).
