@@ -325,34 +325,42 @@ export default function VotingView({
         <nav className="grid grid-cols-4 gap-2 pt-4">
           <Button
             variant="secondary"
+            size="sm"
             onClick={() => setIdx((i) => Math.max(0, i - 1))}
             disabled={!canPrev}
             aria-label="Previous contestant"
+            className="text-lg"
           >
-            ← Prev
+            ←
           </Button>
           <Button
             variant="ghost"
+            size="sm"
             onClick={() => handleMarkMissed(contestant.id)}
             disabled={isMissed}
             aria-label="Mark this contestant as missed"
+            className="text-lg"
           >
-            Missed
+            👻
           </Button>
           <Button
             variant="ghost"
+            size="sm"
             onClick={() => setIsDrawerOpen(true)}
             aria-label="Jump to a contestant"
+            className="text-lg"
           >
-            ☰ Jump to
+            ☰
           </Button>
           <Button
             variant="secondary"
+            size="sm"
             onClick={() => setIdx((i) => Math.min(totalContestants - 1, i + 1))}
             disabled={!canNext}
             aria-label="Next contestant"
+            className="text-lg"
           >
-            Next →
+            →
           </Button>
         </nav>
 
