@@ -175,6 +175,19 @@ describe("Autosaver", () => {
     }
   });
 
+  it("scheduleMissed flushes a missed-only payload after the debounce window", async () => {
+    const { saver, post } = makeSaver(async () => makeSuccess());
+    saver.scheduleMissed("c1", true);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledWith({
+      roomId: ROOM_ID,
+      userId: USER_ID,
+      contestantId: "c1",
+      missed: true,
+    });
+  });
+
   it("dispose cancels pending timers and suppresses status updates from later resolutions", async () => {
     let resolvePost: ((r: PostVoteResult) => void) | null = null;
     const pending = new Promise<PostVoteResult>((r) => {
