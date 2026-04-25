@@ -28,6 +28,7 @@ export interface UseVoteAutosaveResult {
     next: number | null
   ) => void;
   onMissedChange: (contestantId: string, missed: boolean) => void;
+  onHotTakeChange: (contestantId: string, hotTake: string | null) => void;
   status: DisplaySaveStatus;
   offlineBannerVisible: boolean;
   drainNotice: DrainNotice | null;
@@ -106,6 +107,13 @@ export function useVoteAutosave(
     []
   );
 
+  const onHotTakeChange = useCallback(
+    (contestantId: string, hotTake: string | null) => {
+      saverRef.current?.scheduleHotTake(contestantId, hotTake);
+    },
+    []
+  );
+
   const dismissDrainNotice = useCallback(() => setDrainNotice(null), []);
 
   const status: DisplaySaveStatus =
@@ -116,6 +124,7 @@ export function useVoteAutosave(
   return {
     onScoreChange,
     onMissedChange,
+    onHotTakeChange,
     status,
     offlineBannerVisible: !adapterState.online,
     drainNotice,
