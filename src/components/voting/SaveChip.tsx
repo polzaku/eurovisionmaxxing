@@ -1,13 +1,21 @@
 import type { SaveStatus } from "@/lib/voting/Autosaver";
 
+export type DisplaySaveStatus = SaveStatus | "offline";
+
 export interface SaveChipProps {
-  status: SaveStatus;
+  status: DisplaySaveStatus;
 }
 
 /**
  * Persistent save indicator per SPEC §8.5. Renders nothing in `idle`.
- * The `error` state is a PR-1 placeholder that becomes `offline` once
- * PR 2 lands (offline queue + localStorage).
+ *
+ * 5 visual states after PR 2:
+ *  - idle    → hidden
+ *  - saving  → "Saving…" (muted)
+ *  - saved   → "✓ Saved" (primary/gold)
+ *  - offline → "Offline — changes queued" (accent/pink)
+ *  - error   → "Save failed" (destructive/red) — genuine 4xx/5xx only;
+ *              network errors route to the offline queue
  */
 export default function SaveChip({ status }: SaveChipProps) {
   if (status === "idle") return null;
@@ -23,6 +31,13 @@ export default function SaveChip({ status }: SaveChipProps) {
     return (
       <span className={`${base} text-primary`} aria-live="polite">
         ✓ Saved
+      </span>
+    );
+  }
+  if (status === "offline") {
+    return (
+      <span className={`${base} text-accent`} aria-live="polite">
+        Offline — changes queued
       </span>
     );
   }

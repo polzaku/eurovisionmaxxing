@@ -277,6 +277,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         initialScores={initialScores}
         roomId={phase.room.id}
         userId={getSession()?.userId ?? undefined}
+        offlineBannerVisible={autosave.offlineBannerVisible}
       />
     );
   }

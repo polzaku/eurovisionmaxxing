@@ -7,8 +7,8 @@ import { useEffect } from "react";
 import Button from "@/components/ui/Button";
 import ScoreRow from "@/components/voting/ScoreRow";
 import { scoredCount } from "@/components/voting/scoredCount";
-import SaveChip from "@/components/voting/SaveChip";
-import type { SaveStatus } from "@/lib/voting/Autosaver";
+import SaveChip, { type DisplaySaveStatus } from "@/components/voting/SaveChip";
+import OfflineBanner from "@/components/voting/OfflineBanner";
 import {
   loadVotingPosition,
   saveVotingPosition,
@@ -24,11 +24,12 @@ export interface VotingViewProps {
     categoryName: string,
     next: number | null
   ) => void;
-  saveStatus?: SaveStatus;
+  saveStatus?: DisplaySaveStatus;
   initialScores?: Record<string, Record<string, number | null>>;
   /** When both roomId and userId are provided, persists the current contestant in localStorage so reloads land on the same card. */
   roomId?: string;
   userId?: string;
+  offlineBannerVisible?: boolean;
 }
 
 function getPersistentStorage() {
@@ -48,6 +49,7 @@ export default function VotingView({
   initialScores,
   roomId,
   userId,
+  offlineBannerVisible,
 }: VotingViewProps) {
   const sortedContestants = useMemo(
     () => [...contestants].sort((a, b) => a.runningOrder - b.runningOrder),
@@ -125,6 +127,7 @@ export default function VotingView({
 
   return (
     <main className="flex min-h-screen flex-col items-center px-4 py-6 sm:px-6 sm:py-10">
+      <OfflineBanner visible={offlineBannerVisible ?? false} />
       <div className="w-full max-w-xl space-y-6 animate-fade-in">
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
