@@ -17,6 +17,7 @@ describe("seedScoresFromVotes", () => {
         scores: { Vocals: 7, Staging: 9 },
         missed: false,
         hotTake: null,
+        updatedAt: "2026-04-25T12:00:00Z",
       },
     ];
     expect(
@@ -33,6 +34,7 @@ describe("seedScoresFromVotes", () => {
         scores: { Vocals: 7, BogusStale: 3, Staging: 9 },
         missed: false,
         hotTake: null,
+        updatedAt: "2026-04-25T12:00:00Z",
       },
     ];
     expect(
@@ -49,12 +51,14 @@ describe("seedScoresFromVotes", () => {
         scores: { Vocals: 7 },
         missed: false,
         hotTake: null,
+        updatedAt: "2026-04-25T12:00:00Z",
       },
       {
         contestantId: "2026-ua",
         scores: { Vocals: 5 },
         missed: false,
         hotTake: null,
+        updatedAt: "2026-04-25T12:00:00Z",
       },
     ];
     expect(
@@ -71,6 +75,7 @@ describe("seedScoresFromVotes", () => {
         scores: null,
         missed: true,
         hotTake: null,
+        updatedAt: "2026-04-25T12:00:00Z",
       },
     ];
     expect(
@@ -85,6 +90,7 @@ describe("seedScoresFromVotes", () => {
         scores: { OnlyStaleKey: 7 },
         missed: false,
         hotTake: null,
+        updatedAt: "2026-04-25T12:00:00Z",
       },
     ];
     expect(
@@ -99,6 +105,7 @@ describe("seedScoresFromVotes", () => {
         scores: { Vocals: null, Staging: 6 },
         missed: false,
         hotTake: null,
+        updatedAt: "2026-04-25T12:00:00Z",
       },
     ];
     expect(

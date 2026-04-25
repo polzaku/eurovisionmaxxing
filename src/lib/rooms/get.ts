@@ -15,6 +15,7 @@ export interface VoteView {
   scores: Record<string, number | null> | null;
   missed: boolean;
   hotTake: string | null;
+  updatedAt: string;
 }
 
 export interface GetRoomDeps {
@@ -141,7 +142,7 @@ export async function getRoom(
     const userId = input.userId;
     const votesQuery = await deps.supabase
       .from("votes")
-      .select("contestant_id, scores, missed, hot_take")
+      .select("contestant_id, scores, missed, hot_take, updated_at")
       .eq("room_id", roomId)
       .eq("user_id", userId);
 
@@ -151,11 +152,13 @@ export async function getRoom(
         scores: Record<string, number | null> | null;
         missed: boolean;
         hot_take: string | null;
+        updated_at: string;
       }>).map((row) => ({
         contestantId: row.contestant_id,
         scores: row.scores,
         missed: row.missed,
         hotTake: row.hot_take,
+        updatedAt: row.updated_at,
       }));
     }
   }

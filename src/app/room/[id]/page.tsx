@@ -205,10 +205,31 @@ export default function RoomPage({ params }: { params: { id: string } }) {
       postVote(payload, { fetch: window.fetch.bind(window) }),
     []
   );
+  const memoizedFetchServerVotes = useCallback(
+    async (
+      voteRoomId: string,
+      voteUserId: string
+    ): Promise<{ contestantId: string; updatedAt: string }[]> => {
+      const result = await fetchRoomData(voteRoomId, voteUserId, {
+        fetch: window.fetch.bind(window),
+      });
+      if (!result.ok || !result.data) return [];
+      const votes = (result.data.votes ?? []) as Array<{
+        contestantId: string;
+        updatedAt: string;
+      }>;
+      return votes.map((v) => ({
+        contestantId: v.contestantId,
+        updatedAt: v.updatedAt,
+      }));
+    },
+    []
+  );
   const autosave = useVoteAutosave({
     roomId,
     userId: getSession()?.userId ?? null,
     post: memoizedPostVote,
+    fetchServerVotes: memoizedFetchServerVotes,
   });
 
   if (phase.kind === "loading") {
@@ -278,6 +299,9 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         roomId={phase.room.id}
         userId={getSession()?.userId ?? undefined}
         offlineBannerVisible={autosave.offlineBannerVisible}
+        drainNotice={autosave.drainNotice}
+        onDismissDrainNotice={autosave.dismissDrainNotice}
+        queueOverflow={autosave.queueOverflow}
       />
     );
   }

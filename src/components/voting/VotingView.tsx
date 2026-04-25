@@ -9,6 +9,9 @@ import ScoreRow from "@/components/voting/ScoreRow";
 import { scoredCount } from "@/components/voting/scoredCount";
 import SaveChip, { type DisplaySaveStatus } from "@/components/voting/SaveChip";
 import OfflineBanner from "@/components/voting/OfflineBanner";
+import DrainNotice from "@/components/voting/DrainNotice";
+import QueueOverflowBanner from "@/components/voting/QueueOverflowBanner";
+import type { DrainNotice as DrainNoticePayload } from "@/lib/voting/OfflineAdapter";
 import {
   loadVotingPosition,
   saveVotingPosition,
@@ -30,6 +33,9 @@ export interface VotingViewProps {
   roomId?: string;
   userId?: string;
   offlineBannerVisible?: boolean;
+  drainNotice?: DrainNoticePayload | null;
+  onDismissDrainNotice?: () => void;
+  queueOverflow?: boolean;
 }
 
 function getPersistentStorage() {
@@ -50,6 +56,9 @@ export default function VotingView({
   roomId,
   userId,
   offlineBannerVisible,
+  drainNotice,
+  onDismissDrainNotice,
+  queueOverflow,
 }: VotingViewProps) {
   const sortedContestants = useMemo(
     () => [...contestants].sort((a, b) => a.runningOrder - b.runningOrder),
@@ -128,6 +137,11 @@ export default function VotingView({
   return (
     <main className="flex min-h-screen flex-col items-center px-4 py-6 sm:px-6 sm:py-10">
       <OfflineBanner visible={offlineBannerVisible ?? false} />
+      <QueueOverflowBanner visible={queueOverflow ?? false} />
+      <DrainNotice
+        notice={drainNotice ?? null}
+        onDismiss={onDismissDrainNotice ?? (() => {})}
+      />
       <div className="w-full max-w-xl space-y-6 animate-fade-in">
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">

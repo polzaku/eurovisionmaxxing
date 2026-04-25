@@ -3,6 +3,7 @@ import {
   OfflineAdapter,
   type OfflineAdapterState,
   type OfflineAdapterDeps,
+  type DrainNotice,
 } from "@/lib/voting/OfflineAdapter";
 import type { PostVoteInput, PostVoteResult } from "@/lib/voting/postVote";
 import {
@@ -265,6 +266,187 @@ describe("OfflineAdapter", () => {
     fx.adapter.dispose();
     fx.fireOnline();
     expect(fx.states.length).toBe(countBefore);
+  });
+
+  it("200-cap: enqueueing past the cap evicts the oldest and emits overflowed: true", async () => {
+    const states: OfflineAdapterState[] = [];
+    const realPost = vi.fn(async () => ok());
+    const storageMock = makeStorage();
+    const adapter = new OfflineAdapter({
+      realPost,
+      storage: storageMock.storage,
+      onStateChange: (s) => states.push(s),
+      isOnline: () => false,
+      addOnlineListener: () => () => {},
+      now: () => 1000,
+      uuid: () => Math.random().toString(36).slice(2, 10),
+      maxQueueSize: 2,
+    });
+
+    await adapter.post(payload("2026-ua"));
+    await adapter.post(payload("2026-se"));
+    await adapter.post(payload("2026-fr"));
+
+    expect(storageMock.read()).toHaveLength(2);
+    const remaining = storageMock.read().map((e) => e.payload.contestantId);
+    expect(remaining).toEqual(["2026-se", "2026-fr"]);
+    expect(states[states.length - 1]).toMatchObject({ overflowed: true });
+    adapter.dispose();
+  });
+
+  it("drain: fetchServerVotes returning newer updatedAt → entry skipped + notice fired", async () => {
+    const stale: QueueEntry = {
+      id: "stale",
+      timestamp: 1000,
+      payload: payload("2026-ua"),
+    };
+    const fresh: QueueEntry = {
+      id: "fresh",
+      timestamp: 9_999_999_999_999,
+      payload: payload("2026-se"),
+    };
+    let notice: DrainNotice | null = null;
+    const storageMock = makeStorage([stale, fresh]);
+    const realPost = vi.fn(async () => ok());
+    const adapter = new OfflineAdapter({
+      realPost,
+      storage: storageMock.storage,
+      onStateChange: () => {},
+      isOnline: () => true,
+      addOnlineListener: () => () => {},
+      now: () => 1000,
+      uuid: () => "u",
+      fetchServerVotes: async () => [
+        { contestantId: "2026-ua", updatedAt: "2026-04-25T12:00:01Z" },
+      ],
+      onDrainComplete: (n) => {
+        notice = n;
+      },
+    });
+
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+
+    expect(realPost).toHaveBeenCalledTimes(1);
+    expect(realPost).toHaveBeenCalledWith(fresh.payload);
+    expect(storageMock.read()).toEqual([]);
+    expect(notice).not.toBeNull();
+    expect(notice!.skipped).toHaveLength(1);
+    expect(notice!.skipped[0].entry.id).toBe("stale");
+    expect(notice!.votingEndedRoomIds).toEqual([]);
+    adapter.dispose();
+  });
+
+  it("drain: fetchServerVotes throws → drain aborts; queue retained; no notice", async () => {
+    const e: QueueEntry = {
+      id: "e",
+      timestamp: 1000,
+      payload: payload("2026-ua"),
+    };
+    let notice: DrainNotice | null = null;
+    const storageMock = makeStorage([e]);
+    const adapter = new OfflineAdapter({
+      realPost: vi.fn(async () => ok()),
+      storage: storageMock.storage,
+      onStateChange: () => {},
+      isOnline: () => true,
+      addOnlineListener: () => () => {},
+      now: () => 1000,
+      uuid: () => "u",
+      fetchServerVotes: async () => {
+        throw new Error("server fetch failed");
+      },
+      onDrainComplete: (n) => {
+        notice = n;
+      },
+    });
+
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+
+    expect(storageMock.read()).toHaveLength(1);
+    expect(notice).toBeNull();
+    adapter.dispose();
+  });
+
+  it("drain: 409 ROOM_NOT_VOTING → drops entries for that roomId + emits voting-ended notice", async () => {
+    const ROOM_X = "11111111-2222-4333-8444-666666666666";
+    const e1: QueueEntry = {
+      id: "e1",
+      timestamp: 9_999_999_999_999,
+      payload: { ...payload("2026-ua"), roomId: ROOM_X },
+    };
+    const e2: QueueEntry = {
+      id: "e2",
+      timestamp: 9_999_999_999_999,
+      payload: { ...payload("2026-se"), roomId: ROOM_X },
+    };
+    const e3: QueueEntry = {
+      id: "e3",
+      timestamp: 9_999_999_999_999,
+      payload: payload("2026-fr"),
+    };
+    let notice: DrainNotice | null = null;
+    const storageMock = makeStorage([e1, e2, e3]);
+    const realPost = vi.fn(async (p: PostVoteInput) => {
+      if (p.roomId === ROOM_X) {
+        return {
+          ok: false as const,
+          code: "ROOM_NOT_VOTING",
+          message: "Room is not accepting votes",
+        };
+      }
+      return ok();
+    });
+    const adapter = new OfflineAdapter({
+      realPost,
+      storage: storageMock.storage,
+      onStateChange: () => {},
+      isOnline: () => true,
+      addOnlineListener: () => () => {},
+      now: () => 1000,
+      uuid: () => "u",
+      fetchServerVotes: async () => [],
+      onDrainComplete: (n) => {
+        notice = n;
+      },
+    });
+
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+
+    expect(storageMock.read()).toEqual([]);
+    expect(notice).not.toBeNull();
+    expect(notice!.votingEndedRoomIds).toEqual([ROOM_X]);
+    expect(notice!.skipped).toEqual([]);
+    adapter.dispose();
+  });
+
+  it("drain: clears overflowed flag once queue drops below cap", async () => {
+    const oldEntries: QueueEntry[] = Array.from({ length: 3 }, (_, i) => ({
+      id: `e${i}`,
+      timestamp: 9_999_999_999_999,
+      payload: payload(`2026-${String(i).padStart(2, "0")}`),
+    }));
+    const states: OfflineAdapterState[] = [];
+    const storageMock = makeStorage(oldEntries);
+    const adapter = new OfflineAdapter({
+      realPost: vi.fn(async () => ok()),
+      storage: storageMock.storage,
+      onStateChange: (s) => states.push(s),
+      isOnline: () => true,
+      addOnlineListener: () => () => {},
+      now: () => 1000,
+      uuid: () => "u",
+      maxQueueSize: 2,
+      fetchServerVotes: async () => [],
+    });
+
+    for (let i = 0; i < 15; i++) await Promise.resolve();
+
+    expect(storageMock.read()).toEqual([]);
+    expect(states[states.length - 1]).toMatchObject({
+      queueSize: 0,
+      overflowed: false,
+    });
+    adapter.dispose();
   });
 
   it("polls periodically while queue is non-empty and online (catches missed `online` events)", async () => {
