@@ -175,6 +175,50 @@ describe("Autosaver", () => {
     }
   });
 
+  it("coalesces schedule + scheduleMissed for the same contestant into one post", async () => {
+    const { saver, post } = makeSaver(async () => makeSuccess());
+    saver.schedule("c1", "Vocals", 7);
+    saver.scheduleMissed("c1", true);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledWith({
+      roomId: ROOM_ID,
+      userId: USER_ID,
+      contestantId: "c1",
+      scores: { Vocals: 7 },
+      missed: true,
+    });
+  });
+
+  it("coalesces scheduleMissed then schedule into one post", async () => {
+    const { saver, post } = makeSaver(async () => makeSuccess());
+    saver.scheduleMissed("c1", true);
+    saver.schedule("c1", "Vocals", 7);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledWith({
+      roomId: ROOM_ID,
+      userId: USER_ID,
+      contestantId: "c1",
+      scores: { Vocals: 7 },
+      missed: true,
+    });
+  });
+
+  it("two scheduleMissed calls in the window — last value wins", async () => {
+    const { saver, post } = makeSaver(async () => makeSuccess());
+    saver.scheduleMissed("c1", true);
+    saver.scheduleMissed("c1", false);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledWith({
+      roomId: ROOM_ID,
+      userId: USER_ID,
+      contestantId: "c1",
+      missed: false,
+    });
+  });
+
   it("scheduleMissed flushes a missed-only payload after the debounce window", async () => {
     const { saver, post } = makeSaver(async () => makeSuccess());
     saver.scheduleMissed("c1", true);
