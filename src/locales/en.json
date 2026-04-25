@@ -87,6 +87,18 @@
       "fieldAria": "Hot take",
       "placeholder": "Your one-liner",
       "counter": "{count} / {max}"
+    },
+    "jumpTo": {
+      "footerButton": "Jump to",
+      "footerButtonAria": "Jump to a contestant",
+      "title": "Jump to contestant",
+      "closeAria": "Close",
+      "currentSuffix": "(current)",
+      "status": {
+        "unscored": "Not scored yet",
+        "scored": "✓ Scored",
+        "missed": "👻 Missed"
+      }
     }
   },
   "errors": {
