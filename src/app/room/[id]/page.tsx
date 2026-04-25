@@ -23,6 +23,7 @@ import { postVote } from "@/lib/voting/postVote";
 import type { VoteView } from "@/lib/rooms/get";
 import { seedScoresFromVotes } from "@/lib/voting/seedScoresFromVotes";
 import { seedMissedFromVotes } from "@/lib/voting/seedMissedFromVotes";
+import { seedHotTakesFromVotes } from "@/lib/voting/seedHotTakesFromVotes";
 
 interface MembershipShape {
   userId: string;
@@ -293,6 +294,10 @@ export default function RoomPage({ params }: { params: { id: string } }) {
       phase.votes,
       phase.contestants.map((c) => c.id)
     );
+    const initialHotTakes = seedHotTakesFromVotes(
+      phase.votes,
+      phase.contestants.map((c) => c.id)
+    );
     return (
       <VotingView
         contestants={phase.contestants}
@@ -300,9 +305,11 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         isAdmin={isAdmin}
         onScoreChange={autosave.onScoreChange}
         onMissedChange={autosave.onMissedChange}
+        onHotTakeChange={autosave.onHotTakeChange}
         saveStatus={autosave.status}
         initialScores={initialScores}
         initialMissed={initialMissed}
+        initialHotTakes={initialHotTakes}
         roomId={phase.room.id}
         userId={getSession()?.userId ?? undefined}
         offlineBannerVisible={autosave.offlineBannerVisible}
