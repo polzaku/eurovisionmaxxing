@@ -80,6 +80,13 @@
         "undo": "Undo",
         "dismissAria": "Dismiss"
       }
+    },
+    "hotTake": {
+      "addPill": "+ Add a hot take",
+      "addPillAria": "Add a hot take",
+      "fieldAria": "Hot take",
+      "placeholder": "Your one-liner",
+      "counter": "{count} / {max}"
     }
   },
   "errors": {
