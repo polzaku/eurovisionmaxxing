@@ -359,12 +359,14 @@ describe("getRoom — votes rehydration", () => {
             scores: { Vocals: 7, Staging: 9 },
             missed: false,
             hot_take: "iconic",
+            updated_at: "2026-04-25T12:00:00Z",
           },
           {
             contestant_id: "2026-se",
             scores: null,
             missed: true,
             hot_take: null,
+            updated_at: "2026-04-25T12:01:00Z",
           },
         ],
         error: null,
@@ -382,12 +384,14 @@ describe("getRoom — votes rehydration", () => {
         scores: { Vocals: 7, Staging: 9 },
         missed: false,
         hotTake: "iconic",
+        updatedAt: "2026-04-25T12:00:00Z",
       },
       {
         contestantId: "2026-se",
         scores: null,
         missed: true,
         hotTake: null,
+        updatedAt: "2026-04-25T12:01:00Z",
       },
     ]);
   });
