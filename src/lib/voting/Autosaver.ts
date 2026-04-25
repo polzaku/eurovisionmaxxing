@@ -13,13 +13,15 @@ export interface AutosaverDeps {
 interface PendingEntry {
   timerId: ReturnType<typeof globalThis.setTimeout>;
   scores: Record<string, number | null>;
+  missed?: boolean;
 }
 
 const DEFAULT_DEBOUNCE_MS = 500;
 
 /**
  * Per-contestant debounced autosave coordinator.
- * See docs/superpowers/specs/2026-04-24-voting-autosave-design.md §4.
+ * See docs/superpowers/specs/2026-04-24-voting-autosave-design.md §4
+ * and docs/superpowers/specs/2026-04-25-i-missed-this-design.md §4 (PR1).
  */
 export class Autosaver {
   private readonly setTimeoutFn: typeof globalThis.setTimeout;
@@ -37,10 +39,6 @@ export class Autosaver {
     private readonly userId: string,
     private readonly deps: AutosaverDeps
   ) {
-    // Bind the defaults to globalThis so browsers don't throw "Illegal
-    // invocation" when we later call these as instance-method expressions
-    // (`this.setTimeoutFn(...)` would otherwise pass the Autosaver instance
-    // as `this`, which window.setTimeout rejects in strict mode).
     this.setTimeoutFn =
       deps.setTimeout ?? globalThis.setTimeout.bind(globalThis);
     this.clearTimeoutFn =
@@ -58,7 +56,28 @@ export class Autosaver {
       () => this.flushContestant(contestantId),
       this.debounceMs
     );
-    this.pending.set(contestantId, { timerId, scores: nextScores });
+    this.pending.set(contestantId, {
+      timerId,
+      scores: nextScores,
+      missed: existing?.missed,
+    });
+    this.emitStatus();
+  }
+
+  scheduleMissed(contestantId: string, missed: boolean): void {
+    if (this.disposed) return;
+    this.hasWritten = true;
+    const existing = this.pending.get(contestantId);
+    if (existing) this.clearTimeoutFn(existing.timerId);
+    const timerId = this.setTimeoutFn(
+      () => this.flushContestant(contestantId),
+      this.debounceMs
+    );
+    this.pending.set(contestantId, {
+      timerId,
+      scores: existing?.scores ?? {},
+      missed,
+    });
     this.emitStatus();
   }
 
@@ -78,12 +97,14 @@ export class Autosaver {
     this.inflight += 1;
     this.emitStatus();
     try {
-      const result = await this.deps.post({
+      const payload: PostVoteInput = {
         roomId: this.roomId,
         userId: this.userId,
         contestantId,
-        scores: entry.scores,
-      });
+      };
+      if (Object.keys(entry.scores).length > 0) payload.scores = entry.scores;
+      if (entry.missed !== undefined) payload.missed = entry.missed;
+      const result = await this.deps.post(payload);
       this.inflight -= 1;
       if (this.disposed) return;
       this.lastOutcome = result.ok ? "success" : "error";

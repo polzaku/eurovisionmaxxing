@@ -27,6 +27,7 @@ export interface UseVoteAutosaveResult {
     categoryName: string,
     next: number | null
   ) => void;
+  onMissedChange: (contestantId: string, missed: boolean) => void;
   status: DisplaySaveStatus;
   offlineBannerVisible: boolean;
   drainNotice: DrainNotice | null;
@@ -98,6 +99,13 @@ export function useVoteAutosave(
     []
   );
 
+  const onMissedChange = useCallback(
+    (contestantId: string, missed: boolean) => {
+      saverRef.current?.scheduleMissed(contestantId, missed);
+    },
+    []
+  );
+
   const dismissDrainNotice = useCallback(() => setDrainNotice(null), []);
 
   const status: DisplaySaveStatus =
@@ -107,6 +115,7 @@ export function useVoteAutosave(
 
   return {
     onScoreChange,
+    onMissedChange,
     status,
     offlineBannerVisible: !adapterState.online,
     drainNotice,
