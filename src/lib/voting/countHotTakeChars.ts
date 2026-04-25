@@ -1,4 +1,4 @@
-const EMOJI_RE = /\p{Extended_Pictographic}/u;
+const EMOJI_RE = /\p{Extended_Pictographic}|\p{Regional_Indicator}/u;
 
 export function countHotTakeChars(text: string): number {
   if (text === "") return 0;
