@@ -123,6 +123,16 @@ export default function VotingView({
     [onMissedChange]
   );
 
+  const projected: ProjectedAverage = useMemo(
+    () =>
+      computeProjectedAverage(
+        scoresByContestant,
+        missedByContestant,
+        categories
+      ),
+    [scoresByContestant, missedByContestant, categories]
+  );
+
   if (categories.length === 0) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
@@ -161,15 +171,6 @@ export default function VotingView({
   const canNext = idx < totalContestants - 1;
 
   const isMissed = !!missedByContestant[contestant.id];
-  const projected: ProjectedAverage = useMemo(
-    () =>
-      computeProjectedAverage(
-        scoresByContestant,
-        missedByContestant,
-        categories
-      ),
-    [scoresByContestant, missedByContestant, categories]
-  );
 
   return (
     <main className="flex min-h-screen flex-col items-center px-4 py-6 sm:px-6 sm:py-10">
