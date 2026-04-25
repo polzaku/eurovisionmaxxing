@@ -74,7 +74,12 @@
       "cardLabel": "This one's marked as missed",
       "estimatedLabel": "Estimated score",
       "perCategoryLabel": "Per category (estimated)",
-      "rescoreButton": "Rescore this contestant"
+      "rescoreButton": "Rescore this contestant",
+      "toast": {
+        "body": "Marked missed — we'll estimate your scores as ~{overall}.",
+        "undo": "Undo",
+        "dismissAria": "Dismiss"
+      }
     }
   },
   "errors": {

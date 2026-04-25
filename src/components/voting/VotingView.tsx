@@ -7,6 +7,8 @@ import { useEffect } from "react";
 import Button from "@/components/ui/Button";
 import ScoreRow from "@/components/voting/ScoreRow";
 import MissedCard from "@/components/voting/MissedCard";
+import MissedToast from "@/components/voting/MissedToast";
+import { useMissedUndo } from "@/hooks/useMissedUndo";
 import { scoredCount } from "@/components/voting/scoredCount";
 import SaveChip, { type DisplaySaveStatus } from "@/components/voting/SaveChip";
 import OfflineBanner from "@/components/voting/OfflineBanner";
@@ -121,6 +123,27 @@ export default function VotingView({
       onMissedChange?.(contestantId, missed);
     },
     [onMissedChange]
+  );
+
+  const undo = useMissedUndo({
+    onUndo: useCallback(
+      (contestantId: string) => setMissed(contestantId, false),
+      [setMissed]
+    ),
+  });
+
+  const handleMarkMissed = useCallback(
+    (contestantId: string) => {
+      const nextMissed = { ...missedByContestant, [contestantId]: true };
+      const projection = computeProjectedAverage(
+        scoresByContestant,
+        nextMissed,
+        categories
+      );
+      setMissed(contestantId, true);
+      undo.trigger(contestantId, projection.overall);
+    },
+    [missedByContestant, scoresByContestant, categories, setMissed, undo]
   );
 
   const projected: ProjectedAverage = useMemo(
@@ -248,7 +271,7 @@ export default function VotingView({
           </Button>
           <Button
             variant="ghost"
-            onClick={() => setMissed(contestant.id, true)}
+            onClick={() => handleMarkMissed(contestant.id)}
             disabled={isMissed}
             aria-label="Mark this contestant as missed"
           >
@@ -264,6 +287,7 @@ export default function VotingView({
           </Button>
         </nav>
       </div>
+      <MissedToast toast={undo.toast} onUndo={undo.undo} />
     </main>
   );
 }
