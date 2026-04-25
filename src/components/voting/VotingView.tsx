@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useRef } from "react";
 import type { Contestant, VotingCategory } from "@/types";
 import { SCORE_ANCHORS } from "@/types";
 import { useEffect } from "react";
@@ -9,6 +9,8 @@ import ScoreRow from "@/components/voting/ScoreRow";
 import MissedCard from "@/components/voting/MissedCard";
 import MissedToast from "@/components/voting/MissedToast";
 import HotTakeField from "@/components/voting/HotTakeField";
+import JumpToDrawer from "@/components/voting/JumpToDrawer";
+import { nextIdxFromSwipe } from "@/lib/voting/nextIdxFromSwipe";
 import { useMissedUndo } from "@/hooks/useMissedUndo";
 import { scoredCount } from "@/components/voting/scoredCount";
 import SaveChip, { type DisplaySaveStatus } from "@/components/voting/SaveChip";
@@ -134,6 +136,34 @@ export default function VotingView({
     Record<string, string>
   >(() => initialHotTakes ?? {});
 
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const swipeStartXRef = useRef<number | null>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length !== 1) {
+      swipeStartXRef.current = null;
+      return;
+    }
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-no-swipe]")) {
+      swipeStartXRef.current = null;
+      return;
+    }
+    swipeStartXRef.current = e.touches[0].clientX;
+  }, []);
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      const startX = swipeStartXRef.current;
+      swipeStartXRef.current = null;
+      if (startX === null) return;
+      const endX = e.changedTouches[0]?.clientX ?? startX;
+      const next = nextIdxFromSwipe(idx, sortedContestants.length, endX - startX);
+      if (next !== null) setIdx(next);
+    },
+    [idx, sortedContestants.length]
+  );
+
   const setHotTake = useCallback(
     (contestantId: string, next: string) => {
       setHotTakesByContestant((prev) => {
@@ -225,7 +255,11 @@ export default function VotingView({
         notice={drainNotice ?? null}
         onDismiss={onDismissDrainNotice ?? (() => {})}
       />
-      <div className="w-full max-w-xl space-y-6 animate-fade-in">
+      <div
+        className="w-full max-w-xl space-y-6 animate-fade-in"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <p className="text-3xl leading-none" aria-hidden="true">
@@ -288,7 +322,7 @@ export default function VotingView({
           onChange={(next) => setHotTake(contestant.id, next)}
         />
 
-        <nav className="grid grid-cols-3 gap-3 pt-4">
+        <nav className="grid grid-cols-4 gap-2 pt-4">
           <Button
             variant="secondary"
             onClick={() => setIdx((i) => Math.max(0, i - 1))}
@@ -303,7 +337,14 @@ export default function VotingView({
             disabled={isMissed}
             aria-label="Mark this contestant as missed"
           >
-            I missed this
+            Missed
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => setIsDrawerOpen(true)}
+            aria-label="Jump to a contestant"
+          >
+            ☰ Jump to
           </Button>
           <Button
             variant="secondary"
@@ -314,6 +355,21 @@ export default function VotingView({
             Next →
           </Button>
         </nav>
+
+        <JumpToDrawer
+          isOpen={isDrawerOpen}
+          contestants={sortedContestants}
+          currentContestantId={contestant.id}
+          scoresByContestant={scoresByContestant}
+          missedByContestant={missedByContestant}
+          categoryNames={categoryNames}
+          onSelect={(id) => {
+            const target = sortedContestants.findIndex((c) => c.id === id);
+            if (target >= 0) setIdx(target);
+            setIsDrawerOpen(false);
+          }}
+          onClose={() => setIsDrawerOpen(false)}
+        />
       </div>
       <MissedToast toast={undo.toast} onUndo={undo.undo} />
     </main>
