@@ -8,6 +8,7 @@ import { fetchContestants, fetchContestantsMeta } from "@/lib/contestants";
 import type { Contestant } from "@/types";
 import ScoringPoller from "./ScoringPoller";
 import CopySummaryButton from "./CopySummaryButton";
+import AwardsSection from "@/components/results/AwardsSection";
 
 export async function generateMetadata({
   params,
@@ -198,6 +199,7 @@ async function DoneBody({
   roomId: string;
 }) {
   const t = await getTranslations("results");
+  const tAwards = await getTranslations("awards");
 
   const shareUrl =
     (process.env.NEXT_PUBLIC_APP_URL ?? "https://eurovisionmaxxing.com") +
@@ -229,6 +231,20 @@ async function DoneBody({
         leaderboard={data.leaderboard}
         contestants={data.contestants}
       />
+      {data.awards.length > 0 ? (
+        <AwardsSection
+          awards={data.awards}
+          contestants={data.contestants}
+          members={data.members}
+          labels={{
+            sectionHeading: t("headings.awards"),
+            categoryHeading: t("headings.categoryAwards"),
+            personalityHeading: t("headings.personalityAwards"),
+            jointCaption: tAwards("jointCaption"),
+            neighbourhoodCaption: tAwards("neighbourhoodCaption"),
+          }}
+        />
+      ) : null}
       {data.breakdowns.length > 0 ? (
         <Breakdowns
           title={t("headings.breakdowns")}

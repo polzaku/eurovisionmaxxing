@@ -87,11 +87,15 @@ CREATE TABLE room_awards (
   award_key       VARCHAR(30) NOT NULL,         -- e.g. "harshest_critic"
   award_name      VARCHAR(50) NOT NULL,         -- display name
   winner_user_id  UUID REFERENCES users(id),    -- null for contestant awards
+  winner_user_id_b UUID REFERENCES users(id),   -- SPEC §11.2 — paired slot (Neighbourhood voters; 2-way personality ties)
   winner_contestant_id VARCHAR(20),             -- null for user awards
   stat_value      NUMERIC(6,3),                 -- the underlying metric
   stat_label      VARCHAR(80),                  -- human-readable stat description
   PRIMARY KEY (room_id, award_key)
 );
+
+-- Existing-database migration (run via Supabase SQL Editor):
+--   ALTER TABLE room_awards ADD COLUMN IF NOT EXISTS winner_user_id_b UUID REFERENCES users(id);
 
 -- ─── INDEXES ────────────────────────────────────────────────────────────────
 

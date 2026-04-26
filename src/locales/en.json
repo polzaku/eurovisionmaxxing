@@ -139,7 +139,10 @@
     "headings": {
       "leaderboard": "Leaderboard",
       "breakdowns": "Who gave what",
-      "hotTakes": "Hot takes"
+      "hotTakes": "Hot takes",
+      "awards": "Awards",
+      "categoryAwards": "Best in category",
+      "personalityAwards": "And the room said…"
     },
     "leaderboard": {
       "points": "{count, plural, one {# pt} other {# pts}}",
@@ -160,6 +163,20 @@
       "final": "Eurovision {year} — Grand Final",
       "semi1": "Eurovision {year} — Semi-final 1",
       "semi2": "Eurovision {year} — Semi-final 2"
+    }
+  },
+  "awards": {
+    "jointCaption": "joint winners",
+    "neighbourhoodCaption": "voted most alike",
+    "personality": {
+      "biggest_stan": { "name": "Biggest stan", "stat": "avg {value}/10" },
+      "harshest_critic": { "name": "Harshest critic", "stat": "avg {value}/10" },
+      "most_contrarian": { "name": "Most contrarian", "stat": "Spearman dist {value}" },
+      "hive_mind_master": { "name": "Hive mind master", "stat": "Spearman dist {value}" },
+      "neighbourhood_voters": { "name": "Neighbourhood voters", "stat": "Pearson {value}" },
+      "the_dark_horse": { "name": "The dark horse", "stat": "variance {value}" },
+      "fashion_stan": { "name": "Fashion stan", "stat": "{value}/10 in fashion" },
+      "the_enabler": { "name": "The enabler", "stat": "12 points to the winner" }
     }
   }
 }

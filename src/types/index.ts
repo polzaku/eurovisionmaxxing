@@ -118,6 +118,7 @@ export interface RoomAward {
   awardKey: string;
   awardName: string;
   winnerUserId: string | null; // null for contestant awards
+  winnerUserIdB: string | null; // SPEC §11.2: paired-winner slot for Neighbourhood voters and 2-way personality ties
   winnerContestantId: string | null; // null for user awards
   statValue: number | null;
   statLabel: string | null;

@@ -3,6 +3,7 @@ import type { Database } from "@/types/database";
 import type { Contestant, EventType, Vote, VotingCategory } from "@/types";
 import type { ApiErrorCode } from "@/lib/api-errors";
 import { scoreRoom, type LeaderboardEntry } from "@/lib/scoring";
+import { computeAwards } from "@/lib/awards/computeAwards";
 import { ContestDataError } from "@/lib/contestants";
 import type { RoomEventPayload } from "@/lib/rooms/shared";
 
@@ -197,7 +198,7 @@ export async function runScoring(
 
   const membershipQuery = await deps.supabase
     .from("room_memberships")
-    .select("user_id, joined_at")
+    .select("user_id, joined_at, users(display_name)")
     .eq("room_id", roomId)
     .order("joined_at", { ascending: true });
 
@@ -208,9 +209,16 @@ export async function runScoring(
       500,
     );
   }
-  const userIds = (membershipQuery.data ?? []).map(
-    (m) => (m as { user_id: string }).user_id,
-  );
+  type MembershipWithUser = {
+    user_id: string;
+    users: { display_name: string } | null;
+  };
+  const memberRows = (membershipQuery.data ?? []) as MembershipWithUser[];
+  const userIds = memberRows.map((m) => m.user_id);
+  const usersForAwards = memberRows.map((m) => ({
+    userId: m.user_id,
+    displayName: m.users?.display_name ?? "",
+  }));
 
   const votesQuery = await deps.supabase
     .from("votes")
@@ -267,6 +275,39 @@ export async function runScoring(
       return fail(
         "INTERNAL_ERROR",
         "Could not write scoring results.",
+        500,
+      );
+    }
+  }
+
+  // 8a. Compute + UPSERT awards (SPEC §11). Pure function over the data we
+  // already have; no extra IO for compute. Idempotent under retry via
+  // `(room_id, award_key)` composite PK.
+  const awards = computeAwards({
+    categories: room.categories,
+    contestants: contestants.map((c) => ({ id: c.id, country: c.country })),
+    users: usersForAwards,
+    votes: out.filledVotes,
+    results: out.results,
+  });
+  if (awards.length > 0) {
+    const awardRows = awards.map((a) => ({
+      room_id: roomId,
+      award_key: a.awardKey,
+      award_name: a.awardName,
+      winner_user_id: a.winnerUserId,
+      winner_user_id_b: a.winnerUserIdB,
+      winner_contestant_id: a.winnerContestantId,
+      stat_value: a.statValue,
+      stat_label: a.statLabel,
+    }));
+    const awardsUpsert = await deps.supabase
+      .from("room_awards")
+      .upsert(awardRows, { onConflict: "room_id,award_key" });
+    if (awardsUpsert.error) {
+      return fail(
+        "INTERNAL_ERROR",
+        "Could not write awards.",
         500,
       );
     }
