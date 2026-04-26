@@ -108,11 +108,6 @@ export default function JumpToDrawer({
                   <span className="flex-1 min-w-0">
                     <span className="block text-sm font-medium truncate">
                       {c.country}
-                      {isCurrent && (
-                        <span className="ml-2 text-xs text-muted-foreground font-normal">
-                          (current)
-                        </span>
-                      )}
                     </span>
                     <span className="block text-xs text-muted-foreground truncate">
                       &ldquo;{c.song}&rdquo;
