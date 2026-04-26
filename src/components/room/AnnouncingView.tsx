@@ -37,6 +37,8 @@ interface AnnouncementState {
   pendingReveal: { contestantId: string; points: number } | null;
   queueLength: number;
   delegateUserId: string | null;
+  announcerPosition: number;
+  announcerCount: number;
 }
 
 interface ResultsResponse {
@@ -246,10 +248,25 @@ export default function AnnouncingView({
           </h1>
           {headerCard}
           {announcement ? (
-            <p className="text-xs font-mono text-muted-foreground">
-              Reveal {announcement.currentAnnounceIdx + 1} /{" "}
-              {announcement.queueLength}
-            </p>
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground tabular-nums">
+                Announcer{" "}
+                <span className="font-bold text-foreground">
+                  {announcement.announcerPosition}
+                </span>{" "}
+                of {announcement.announcerCount} &middot; Reveal{" "}
+                <span className="font-bold text-foreground">
+                  {announcement.currentAnnounceIdx + 1}
+                </span>{" "}
+                / {announcement.queueLength}
+              </p>
+              <AnnouncerProgressBar
+                position={announcement.announcerPosition}
+                count={announcement.announcerCount}
+                queueIdx={announcement.currentAnnounceIdx}
+                queueLength={announcement.queueLength}
+              />
+            </div>
           ) : null}
         </header>
 
@@ -434,6 +451,50 @@ type Mode =
   | "passive-announcer"
   | "owner-watching"
   | "guest-watching";
+
+/**
+ * Two-tier progress bar:
+ *   - Coarse: one segment per announcer in `announcement_order`. Past
+ *     announcers fill solid; the current is shown half-filled (proportional
+ *     to their per-queue progress); future announcers are empty.
+ *   - The whole bar is `announcer count` segments wide so the user gets a
+ *     glanceable "{position} of {count}" feel even without reading the
+ *     adjacent text.
+ */
+function AnnouncerProgressBar({
+  position,
+  count,
+  queueIdx,
+  queueLength,
+}: {
+  position: number;
+  count: number;
+  queueIdx: number;
+  queueLength: number;
+}) {
+  const innerProgress = queueLength > 0 ? queueIdx / queueLength : 0;
+  return (
+    <div className="flex gap-1 w-full" aria-hidden>
+      {Array.from({ length: count }, (_, i) => {
+        const slot = i + 1;
+        let fillPct = 0;
+        if (slot < position) fillPct = 100;
+        else if (slot === position) fillPct = Math.round(innerProgress * 100);
+        return (
+          <div
+            key={slot}
+            className="relative flex-1 h-1.5 rounded-full bg-border overflow-hidden"
+          >
+            <div
+              className="absolute inset-y-0 left-0 bg-primary motion-safe:transition-[width] motion-safe:duration-300"
+              style={{ width: `${fillPct}%` }}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function pickMode({
   isActiveDriver,

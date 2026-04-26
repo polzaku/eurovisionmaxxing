@@ -55,6 +55,14 @@ export interface AnnouncementState {
    * a passive "Admin is announcing for you" state when this is set.
    */
   delegateUserId: string | null;
+  /**
+   * 1-indexed position of the current announcer in `announcement_order`.
+   * `1` means the first announcer is up; equals `announcerCount` when the
+   * last one is mid-queue.
+   */
+  announcerPosition: number;
+  /** Total number of eligible announcers in `announcement_order`. */
+  announcerCount: number;
 }
 
 // Discriminated union per SPEC §12.5. `voting_ending` is forward-compat
@@ -328,6 +336,8 @@ async function loadAnnouncing(
     const announcerUser = (userQuery.data ?? null) as
       | { display_name: string; avatar_seed: string }
       | null;
+    const order = room.announcement_order ?? [];
+    const positionIdx = order.indexOf(announcerId);
     announcement = {
       announcingUserId: announcerId,
       announcingDisplayName: announcerUser?.display_name ?? "",
@@ -336,6 +346,8 @@ async function loadAnnouncing(
       pendingReveal: pending,
       queueLength: announcerRows.length,
       delegateUserId: room.delegate_user_id ?? null,
+      announcerPosition: positionIdx >= 0 ? positionIdx + 1 : 1,
+      announcerCount: order.length || 1,
     };
   }
 

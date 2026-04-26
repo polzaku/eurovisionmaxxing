@@ -427,7 +427,42 @@ describe("loadResults — announcing", () => {
       pendingReveal: { contestantId: "2026-be", points: 8 },
       queueLength: 3,
       delegateUserId: null,
+      announcerPosition: 1,
+      announcerCount: 1,
     });
+  });
+
+  it("computes announcerPosition + announcerCount from announcement_order", async () => {
+    const ANN_1 = "30000000-0000-4000-8000-000000000003";
+    const ANN_2 = "30000000-0000-4000-8000-000000000004";
+    const ANN_3 = "30000000-0000-4000-8000-000000000005";
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          ...announcingRoom.data,
+          announcing_user_id: ANN_2, // second of three
+          current_announce_idx: 0,
+          announcement_order: [ANN_1, ANN_2, ANN_3],
+        },
+        error: null,
+      },
+      announcerUser: {
+        data: { display_name: "Bob", avatar_seed: "bob" },
+        error: null,
+      },
+      announcerQueue: {
+        data: [{ contestant_id: "2026-al", points_awarded: 12 }],
+        error: null,
+      },
+    });
+    const result = await loadResults(
+      { roomId: VALID_ROOM_ID },
+      makeDeps(mock),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.data.status !== "announcing") return;
+    expect(result.data.announcement?.announcerPosition).toBe(2);
+    expect(result.data.announcement?.announcerCount).toBe(3);
   });
 
   it("exposes delegateUserId when admin has taken control via handoff", async () => {

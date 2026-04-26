@@ -145,12 +145,14 @@ export async function postAnnounceNext(
   userId: string,
   deps: Deps
 ): Promise<ApiOk<AnnounceNextSuccess> | ApiFail> {
-  return runRequest(() =>
-    deps.fetch(`/api/rooms/${roomId}/announce/next`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ userId }),
-    })
+  return runRequest<AnnounceNextSuccess>(
+    () =>
+      deps.fetch(`/api/rooms/${roomId}/announce/next`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ userId }),
+      }),
+    (body) => body as AnnounceNextSuccess,
   );
 }
 
@@ -164,11 +166,13 @@ export async function postAnnounceHandoff(
   takeControl: boolean,
   deps: Deps
 ): Promise<ApiOk<{ delegateUserId: string | null }> | ApiFail> {
-  return runRequest(() =>
-    deps.fetch(`/api/rooms/${roomId}/announce/handoff`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ userId, takeControl }),
-    })
+  return runRequest<{ delegateUserId: string | null }>(
+    () =>
+      deps.fetch(`/api/rooms/${roomId}/announce/handoff`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ userId, takeControl }),
+      }),
+    (body) => body as { delegateUserId: string | null },
   );
 }
