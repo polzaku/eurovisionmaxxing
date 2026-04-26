@@ -61,9 +61,6 @@ export default function TemplateCard({
           </span>
         </div>
         <p className="text-sm text-muted-foreground">{description}</p>
-        <p className="text-sm font-medium text-primary pt-1">
-          {t("templates.useThisTemplate")}
-        </p>
         {expanded && (
           <ul className="mt-3 space-y-1 text-xs text-muted-foreground border-t border-border pt-3">
             {template.categories.map((c) => (

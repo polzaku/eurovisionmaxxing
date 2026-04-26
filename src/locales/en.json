@@ -49,7 +49,6 @@
       "name": "Custom",
       "description": "Build your own categories from scratch."
     },
-    "useThisTemplate": "Use this template",
     "infoButtonAria": "More about {name}"
   },
   "announcementMode": {
