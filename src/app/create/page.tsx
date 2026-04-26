@@ -157,6 +157,9 @@ export default function CreateRoomPage() {
             contestants={contestants}
             minYear={MIN_YEAR}
             maxYear={maxYear}
+            extraYears={
+              process.env.NODE_ENV !== "production" ? [9999] : undefined
+            }
             onChange={(patch) => {
               if (patch.year !== undefined) setYear(patch.year);
               if (patch.event !== undefined) setEvent(patch.event);

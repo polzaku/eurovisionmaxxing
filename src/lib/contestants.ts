@@ -2,6 +2,22 @@ import type { Contestant, EventType } from "@/types";
 
 const EUROVISION_API_BASE = "https://eurovisionapi.runasp.net/api";
 
+/**
+ * Year reserved for the dev-only test fixture (5 contestants, fast smoke
+ * cycle through /create → vote → score → results). The fixture lives at
+ * `data/contestants/9999/{event}.json`. See `data/contestants/9999/README.md`.
+ *
+ * `isTestFixtureYear` returns true only outside production — never load this
+ * fixture on the deployed site.
+ */
+export const TEST_FIXTURE_YEAR = 9999;
+
+export function isTestFixtureYear(year: number): boolean {
+  return (
+    year === TEST_FIXTURE_YEAR && process.env.NODE_ENV !== "production"
+  );
+}
+
 interface ApiContestant {
   country: string;
   artist: string;
@@ -81,6 +97,17 @@ export async function fetchContestants(
   year: number,
   event: EventType
 ): Promise<Contestant[]> {
+  // Test-fixture path (dev-only): skip the upstream API and read directly
+  // from data/contestants/9999/{event}.json. The guard short-circuits prod.
+  if (year === TEST_FIXTURE_YEAR) {
+    if (!isTestFixtureYear(year)) {
+      throw new ContestDataError(
+        `Test fixture year ${year} is not available in this environment.`
+      );
+    }
+    return loadFromHardcoded(year, event);
+  }
+
   // Map event type to API event name
   const eventMap: Record<EventType, string> = {
     semi1: "first-semi-final",
@@ -108,14 +135,7 @@ export async function fetchContestants(
 
   // Step 2: Try hardcoded JSON
   try {
-    const fallback = await import(`../../data/contestants/${year}/${event}.json`);
-    const data = fallback.default ?? fallback;
-    if (validateContestants(data)) {
-      return data
-        .map((item: ApiContestant) => mapApiToContestant(item, year, event))
-        .sort((a, b) => a.runningOrder - b.runningOrder);
-    }
-    console.warn(`Hardcoded data invalid for ${year}/${event}`);
+    return await loadFromHardcoded(year, event);
   } catch {
     console.warn(`No hardcoded data for ${year}/${event}`);
   }
@@ -124,6 +144,25 @@ export async function fetchContestants(
   throw new ContestDataError(
     `Contest data not found for ${year} ${event}`
   );
+}
+
+/**
+ * Load contestants from the bundled JSON. Throws ContestDataError when the
+ * file is absent or malformed. Used by the prod fallback path AND the
+ * dev-only test-fixture short-circuit.
+ */
+async function loadFromHardcoded(
+  year: number,
+  event: EventType
+): Promise<Contestant[]> {
+  const fallback = await import(`../../data/contestants/${year}/${event}.json`);
+  const data = fallback.default ?? fallback;
+  if (!validateContestants(data)) {
+    throw new ContestDataError(`Hardcoded data invalid for ${year} ${event}`);
+  }
+  return data
+    .map((item: ApiContestant) => mapApiToContestant(item, year, event))
+    .sort((a, b) => a.runningOrder - b.runningOrder);
 }
 
 export class ContestDataError extends Error {
@@ -146,6 +185,11 @@ export async function fetchContestantsMeta(
   year: number,
   event: EventType,
 ): Promise<ContestantsMeta> {
+  if (year === TEST_FIXTURE_YEAR && !isTestFixtureYear(year)) {
+    throw new ContestDataError(
+      `Test fixture year ${year} is not available in this environment.`,
+    );
+  }
   let parsed: unknown;
   try {
     const mod = await import(`../../data/contestants/${year}/${event}.json`);

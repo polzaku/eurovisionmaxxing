@@ -262,6 +262,38 @@ describe("createRoom — year validation", () => {
     const result = await createRoom({ ...validInput, year: 2000 }, makeDeps(mock));
     expect(result).toMatchObject({ ok: true });
   });
+
+  it("accepts year 9999 (test fixture) when NODE_ENV !== 'production'", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    try {
+      const mock = makeSupabaseMock({ roomsInserts: [rowFor({ year: 9999 })] });
+      const result = await createRoom(
+        { ...validInput, year: 9999 },
+        makeDeps(mock, { currentYear: () => 2026 })
+      );
+      expect(result).toMatchObject({ ok: true });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("rejects year 9999 (test fixture) in production", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      const mock = makeSupabaseMock();
+      const result = await createRoom(
+        { ...validInput, year: 9999 },
+        makeDeps(mock, { currentYear: () => 2026 })
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        status: 400,
+        error: { code: "INVALID_YEAR" },
+      });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
 });
 
 describe("createRoom — event validation", () => {
