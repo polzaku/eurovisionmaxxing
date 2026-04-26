@@ -125,3 +125,54 @@ export async function postRoomScore(
     })
   );
 }
+
+/**
+ * Advance the live-mode announcement by one reveal. Server enforces that
+ * the caller is the current announcer or the room owner.
+ */
+export interface AnnounceNextSuccess {
+  contestantId: string;
+  points: number;
+  announcingUserId: string;
+  newTotal: number;
+  newRank: number;
+  nextAnnouncingUserId: string | null;
+  finished: boolean;
+}
+
+export async function postAnnounceNext(
+  roomId: string,
+  userId: string,
+  deps: Deps
+): Promise<ApiOk<AnnounceNextSuccess> | ApiFail> {
+  return runRequest<AnnounceNextSuccess>(
+    () =>
+      deps.fetch(`/api/rooms/${roomId}/announce/next`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ userId }),
+      }),
+    (body) => body as AnnounceNextSuccess,
+  );
+}
+
+/**
+ * Owner-only handoff: take over (`takeControl: true`) or release back to
+ * the original announcer (`takeControl: false`). SPEC §10.2 step 7.
+ */
+export async function postAnnounceHandoff(
+  roomId: string,
+  userId: string,
+  takeControl: boolean,
+  deps: Deps
+): Promise<ApiOk<{ delegateUserId: string | null }> | ApiFail> {
+  return runRequest<{ delegateUserId: string | null }>(
+    () =>
+      deps.fetch(`/api/rooms/${roomId}/announce/handoff`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ userId, takeControl }),
+      }),
+    (body) => body as { delegateUserId: string | null },
+  );
+}

@@ -33,10 +33,14 @@ CREATE TABLE rooms (
   announcement_order    UUID[],                 -- ordered array of userIds for live mode
   announcing_user_id    UUID REFERENCES users(id),
   current_announce_idx  SMALLINT DEFAULT 0,     -- which point value is being announced
+  delegate_user_id      UUID REFERENCES users(id), -- admin handoff (SPEC §10.2 step 7); null when announcer drives directly
   now_performing_id     VARCHAR(20),            -- contestant id currently performing
   allow_now_performing  BOOLEAN DEFAULT FALSE,
   created_at            TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Existing-database migration (run via Supabase SQL Editor on rooms with existing data):
+--   ALTER TABLE rooms ADD COLUMN IF NOT EXISTS delegate_user_id UUID REFERENCES users(id);
 
 -- ─── ROOM MEMBERSHIPS ───────────────────────────────────────────────────────
 

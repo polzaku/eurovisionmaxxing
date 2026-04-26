@@ -25,6 +25,46 @@ export interface HotTakeEntry {
   hotTake: string;
 }
 
+/**
+ * Live announcer state attached to the `announcing` payload so the room UI
+ * has everything it needs to render the reveal queue without a second
+ * round-trip. Null when there are no eligible announcers (degenerate
+ * empty-room case — see `runScoring` live-mode init).
+ */
+export interface AnnouncementState {
+  announcingUserId: string;
+  announcingDisplayName: string;
+  announcingAvatarSeed: string;
+  currentAnnounceIdx: number;
+  /**
+   * The reveal that's about to happen (announcer's results[idx]). Null if
+   * the queue has been exhausted (server should have rotated by then but
+   * keep null tolerant for transitional broadcasts).
+   */
+  pendingReveal: { contestantId: string; points: number } | null;
+  /**
+   * Total reveals planned for this announcer. Used by the UI to render
+   * "{idx + 1} / {queueLength}" progress.
+   */
+  queueLength: number;
+  /**
+   * If non-null, the room owner has taken control via `POST /announce/handoff`
+   * and is driving the reveals on the original announcer's behalf. The
+   * announcer still owns the points being revealed (record-of-record); the
+   * delegate is just tapping the button. The original announcer's UI shows
+   * a passive "Admin is announcing for you" state when this is set.
+   */
+  delegateUserId: string | null;
+  /**
+   * 1-indexed position of the current announcer in `announcement_order`.
+   * `1` means the first announcer is up; equals `announcerCount` when the
+   * last one is mid-queue.
+   */
+  announcerPosition: number;
+  /** Total number of eligible announcers in `announcement_order`. */
+  announcerCount: number;
+}
+
 // Discriminated union per SPEC §12.5. `voting_ending` is forward-compat
 // with TODO R0; current schema's CHECK constraint means it never appears.
 export type ResultsData =
@@ -38,6 +78,7 @@ export type ResultsData =
       pin: string;
       leaderboard: LeaderboardEntry[];
       contestants: Contestant[];
+      announcement: AnnouncementState | null;
     }
   | {
       status: "done";
@@ -99,6 +140,10 @@ type RoomBase = {
   pin: string;
   year: number;
   event: string;
+  announcement_order: string[] | null;
+  announcing_user_id: string | null;
+  current_announce_idx: number | null;
+  delegate_user_id: string | null;
 };
 
 type ResultRow = {
@@ -168,7 +213,9 @@ export async function loadResults(
 
   const roomQuery = await deps.supabase
     .from("rooms")
-    .select("id, status, pin, year, event")
+    .select(
+      "id, status, pin, year, event, announcement_order, announcing_user_id, current_announce_idx, delegate_user_id",
+    )
     .eq("id", roomId)
     .maybeSingle();
 
@@ -252,6 +299,58 @@ async function loadAnnouncing(
   const rows = (resultsQuery.data ?? []) as ResultRow[];
   const leaderboard = buildLeaderboardSeeded(rows, contestants);
 
+  // Load announcer state — name + avatar + pending reveal queue.
+  let announcement: AnnouncementState | null = null;
+  if (room.announcing_user_id) {
+    const announcerId = room.announcing_user_id;
+    const userQuery = await deps.supabase
+      .from("users")
+      .select("display_name, avatar_seed")
+      .eq("id", announcerId)
+      .maybeSingle();
+    if (userQuery.error) {
+      return fail("INTERNAL_ERROR", "Could not load announcer.", 500);
+    }
+    const announcerRowsQuery = await deps.supabase
+      .from("results")
+      .select("contestant_id, points_awarded")
+      .eq("room_id", room.id)
+      .eq("user_id", announcerId)
+      .gt("points_awarded", 0)
+      .order("rank", { ascending: false });
+    if (announcerRowsQuery.error) {
+      return fail("INTERNAL_ERROR", "Could not load announcer queue.", 500);
+    }
+    const announcerRows = (announcerRowsQuery.data ?? []) as Array<{
+      contestant_id: string;
+      points_awarded: number;
+    }>;
+    const idx = room.current_announce_idx ?? 0;
+    const pending =
+      idx >= 0 && idx < announcerRows.length
+        ? {
+            contestantId: announcerRows[idx].contestant_id,
+            points: announcerRows[idx].points_awarded,
+          }
+        : null;
+    const announcerUser = (userQuery.data ?? null) as
+      | { display_name: string; avatar_seed: string }
+      | null;
+    const order = room.announcement_order ?? [];
+    const positionIdx = order.indexOf(announcerId);
+    announcement = {
+      announcingUserId: announcerId,
+      announcingDisplayName: announcerUser?.display_name ?? "",
+      announcingAvatarSeed: announcerUser?.avatar_seed ?? "",
+      currentAnnounceIdx: idx,
+      pendingReveal: pending,
+      queueLength: announcerRows.length,
+      delegateUserId: room.delegate_user_id ?? null,
+      announcerPosition: positionIdx >= 0 ? positionIdx + 1 : 1,
+      announcerCount: order.length || 1,
+    };
+  }
+
   return {
     ok: true,
     data: {
@@ -261,6 +360,7 @@ async function loadAnnouncing(
       pin: room.pin,
       leaderboard,
       contestants,
+      announcement,
     },
   };
 }

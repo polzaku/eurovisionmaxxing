@@ -15,6 +15,13 @@ export interface RunScoringDeps {
   supabase: SupabaseClient<Database>;
   fetchContestants: (year: number, event: EventType) => Promise<Contestant[]>;
   broadcastRoomEvent: (roomId: string, event: RoomEventPayload) => Promise<void>;
+  /**
+   * Optional shuffle hook for live-mode `announcement_order` initialisation.
+   * Defaults to Fisher-Yates with `Math.random`. Tests inject a deterministic
+   * permutation. Pure: receives a fresh array, returns a new one (or mutates
+   * in place — caller doesn't care).
+   */
+  shuffle?: <T>(arr: T[]) => T[];
 }
 
 export interface RunScoringSuccess {
@@ -53,7 +60,17 @@ type RoomSelectRow = {
   year: number;
   event: string;
   categories: VotingCategory[];
+  announcement_mode: string;
 };
+
+function defaultShuffle<T>(arr: T[]): T[] {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
 
 type VoteRow = Database["public"]["Tables"]["votes"]["Row"];
 
@@ -102,7 +119,9 @@ export async function runScoring(
   // 1. Load the room.
   const roomQuery = await deps.supabase
     .from("rooms")
-    .select("id, status, owner_user_id, year, event, categories")
+    .select(
+      "id, status, owner_user_id, year, event, categories, announcement_mode",
+    )
     .eq("id", roomId)
     .maybeSingle();
 
@@ -253,10 +272,34 @@ export async function runScoring(
     }
   }
 
-  // 9. Transition scoring → announcing (conditional).
+  // 9. Transition scoring → announcing (conditional). For live mode, also
+  // initialise the announcement order so the announce state machine has
+  // something to walk on its first tick.
+  const announcingPatch: {
+    status: "announcing";
+    announcement_order?: string[];
+    announcing_user_id?: string | null;
+    current_announce_idx?: number;
+  } = { status: "announcing" };
+
+  if (room.announcement_mode === "live") {
+    // Eligible announcers: users with at least one points_awarded > 0 row.
+    // Users who only landed on rank-11+ contestants have nothing to reveal.
+    const eligible = new Set<string>();
+    for (const r of out.results) {
+      if (r.pointsAwarded > 0) eligible.add(r.userId);
+    }
+    const eligibleOrdered = userIds.filter((u) => eligible.has(u));
+    const shuffle = deps.shuffle ?? defaultShuffle;
+    const order = shuffle(eligibleOrdered);
+    announcingPatch.announcement_order = order;
+    announcingPatch.announcing_user_id = order[0] ?? null;
+    announcingPatch.current_announce_idx = 0;
+  }
+
   const toAnnouncing = await deps.supabase
     .from("rooms")
-    .update({ status: "announcing" })
+    .update(announcingPatch)
     .eq("id", roomId)
     .eq("status", "scoring")
     .select("id")

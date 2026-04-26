@@ -39,6 +39,10 @@ interface Scripted {
   membershipsSelect?: Mock;
   hotTakesSelect?: Mock;
   awardsSelect?: Mock;
+  /** SELECT * FROM users WHERE id = announcing_user_id (for announcement state). */
+  announcerUser?: Mock;
+  /** SELECT contestant_id, points_awarded FROM results filtered to announcer's queue. */
+  announcerQueue?: Mock;
 }
 
 function makeSupabaseMock(s: Scripted = {}) {
@@ -56,6 +60,8 @@ function makeSupabaseMock(s: Scripted = {}) {
   const membershipsSelect = s.membershipsSelect ?? { data: [], error: null };
   const hotTakesSelect = s.hotTakesSelect ?? { data: [], error: null };
   const awardsSelect = s.awardsSelect ?? { data: [], error: null };
+  const announcerUser = s.announcerUser ?? { data: null, error: null };
+  const announcerQueue = s.announcerQueue ?? { data: [], error: null };
 
   const from = vi.fn((table: string) => {
     if (table === "rooms") {
@@ -71,8 +77,25 @@ function makeSupabaseMock(s: Scripted = {}) {
       return {
         select: vi.fn(() => ({
           eq: vi.fn(() => ({
-            // .eq("room_id", id).eq("announced", true) for announcing
-            eq: vi.fn().mockResolvedValue(resultsSelect),
+            // .eq("room_id", id).eq("announced", true) for announcing leaderboard,
+            // .eq("room_id", id).eq("user_id", announcer) for the announcer queue chain.
+            eq: vi.fn(() => {
+              // Heuristic: if the announcer-queue chain continues with .gt/.order,
+              // dispatch announcerQueue; otherwise resolve as the leaderboard.
+              const announcerChain = {
+                gt: vi.fn(() => ({
+                  order: vi.fn().mockResolvedValue(announcerQueue),
+                })),
+                then: (...args: unknown[]) =>
+                  Promise.resolve(resultsSelect).then(
+                    ...(args as [
+                      (v: Mock) => unknown,
+                      ((err: unknown) => unknown)?,
+                    ]),
+                  ),
+              };
+              return announcerChain;
+            }),
             // .eq("room_id", id) (then awaited) for done
             then: (...args: unknown[]) =>
               Promise.resolve(resultsSelect).then(
@@ -81,6 +104,15 @@ function makeSupabaseMock(s: Scripted = {}) {
                   ((err: unknown) => unknown)?,
                 ]),
               ),
+          })),
+        })),
+      };
+    }
+    if (table === "users") {
+      return {
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            maybeSingle: vi.fn().mockResolvedValue(announcerUser),
           })),
         })),
       };
@@ -341,6 +373,162 @@ describe("loadResults — announcing", () => {
       status: 500,
       error: { code: "INTERNAL_ERROR" },
     });
+  });
+
+  it("returns announcement: null when announcing_user_id is missing (no eligible announcers)", async () => {
+    const mock = makeSupabaseMock({
+      roomSelect: announcingRoom, // no announcing_user_id field → null path
+    });
+    const result = await loadResults(
+      { roomId: VALID_ROOM_ID },
+      makeDeps(mock),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.data.status !== "announcing") return;
+    expect(result.data.announcement).toBeNull();
+  });
+
+  it("populates announcement state with announcer + pendingReveal when announcing_user_id is set", async () => {
+    const announcerUserId = "30000000-0000-4000-8000-000000000003";
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          ...announcingRoom.data,
+          announcing_user_id: announcerUserId,
+          current_announce_idx: 1,
+          announcement_order: [announcerUserId],
+        },
+        error: null,
+      },
+      announcerUser: {
+        data: { display_name: "Alice", avatar_seed: "alice-seed" },
+        error: null,
+      },
+      announcerQueue: {
+        data: [
+          { contestant_id: "2026-cr", points_awarded: 6 },
+          { contestant_id: "2026-be", points_awarded: 8 },
+          { contestant_id: "2026-al", points_awarded: 12 },
+        ],
+        error: null,
+      },
+    });
+    const result = await loadResults(
+      { roomId: VALID_ROOM_ID },
+      makeDeps(mock),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.data.status !== "announcing") return;
+    expect(result.data.announcement).toEqual({
+      announcingUserId: announcerUserId,
+      announcingDisplayName: "Alice",
+      announcingAvatarSeed: "alice-seed",
+      currentAnnounceIdx: 1,
+      pendingReveal: { contestantId: "2026-be", points: 8 },
+      queueLength: 3,
+      delegateUserId: null,
+      announcerPosition: 1,
+      announcerCount: 1,
+    });
+  });
+
+  it("computes announcerPosition + announcerCount from announcement_order", async () => {
+    const ANN_1 = "30000000-0000-4000-8000-000000000003";
+    const ANN_2 = "30000000-0000-4000-8000-000000000004";
+    const ANN_3 = "30000000-0000-4000-8000-000000000005";
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          ...announcingRoom.data,
+          announcing_user_id: ANN_2, // second of three
+          current_announce_idx: 0,
+          announcement_order: [ANN_1, ANN_2, ANN_3],
+        },
+        error: null,
+      },
+      announcerUser: {
+        data: { display_name: "Bob", avatar_seed: "bob" },
+        error: null,
+      },
+      announcerQueue: {
+        data: [{ contestant_id: "2026-al", points_awarded: 12 }],
+        error: null,
+      },
+    });
+    const result = await loadResults(
+      { roomId: VALID_ROOM_ID },
+      makeDeps(mock),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.data.status !== "announcing") return;
+    expect(result.data.announcement?.announcerPosition).toBe(2);
+    expect(result.data.announcement?.announcerCount).toBe(3);
+  });
+
+  it("exposes delegateUserId when admin has taken control via handoff", async () => {
+    const announcerUserId = "30000000-0000-4000-8000-000000000003";
+    const ownerUserId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          ...announcingRoom.data,
+          announcing_user_id: announcerUserId,
+          current_announce_idx: 0,
+          announcement_order: [announcerUserId],
+          delegate_user_id: ownerUserId,
+        },
+        error: null,
+      },
+      announcerUser: {
+        data: { display_name: "Alice", avatar_seed: "alice-seed" },
+        error: null,
+      },
+      announcerQueue: {
+        data: [{ contestant_id: "2026-al", points_awarded: 12 }],
+        error: null,
+      },
+    });
+    const result = await loadResults(
+      { roomId: VALID_ROOM_ID },
+      makeDeps(mock),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.data.status !== "announcing") return;
+    expect(result.data.announcement?.delegateUserId).toBe(ownerUserId);
+    // The "active" announcer (the one who taps) is the delegate, but the
+    // record-of-record announcer remains the original.
+    expect(result.data.announcement?.announcingUserId).toBe(announcerUserId);
+  });
+
+  it("returns pendingReveal: null when current_announce_idx is past the queue (transitional)", async () => {
+    const announcerUserId = "40000000-0000-4000-8000-000000000004";
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          ...announcingRoom.data,
+          announcing_user_id: announcerUserId,
+          current_announce_idx: 99,
+          announcement_order: [announcerUserId],
+        },
+        error: null,
+      },
+      announcerUser: {
+        data: { display_name: "Bob", avatar_seed: "bob-seed" },
+        error: null,
+      },
+      announcerQueue: {
+        data: [{ contestant_id: "2026-al", points_awarded: 12 }],
+        error: null,
+      },
+    });
+    const result = await loadResults(
+      { roomId: VALID_ROOM_ID },
+      makeDeps(mock),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.data.status !== "announcing") return;
+    expect(result.data.announcement?.pendingReveal).toBeNull();
+    expect(result.data.announcement?.queueLength).toBe(1);
   });
 
   it("returns 500 when fetchContestants throws ContestDataError", async () => {

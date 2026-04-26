@@ -17,6 +17,8 @@ import LobbyView, {
   type StartVotingState,
 } from "@/components/room/LobbyView";
 import StatusStub from "@/components/room/StatusStub";
+import AnnouncingView from "@/components/room/AnnouncingView";
+import DoneCard from "@/components/room/DoneCard";
 import VotingView from "@/components/voting/VotingView";
 import type { Contestant } from "@/types";
 import { useVoteAutosave } from "@/components/voting/useVoteAutosave";
@@ -40,6 +42,10 @@ interface RoomShape {
   status: string;
   ownerUserId: string;
   categories: Array<{ name: string; weight: number; hint?: string }>;
+  announcementMode?: string;
+  announcementOrder?: string[] | null;
+  announcingUserId?: string | null;
+  currentAnnounceIdx?: number | null;
 }
 
 type Phase =
@@ -373,6 +379,27 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         />
       </>
     );
+  }
+
+  if (phase.room.status === "announcing") {
+    const session = getSession();
+    if (!session) return <StatusStub status={phase.room.status} />;
+    return (
+      <AnnouncingView
+        room={{
+          id: phase.room.id,
+          status: phase.room.status,
+          ownerUserId: phase.room.ownerUserId,
+        }}
+        contestants={phase.contestants}
+        currentUserId={session.userId}
+        onAnnouncementEnded={() => void loadRoom()}
+      />
+    );
+  }
+
+  if (phase.room.status === "done") {
+    return <DoneCard roomId={phase.room.id} />;
   }
 
   return <StatusStub status={phase.room.status} />;

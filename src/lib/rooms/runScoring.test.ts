@@ -18,6 +18,7 @@ const defaultRoomRow = {
   year: 2026,
   event: "final",
   categories: ONE_CAT,
+  announcement_mode: "instant",
 };
 
 const THREE_CONTESTANTS: Contestant[] = [
@@ -510,6 +511,135 @@ describe("runScoring — happy path", () => {
       { contestantId: "2026-be", totalPoints: 0 },
       { contestantId: "2026-cr", totalPoints: 0 },
     ]);
+  });
+});
+
+// ─── live-mode announcement_order init ───────────────────────────────────────
+
+describe("runScoring — live-mode announcement order initialisation", () => {
+  it("writes announcement_order, announcing_user_id, current_announce_idx in the announcing transition", async () => {
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: { ...defaultRoomRow, announcement_mode: "live" },
+        error: null,
+      },
+    });
+    // Identity shuffle for determinism.
+    const identityShuffle = vi.fn(<T>(arr: T[]) => [...arr]) as <T>(
+      arr: T[],
+    ) => T[];
+    const result = await runScoring(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock, { shuffle: identityShuffle }),
+    );
+
+    expect(result.ok).toBe(true);
+    // Two room UPDATEs: scoring transition (status only), then announcing
+    // (status + order + announcer + idx).
+    expect(mock.roomUpdatePatches).toHaveLength(2);
+    expect(mock.roomUpdatePatches[0]).toEqual({ status: "scoring" });
+    expect(mock.roomUpdatePatches[1]).toEqual({
+      status: "announcing",
+      announcement_order: [U1, U2], // identity shuffle preserves member order
+      announcing_user_id: U1,
+      current_announce_idx: 0,
+    });
+    expect(identityShuffle).toHaveBeenCalledTimes(1);
+  });
+
+  it("respects custom shuffle order (e.g. reverse)", async () => {
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: { ...defaultRoomRow, announcement_mode: "live" },
+        error: null,
+      },
+    });
+    const reverseShuffle = <T>(arr: T[]) => [...arr].reverse();
+    const result = await runScoring(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock, { shuffle: reverseShuffle }),
+    );
+    expect(result.ok).toBe(true);
+    expect(mock.roomUpdatePatches[1]).toEqual({
+      status: "announcing",
+      announcement_order: [U2, U1],
+      announcing_user_id: U2,
+      current_announce_idx: 0,
+    });
+  });
+
+  it("excludes users with no points_awarded > 0 rows from announcement_order", async () => {
+    // Reshape votes so U2 only scores 2026-cr (rank 3 → 8 pts) — but in a
+    // 3-contestant room rank 3 still gets 8 pts. So both users have eligible
+    // rows. To test exclusion we need a user whose ALL rows would be rank 11+.
+    // Easier: simulate by passing memberships that include a 3rd user with no
+    // votes — they'll have 0 results rows, hence 0 eligible.
+    const U3 = "30000000-0000-4000-8000-000000000003";
+    const memWithU3 = [
+      ...TWO_USER_MEMBERSHIPS,
+      { user_id: U3, joined_at: "2026-04-21T10:02:00Z" },
+    ];
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: { ...defaultRoomRow, announcement_mode: "live" },
+        error: null,
+      },
+      memberships: { data: memWithU3, error: null },
+    });
+    const identityShuffle = <T>(arr: T[]) => [...arr];
+    const result = await runScoring(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock, { shuffle: identityShuffle }),
+    );
+    expect(result.ok).toBe(true);
+    // U3 had no votes → no results rows → not eligible.
+    expect(mock.roomUpdatePatches[1]).toEqual({
+      status: "announcing",
+      announcement_order: [U1, U2],
+      announcing_user_id: U1,
+      current_announce_idx: 0,
+    });
+  });
+
+  it("instant mode does NOT write announcement_order — status update only", async () => {
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: { ...defaultRoomRow, announcement_mode: "instant" },
+        error: null,
+      },
+    });
+    const shuffleSpy = vi.fn(<T>(arr: T[]) => [...arr]) as <T>(
+      arr: T[],
+    ) => T[];
+    const result = await runScoring(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock, { shuffle: shuffleSpy }),
+    );
+    expect(result.ok).toBe(true);
+    expect(mock.roomUpdatePatches[1]).toEqual({ status: "announcing" });
+    expect(shuffleSpy).not.toHaveBeenCalled();
+  });
+
+  it("zero eligible announcers → empty order, null announcer, status still flips to announcing", async () => {
+    // No votes → no results → no eligible announcers.
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: { ...defaultRoomRow, announcement_mode: "live" },
+        error: null,
+      },
+      votesSelect: { data: [], error: null },
+    });
+    const result = await runScoring(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock),
+    );
+    expect(result.ok).toBe(true);
+    expect(mock.roomUpdatePatches[1]).toEqual({
+      status: "announcing",
+      announcement_order: [],
+      announcing_user_id: null,
+      current_announce_idx: 0,
+    });
   });
 });
 
