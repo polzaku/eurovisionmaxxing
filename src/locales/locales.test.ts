@@ -32,6 +32,10 @@ function flattenKeys(obj: unknown, prefix = ""): string[] {
 describe("locale bundles", () => {
   const enKeys = new Set(flattenKeys(en));
 
+  it(`${DEFAULT_LOCALE}: is well-formed`, () => {
+    expect(enKeys.size).toBeGreaterThan(0);
+  });
+
   for (const locale of SUPPORTED_LOCALES) {
     if (locale === DEFAULT_LOCALE) continue;
 

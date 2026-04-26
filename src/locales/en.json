@@ -48,7 +48,20 @@
     "custom": {
       "name": "Custom",
       "description": "Build your own categories from scratch."
-    }
+    },
+    "useThisTemplate": "Use this template",
+    "infoButtonAria": "More about {name}"
+  },
+  "announcementMode": {
+    "live": {
+      "tagline": "Take turns announcing your points, Eurovision-style.",
+      "long": "Great with a TV. Each user reveals their 1 → 12 in turn."
+    },
+    "instant": {
+      "tagline": "Reveal the winner in one shot.",
+      "long": "Great if you're short on time. Everyone marks themselves ready, then the leaderboard appears."
+    },
+    "infoButtonAria": "More about {mode} announcement mode"
   },
   "categories": {
     "vocals":            { "name": "Vocals",            "hint": "Technical delivery and control — not just whether you like the style" },
