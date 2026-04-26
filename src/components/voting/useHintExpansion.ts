@@ -98,11 +98,14 @@ export function useHintExpansion(
   const onScored = useCallback(() => dispatch({ type: "scored" }), []);
   const onNavigated = useCallback(() => dispatch({ type: "navigated" }), []);
 
-  return {
-    expandedFor,
-    toggleFor,
-    onScored,
-    onNavigated,
-    onboarding: state.onboarding,
-  };
+  return useMemo(
+    () => ({
+      expandedFor,
+      toggleFor,
+      onScored,
+      onNavigated,
+      onboarding: state.onboarding,
+    }),
+    [expandedFor, toggleFor, onScored, onNavigated, state.onboarding],
+  );
 }

@@ -174,7 +174,7 @@ export default function VotingView({
         setIdx(next);
       }
     },
-    [idx, sortedContestants.length, hintExpansion.onNavigated]
+    [idx, sortedContestants.length, hintExpansion]
   );
 
   useEffect(() => {
@@ -204,7 +204,7 @@ export default function VotingView({
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [idx, sortedContestants.length, hintExpansion.onNavigated]);
+  }, [idx, sortedContestants.length, hintExpansion]);
 
   const setHotTake = useCallback(
     (contestantId: string, next: string) => {
