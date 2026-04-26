@@ -746,6 +746,25 @@ A 3-hour Eurovision broadcast produces real **scale drift**: the 8/10 a guest ga
 
 This pattern was chosen over a dedicated `calibrating` lifecycle state because (a) the pain point is *anywhere in the show*, not just at the end — having the drawer always available solves the act-2 vs. act-19 drift even before "End voting" is in sight, (b) avoiding a state-machine fork keeps the §6.3.1 voting-undo flow simple, and (c) lock-in is *advisory* — no schema enum churn, just one nullable timestamp on `room_memberships`.
 
+### 8.11 End-of-voting affordance (last-contestant signal)
+
+When a guest reaches the last contestant in the running order, the screen needs to tell them where they are in the flow — currently the experience just runs out without any signal that they've finished.
+
+**Render** the affordance as a card *below* the contestant card (or replacing the prev-button slot in the footer when on the final contestant), driven entirely from the user's own vote state on the client:
+
+- **All N contestants scored, no `missed=true` rows:** *"✅ All N scored — waiting for {admin} to end voting."* Shown as a green-tinted card with the admin's avatar + name. No CTA.
+- **Some contestants `missed=true`, none unscored:** *"⚠️ You marked M as missed — they'll be filled with your average. Tap to rescore any."* Lists each `missed=true` contestant with flag + country and a **Rescore** quick-jump that opens the contestant card.
+- **K contestants completely unscored:** *"⚠️ K still unscored — [Albania] [Belgium]…"* with quick-jump links per unscored contestant. Banner persists until all are scored or marked missed.
+
+The affordance is **purely client-side** — no broadcast, no server state. It uses the existing `seedScoresFromVotes` / `seedMissedFromVotes` data that the voting view already has. Distinct from §8.10's `lock-scores` flow: that's the admin-facing "I'm done" data signal; this is the user-facing "what now?" UI signal at the last contestant. Both are needed.
+
+**Locale keys** (English) under `voting.endOfVoting.*`:
+- `allScored` — *"✅ All {count} scored — waiting for {admin} to end voting."*
+- `missedSome` — *"⚠️ You marked {count} as missed — they'll be filled with your average."*
+- `unscoredCount` — *"⚠️ {count} still unscored"*
+- `rescoreCta` — *"Rescore"*
+- `jumpToCta` — *"Score now"*
+
 ---
 
 ## 9. Scoring engine
@@ -978,6 +997,32 @@ This style is opt-in. Default remains `full` (the 1 → 12 flow in §10.2). The 
 
 Computed server-side after scoring. Stored in `room_awards` table. Displayed on a dedicated awards screen after the results reveal.
 
+### 11.0 Implementation status (Phase 6.1 — interim, 2026-04-26)
+
+The compute + persistence + static-rendering halves shipped in Phase 6.1 (PR #39). The cinematic reveal lands later (Phase 6.2).
+
+**Shipped:**
+- `src/lib/awards/computeAwards.ts` — pure fn implementing all §11.1 + §11.2 logic. Reuses existing `spearmanCorrelation` / `pearsonCorrelation` from `src/lib/scoring.ts`. Tiebreak rules: 1 winner solo; 2-tied → joint (alphabetical); 3+ tied → top-two alphabetical (documented MVP limitation).
+- Schema: `room_awards.winner_user_id_b UUID REFERENCES users(id)` (additive `ALTER TABLE`) for pair / joint-winner storage.
+- `runScoring` orchestrator extension — post-`results` UPSERT, computes awards and UPSERTs to `room_awards` with `onConflict: 'room_id,award_key'` (idempotent under retry). Memberships query joins `users.display_name` for the alphabetical tiebreak data.
+- `<AwardsSection>` server component on `/results/[id]` between Leaderboard and Breakdowns. Two subgroups: "Best in category" (flag-anchored) and "And the room said…" (the 8 personality awards in §11.3 reveal order). Pair awards render with overlapping dual avatars + caption.
+
+**Deferred to Phase 6.2:**
+- Cinematic awards reveal screen on `/room/[id]` after the announcement finishes (§11.3 main flow — tap-to-advance, "Next award" corner button, one-at-a-time pacing).
+- The 3-CTA footer ("Copy share link" / "Copy text summary" / "Create another room") on the awards screen. The "Copy text summary" button shipped on the results page in Phase 5a; the awards-screen variant still pends.
+- Bet-based awards (§11.2a Oracle, Wishcaster) — gated on R7 `rooms.bets_enabled`, deferred to V2.
+
+**Smoke-test follow-ups (2026-04-26):**
+- **Awards card explainers** — the personality awards rely on terms most users won't recognise (Spearman distance, Pearson correlation, "variance"). Each award card on `/results/[id]` and on the cinematic reveal should expose a one-sentence plain-English explanation on tap (tooltip or expandable accordion). Sample copy per key:
+  - `hive_mind_master` — *"Your ranking lined up most closely with how the room voted overall."*
+  - `most_contrarian` — *"Your ranking diverged most from the room consensus."*
+  - `neighbourhood_voters` — *"You two scored countries the most alike."*
+  - `the_dark_horse` — *"This act split the room — the most divisive performance of the night."*
+  - `fashion_stan` — *"You gave the highest score in the outfit/look category."*
+  - `the_enabler` — *"Your 12 points went to the room's overall winner."*
+  - `harshest_critic` / `biggest_stan` — *"Lowest / highest average score given across all your votes."*
+- Phase 6.2 reveal screen reuses the same explainer copy in the small stat line under each card.
+
 > Award display names and stat labels are translated via the stable `award_key`. See §21.6.
 
 ### 11.1 Category awards (one per category)
@@ -1150,12 +1195,25 @@ The full results page (§12.1) ships two drill-down surfaces — one per **conte
 - Aggregates pinned at the top: this user's **mean** score given, **harshness rating** (computed as `mean(allUsersMeanScore) − thisUsersMeanScore`, the same metric used by the §11.2 *harshest_critic* award), **alignment with room** (Spearman vs. group leaderboard, the same number used by *hive_mind_master* in §11.2). All numbers reuse the existing scoring primitives — no new math.
 - Always-with-names. Visible to anyone with the share link, same authorisation as the rest of `/results/{id}`.
 
-**12.6.3 Implementation notes**
+**12.6.3 Category drill-down (post-`done` only)**
 
-- Both drill-downs render from the existing `GET /api/results/{id}` payload — extend it (if needed) to include the per-user per-contestant `scores` blob already in `votes`. No new endpoint.
-- HTML and PDF exports (§12.3, §12.4) include drill-down sections **expanded inline** — the print artefact has no interactivity, so each contestant section embeds the per-member rows below the leaderboard, and each participant section embeds their per-contestant ranking. The text summary (§12.2) is **unaffected** — keeping it short for chat-paste is the whole point.
+- Trigger: tap any **category-award card** in the `<AwardsSection>` on `/results/{id}` (e.g. "Best Vocals" → opens the Vocals drill-down). On the cinematic awards screen (Phase 6.2), the same tap-target pattern applies once the award has been revealed.
+- Modal/sheet header: `Best <Category>` heading + the winner-contestant flag/country/song from the award row.
+- Body: a **vertical list of every contestant**, sorted by their **mean score in that single category** (across non-missed votes only) descending. Each row shows:
+  - Contestant flag · country · song.
+  - The **mean** for that category as the primary number (1 decimal place).
+  - A bar/sparkline visualising the spread of individual votes for that contestant (min, median, max), so the user can see whether the mean came from broad agreement or a single outlier.
+  - Voter count chip — `N/M voted` — accounting for missed entries.
+- Aggregates pinned at the top of the body: room **highest single vote** (which user gave it), **lowest single vote** (which user), **mean of means** for the category as a whole.
+- Visual differentiation from the contestant-drill-down (12.6.1): the category drill-down is a **single-axis** view (one number per contestant), whereas the contestant drill-down is a **per-user** view (multiple numbers, one user per row). Same component scaffold, different sort key + body row template.
+- Reuses the existing `votes` table — no new endpoint, no new aggregation step. The payload extension from 12.6.1 (per-user per-contestant `scores` blob) is sufficient.
+
+**12.6.4 Implementation notes**
+
+- All three drill-downs (12.6.1 contestant, 12.6.2 participant, 12.6.3 category) render from the existing `GET /api/results/{id}` payload — extend it (if needed) to include the per-user per-contestant `scores` blob already in `votes`. No new endpoint.
+- HTML and PDF exports (§12.3, §12.4) include drill-down sections **expanded inline** — the print artefact has no interactivity, so each contestant section embeds the per-member rows below the leaderboard, each participant section embeds their per-contestant ranking, and each category-award card embeds the category drill-down ranking inline. The text summary (§12.2) is **unaffected** — keeping it short for chat-paste is the whole point.
 - Performance budget: a 15-user / 26-contestant final means 390 (user × contestant) rows total — comfortably within a single client render. No pagination.
-- Drill-downs are **suppressed** while `rooms.status = 'announcing'` — the §12.5 "live leaderboard" view shows running totals but no drill-down affordance. The leaderboard rows simply aren't tappable until `done`.
+- Drill-downs are **suppressed** while `rooms.status = 'announcing'` — the §12.5 "live leaderboard" view shows running totals but no drill-down affordance. The leaderboard rows + award cards simply aren't tappable until `done`.
 
 ---
 
