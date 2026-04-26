@@ -859,6 +859,39 @@ The "announce screen" (`/room/{roomId}/present`) is a dedicated fullscreen route
 
 **Rejoin during `announcing`:** if a user loses and regains their connection mid-announcement, they land on their current voting/results view and see the **current leaderboard** immediately, followed by a brief *"Catching up…"* label (~1s) so they understand they missed beats in between. The next `announce_next` broadcast resumes the live flow.
 
+#### 10.2.0 Implementation status (interim, Phase 5b.1)
+
+The single-page server-authoritative announce mechanic ships before the dedicated `/present` route lands. Phase 5b.1 (PR #37) covered:
+
+- `runScoring` live-mode init: shuffled `announcement_order`, sets `announcing_user_id` to position 0, `current_announce_idx = 0`. Users with no `points_awarded > 0` rows excluded from the order.
+- `POST /api/rooms/{id}/announce/next` orchestrator (`advanceAnnouncement`): authorises announcer + delegate + owner, marks the chosen `results.announced = true`, conditional `(status, announcing_user_id, current_announce_idx)`-guarded room UPDATE (returns 409 `ANNOUNCE_RACED` on concurrent advances), rotation between announcers when a queue is exhausted, transition to `done` after the last announcer's last reveal.
+- `POST /api/rooms/{id}/announce/handoff` (`setDelegate`): owner-only, toggles `delegate_user_id` between owner and `null`. Re-broadcasts `status_changed:announcing` to nudge clients to refetch their announcement state.
+- Schema: `rooms.delegate_user_id UUID REFERENCES users(id)` shipped via `ALTER TABLE … ADD COLUMN IF NOT EXISTS …`.
+- Realtime payloads added: `announce_next { contestantId, points, announcingUserId }` and `score_update { contestantId, newTotal, newRank }`. `status_changed:done` re-broadcast on the show-finished transition.
+
+**`<AnnouncingView>` on `/room/[id]`** is the interim single-surface UI. It distinguishes five render modes by combining `currentUserId`, `announcement.announcingUserId`, `announcement.delegateUserId`, and `room.ownerUserId`:
+
+| Mode | When | Surface |
+|---|---|---|
+| Active announcer | currentUser is announcer, no delegate | Gradient "🎤 It's your turn to announce!" header + "Up next" preview + Reveal CTA + explainer |
+| Active delegate | currentUser is owner, delegate set to self | "You're announcing for {name}" header + "Up next" + Reveal + secondary "Give back control" CTA |
+| Passive announcer | currentUser is announcer, delegate set to admin | "The room admin is announcing on your behalf" passive copy |
+| Owner watching | currentUser is owner, no delegate, not announcer | Plain announcer label + leaderboard + "Announce for {name}" CTA. **No "Up next" panel — no spoilers.** |
+| Guest watching | everyone else | Plain announcer label + leaderboard. No CTAs. |
+
+A "Just revealed" flash card (4.5 s auto-clear) renders to all clients on every `announce_next` broadcast, driven directly from the broadcast payload — independent of the refetch race. A two-tier progress bar shows `Announcer N of M · Reveal X / Y`. The show-finished transition renders a shared `<DoneCard />` (from both `AnnouncingView`'s optimistic local flip and the room page's `phase.room.status === "done"` branch) — so every client converges on "Show's over → See full results" whether they tapped, watched, or reloaded.
+
+**Handoff CTAs are always available** for the owner in 5b.1 (i.e. they don't have to wait 30 s of inactivity to invoke). The 30-s proactive-offer behaviour described in §10.2 step 7 lands later (Phase R4) along with the announcer roster + presence dots.
+
+**Deferred to Phase 5c / R4:**
+- The dedicated `/room/{roomId}/present` fullscreen route + three-surface differentiation (announcer phone vs TV vs guest phones).
+- Tap-anywhere lower-half advance zone.
+- 3-second auto-advance + sticky "Hold" control.
+- Animated rank-shift on score updates (`animate-rank-shift`).
+- The 30-s proactive handoff offer + the announcer roster panel.
+- §10.2.1 absent-user skip / restore / reshuffle / "Finish the show" batch-reveal mode.
+- Deterministic shuffle seed for `announcement_order` (`Math.random()` for MVP).
+
 #### 10.2.1 Announcement-order edge cases
 
 The `rooms.announcement_order` array is computed once at the `scoring → announcing` transition (seeded from `room_memberships` where `room_memberships.joined_at <= rooms.voting_ended_at`, shuffled deterministically with a stored seed for reproducibility). Post-snapshot, real-world messiness must not break the flow.
