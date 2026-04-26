@@ -8,6 +8,7 @@ import {
   fetchRoomData,
   joinRoomApi,
   patchRoomStatus,
+  postRoomScore,
   type FetchRoomData,
 } from "@/lib/room/api";
 import { mapRoomError } from "@/lib/room/errors";
@@ -78,6 +79,10 @@ export default function RoomPage({ params }: { params: { id: string } }) {
   const [startVotingState, setStartVotingState] = useState<StartVotingState>({
     kind: "idle",
   });
+  const [endVotingState, setEndVotingState] = useState<{
+    kind: "idle" | "submitting";
+    error?: string;
+  }>({ kind: "idle" });
 
   const roomId = params.id;
 
@@ -186,6 +191,32 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     setStartVotingState({
       kind: "error",
       message: mapRoomError(result.code),
+    });
+  }, [phase, roomId]);
+
+  const handleEndVoting = useCallback(async () => {
+    const session = getSession();
+    if (!session || phase.kind !== "ready") return;
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm(
+        "End voting now? This locks scores and runs the scoring engine — there's no undo."
+      )
+    ) {
+      return;
+    }
+    setEndVotingState({ kind: "submitting" });
+    const result = await postRoomScore(roomId, session.userId, {
+      fetch: window.fetch.bind(window),
+    });
+    if (result.ok) {
+      // The status_changed broadcast (announcing) will drive a refetch.
+      setEndVotingState({ kind: "idle" });
+      return;
+    }
+    setEndVotingState({
+      kind: "idle",
+      error: mapRoomError(result.code),
     });
   }, [phase, roomId]);
 
@@ -299,24 +330,48 @@ export default function RoomPage({ params }: { params: { id: string } }) {
       phase.contestants.map((c) => c.id)
     );
     return (
-      <VotingView
-        contestants={phase.contestants}
-        categories={phase.room.categories ?? []}
-        isAdmin={isAdmin}
-        onScoreChange={autosave.onScoreChange}
-        onMissedChange={autosave.onMissedChange}
-        onHotTakeChange={autosave.onHotTakeChange}
-        saveStatus={autosave.status}
-        initialScores={initialScores}
-        initialMissed={initialMissed}
-        initialHotTakes={initialHotTakes}
-        roomId={phase.room.id}
-        userId={getSession()?.userId ?? undefined}
-        offlineBannerVisible={autosave.offlineBannerVisible}
-        drainNotice={autosave.drainNotice}
-        onDismissDrainNotice={autosave.dismissDrainNotice}
-        queueOverflow={autosave.queueOverflow}
-      />
+      <>
+        {isAdmin ? (
+          <div className="fixed top-3 right-3 z-30 flex flex-col items-end gap-1">
+            <button
+              type="button"
+              onClick={handleEndVoting}
+              disabled={endVotingState.kind === "submitting"}
+              className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {endVotingState.kind === "submitting"
+                ? "Ending…"
+                : "End voting"}
+            </button>
+            {endVotingState.error ? (
+              <p
+                role="alert"
+                className="max-w-[16rem] rounded-md bg-destructive/10 px-2 py-1 text-xs text-destructive"
+              >
+                {endVotingState.error}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+        <VotingView
+          contestants={phase.contestants}
+          categories={phase.room.categories ?? []}
+          isAdmin={isAdmin}
+          onScoreChange={autosave.onScoreChange}
+          onMissedChange={autosave.onMissedChange}
+          onHotTakeChange={autosave.onHotTakeChange}
+          saveStatus={autosave.status}
+          initialScores={initialScores}
+          initialMissed={initialMissed}
+          initialHotTakes={initialHotTakes}
+          roomId={phase.room.id}
+          userId={getSession()?.userId ?? undefined}
+          offlineBannerVisible={autosave.offlineBannerVisible}
+          drainNotice={autosave.drainNotice}
+          onDismissDrainNotice={autosave.dismissDrainNotice}
+          queueOverflow={autosave.queueOverflow}
+        />
+      </>
     );
   }
 
