@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import Avatar from "@/components/ui/Avatar";
+import DoneCard from "@/components/room/DoneCard";
 import { useRoomRealtime } from "@/hooks/useRoomRealtime";
 import {
   postAnnounceNext,
@@ -21,6 +21,13 @@ interface AnnouncingViewProps {
   room: RoomShape;
   contestants: Contestant[];
   currentUserId: string;
+  /**
+   * Called when the in-component refetch detects the room has left
+   * `announcing` status (e.g. show finished, broadcast lagged behind for
+   * non-announcer guests). The page should re-fetch its room data so its
+   * top-level switch picks the right view.
+   */
+  onAnnouncementEnded?: () => void;
 }
 
 interface LeaderboardEntry {
@@ -79,6 +86,7 @@ export default function AnnouncingView({
   room,
   contestants,
   currentUserId,
+  onAnnouncementEnded,
 }: AnnouncingViewProps) {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [announcement, setAnnouncement] = useState<AnnouncementState | null>(
@@ -116,12 +124,19 @@ export default function AnnouncingView({
       });
       if (!res.ok) return;
       const body = (await res.json()) as ResultsResponse;
+      // Detect end-of-show before propagating other state. Non-announcer
+      // guests rely on this fallback when the `status_changed:done`
+      // broadcast doesn't reliably reach the page-level loadRoom handler.
+      if (body.status && body.status !== "announcing") {
+        onAnnouncementEnded?.();
+        return;
+      }
       if (body.leaderboard) setLeaderboard(body.leaderboard);
       if (body.announcement !== undefined) setAnnouncement(body.announcement);
     } catch {
       // ignore — next event will retry.
     }
-  }, [roomId]);
+  }, [roomId, onAnnouncementEnded]);
 
   useEffect(() => {
     void refetch();
@@ -200,26 +215,9 @@ export default function AnnouncingView({
     ? contestantById.current.get(announcement.pendingReveal.contestantId)
     : null;
 
-  // ─── Show-finished state ─────────────────────────────────────────────────
+  // ─── Show-finished state — announcer-side optimistic flip ─────────────
   if (finishedLocal) {
-    return (
-      <main className="flex min-h-screen flex-col items-center justify-center px-4 py-8">
-        <div className="max-w-md w-full space-y-6 motion-safe:animate-fade-in text-center">
-          <h1 className="text-3xl font-extrabold tracking-tight emx-wordmark">
-            Show&rsquo;s over
-          </h1>
-          <p className="text-base text-muted-foreground">
-            Every score has been revealed. Time for the final picture.
-          </p>
-          <Link
-            href={`/results/${roomId}`}
-            className="block rounded-xl bg-primary px-6 py-4 text-lg font-semibold text-primary-foreground transition-all hover:scale-[1.02] hover:emx-glow-gold active:scale-[0.98]"
-          >
-            See full results
-          </Link>
-        </div>
-      </main>
-    );
+    return <DoneCard roomId={roomId} />;
   }
 
   const announcerName = announcement?.announcingDisplayName ?? "";

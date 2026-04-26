@@ -18,6 +18,7 @@ import LobbyView, {
 } from "@/components/room/LobbyView";
 import StatusStub from "@/components/room/StatusStub";
 import AnnouncingView from "@/components/room/AnnouncingView";
+import DoneCard from "@/components/room/DoneCard";
 import VotingView from "@/components/voting/VotingView";
 import type { Contestant } from "@/types";
 import { useVoteAutosave } from "@/components/voting/useVoteAutosave";
@@ -392,8 +393,13 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         }}
         contestants={phase.contestants}
         currentUserId={session.userId}
+        onAnnouncementEnded={() => void loadRoom()}
       />
     );
+  }
+
+  if (phase.room.status === "done") {
+    return <DoneCard roomId={phase.room.id} />;
   }
 
   return <StatusStub status={phase.room.status} />;
