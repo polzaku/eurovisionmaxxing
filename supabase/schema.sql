@@ -41,10 +41,11 @@ CREATE TABLE rooms (
 -- ─── ROOM MEMBERSHIPS ───────────────────────────────────────────────────────
 
 CREATE TABLE room_memberships (
-  room_id     UUID REFERENCES rooms(id) ON DELETE CASCADE,
-  user_id     UUID REFERENCES users(id),
-  joined_at   TIMESTAMPTZ DEFAULT NOW(),
-  is_ready    BOOLEAN DEFAULT FALSE,            -- for instant mode "ready to reveal"
+  room_id           UUID REFERENCES rooms(id) ON DELETE CASCADE,
+  user_id           UUID REFERENCES users(id),
+  joined_at         TIMESTAMPTZ DEFAULT NOW(),
+  is_ready          BOOLEAN DEFAULT FALSE,            -- for instant mode "ready to reveal"
+  scores_locked_at  TIMESTAMPTZ,                      -- soft lock-in for vote calibration (§8.10); NULL = unlocked / never locked. Cleared automatically on any vote write by this user.
   PRIMARY KEY (room_id, user_id)
 );
 

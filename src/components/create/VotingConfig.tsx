@@ -3,8 +3,11 @@
 import { useState } from "react";
 import Button from "@/components/ui/Button";
 import { VOTING_TEMPLATES } from "@/lib/templates";
+import TemplateCard from "./TemplateCard";
+import AnnouncementModeCard from "./AnnouncementModeCard";
+import { nextExpandedId } from "./expandedId";
 
-type TemplateId = "classic" | "spectacle" | "banger";
+type TemplateId = "classic" | "spectacle" | "bangerTest";
 type Mode = "live" | "instant";
 
 type SubmitState =
@@ -26,17 +29,6 @@ interface VotingConfigProps {
   onSubmit: () => void;
 }
 
-const MODE_LABELS: Record<Mode, { title: string; copy: string }> = {
-  live: {
-    title: "Live",
-    copy: "Take turns announcing your points, Eurovision-style. Great with a TV.",
-  },
-  instant: {
-    title: "Instant",
-    copy: "Reveal the winner in one shot. Great if you're short on time.",
-  },
-};
-
 export default function VotingConfig({
   templateId,
   announcementMode,
@@ -47,6 +39,10 @@ export default function VotingConfig({
   onSubmit,
 }: VotingConfigProps) {
   const [infoOpen, setInfoOpen] = useState(false);
+  const [expandedTemplateId, setExpandedTemplateId] =
+    useState<TemplateId | null>(null);
+  const [expandedMode, setExpandedMode] = useState<Mode | null>(null);
+
   const templates = VOTING_TEMPLATES.filter((t) => t.id !== "custom");
   const submitting = submitState.kind === "submitting";
 
@@ -62,64 +58,40 @@ export default function VotingConfig({
       <div className="space-y-3">
         <p className="text-sm font-medium">Template</p>
         <div className="grid grid-cols-1 gap-3">
-          {templates.map((t) => {
-            const selected = t.id === templateId;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => onChange({ templateId: t.id as TemplateId })}
-                className={`text-left rounded-lg border-2 px-4 py-3 transition-all ${
-                  selected
-                    ? "border-primary ring-2 ring-primary/30"
-                    : "border-border hover:border-accent"
-                }`}
-              >
-                <div className="space-y-1">
-                  <p className="font-semibold">{t.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {t.description}
-                  </p>
-                  <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-                    {t.categories.map((c) => (
-                      <li key={c.name}>
-                        <span className="font-medium text-foreground">
-                          {c.name}
-                        </span>
-                        {c.hint ? <> &mdash; {c.hint}</> : null}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </button>
-            );
-          })}
+          {templates.map((tpl) => (
+            <TemplateCard
+              key={tpl.id}
+              template={tpl}
+              selected={tpl.id === templateId}
+              expanded={expandedTemplateId === (tpl.id as TemplateId)}
+              onSelect={() =>
+                onChange({ templateId: tpl.id as TemplateId })
+              }
+              onToggleInfo={() =>
+                setExpandedTemplateId((curr) =>
+                  nextExpandedId(curr, tpl.id as TemplateId),
+                )
+              }
+            />
+          ))}
         </div>
       </div>
 
       <div className="space-y-3">
         <p className="text-sm font-medium">Announcement</p>
         <div className="grid grid-cols-1 gap-2">
-          {(Object.keys(MODE_LABELS) as Mode[]).map((m) => {
-            const selected = m === announcementMode;
-            return (
-              <button
-                key={m}
-                type="button"
-                onClick={() => onChange({ announcementMode: m })}
-                className={`text-left rounded-lg border-2 px-4 py-3 transition-all ${
-                  selected
-                    ? "border-primary ring-2 ring-primary/30"
-                    : "border-border hover:border-accent"
-                }`}
-              >
-                <p className="font-semibold">{MODE_LABELS[m].title}</p>
-                <p className="text-sm text-muted-foreground">
-                  {MODE_LABELS[m].copy}
-                </p>
-              </button>
-            );
-          })}
+          {(["live", "instant"] as Mode[]).map((m) => (
+            <AnnouncementModeCard
+              key={m}
+              mode={m}
+              selected={m === announcementMode}
+              expanded={expandedMode === m}
+              onSelect={() => onChange({ announcementMode: m })}
+              onToggleInfo={() =>
+                setExpandedMode((curr) => nextExpandedId(curr, m))
+              }
+            />
+          ))}
         </div>
       </div>
 
