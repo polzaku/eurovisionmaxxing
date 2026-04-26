@@ -78,6 +78,7 @@ export default function ScoreRow({
         className="relative grid grid-cols-10 w-full h-11 rounded-lg overflow-hidden border border-border bg-muted"
         role="group"
         aria-label={`${categoryName} — score from 1 to 10`}
+        data-no-swipe
       >
         {BUTTONS.map((n, i) => {
           const filled = value !== null && n <= value;

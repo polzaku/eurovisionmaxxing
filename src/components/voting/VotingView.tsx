@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useRef } from "react";
 import type { Contestant, VotingCategory } from "@/types";
 import { SCORE_ANCHORS } from "@/types";
 import { useEffect } from "react";
@@ -9,6 +9,8 @@ import ScoreRow from "@/components/voting/ScoreRow";
 import MissedCard from "@/components/voting/MissedCard";
 import MissedToast from "@/components/voting/MissedToast";
 import HotTakeField from "@/components/voting/HotTakeField";
+import JumpToDrawer from "@/components/voting/JumpToDrawer";
+import { nextIdxFromSwipe } from "@/lib/voting/nextIdxFromSwipe";
 import { useMissedUndo } from "@/hooks/useMissedUndo";
 import { scoredCount } from "@/components/voting/scoredCount";
 import SaveChip, { type DisplaySaveStatus } from "@/components/voting/SaveChip";
@@ -134,6 +136,61 @@ export default function VotingView({
     Record<string, string>
   >(() => initialHotTakes ?? {});
 
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const swipeStartXRef = useRef<number | null>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length !== 1) {
+      swipeStartXRef.current = null;
+      return;
+    }
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-no-swipe]")) {
+      swipeStartXRef.current = null;
+      return;
+    }
+    swipeStartXRef.current = e.touches[0].clientX;
+  }, []);
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      const startX = swipeStartXRef.current;
+      swipeStartXRef.current = null;
+      if (startX === null) return;
+      const endX = e.changedTouches[0]?.clientX ?? startX;
+      const next = nextIdxFromSwipe(idx, sortedContestants.length, endX - startX);
+      if (next !== null) setIdx(next);
+    },
+    [idx, sortedContestants.length]
+  );
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (
+          tag === "INPUT" ||
+          tag === "TEXTAREA" ||
+          target.isContentEditable
+        ) {
+          return;
+        }
+      }
+      const total = sortedContestants.length;
+      if (e.key === "ArrowLeft" && idx > 0) {
+        setIdx(idx - 1);
+        e.preventDefault();
+      } else if (e.key === "ArrowRight" && idx < total - 1) {
+        setIdx(idx + 1);
+        e.preventDefault();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [idx, sortedContestants.length]);
+
   const setHotTake = useCallback(
     (contestantId: string, next: string) => {
       setHotTakesByContestant((prev) => {
@@ -225,7 +282,11 @@ export default function VotingView({
         notice={drainNotice ?? null}
         onDismiss={onDismissDrainNotice ?? (() => {})}
       />
-      <div className="w-full max-w-xl space-y-6 animate-fade-in">
+      <div
+        className="w-full max-w-xl space-y-6 animate-fade-in"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <p className="text-3xl leading-none" aria-hidden="true">
@@ -288,32 +349,66 @@ export default function VotingView({
           onChange={(next) => setHotTake(contestant.id, next)}
         />
 
-        <nav className="grid grid-cols-3 gap-3 pt-4">
+        <nav className="grid grid-cols-4 gap-2 pt-4">
           <Button
             variant="secondary"
+            size="sm"
             onClick={() => setIdx((i) => Math.max(0, i - 1))}
             disabled={!canPrev}
             aria-label="Previous contestant"
+            className="flex flex-col items-center gap-0.5 py-2 leading-tight"
           >
-            ← Prev
+            <span aria-hidden="true" className="text-base">←</span>
+            <span className="text-[10px]">Prev</span>
           </Button>
           <Button
             variant="ghost"
+            size="sm"
             onClick={() => handleMarkMissed(contestant.id)}
             disabled={isMissed}
             aria-label="Mark this contestant as missed"
+            className="flex flex-col items-center gap-0.5 py-2 leading-tight"
           >
-            I missed this
+            <span aria-hidden="true" className="text-base">👻</span>
+            <span className="text-[10px]">Missed</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsDrawerOpen(true)}
+            aria-label="Jump to a contestant"
+            className="flex flex-col items-center gap-0.5 py-2 leading-tight"
+          >
+            <span aria-hidden="true" className="text-base">☰</span>
+            <span className="text-[10px]">Jump to</span>
           </Button>
           <Button
             variant="secondary"
+            size="sm"
             onClick={() => setIdx((i) => Math.min(totalContestants - 1, i + 1))}
             disabled={!canNext}
             aria-label="Next contestant"
+            className="flex flex-col items-center gap-0.5 py-2 leading-tight"
           >
-            Next →
+            <span aria-hidden="true" className="text-base">→</span>
+            <span className="text-[10px]">Next</span>
           </Button>
         </nav>
+
+        <JumpToDrawer
+          isOpen={isDrawerOpen}
+          contestants={sortedContestants}
+          currentContestantId={contestant.id}
+          scoresByContestant={scoresByContestant}
+          missedByContestant={missedByContestant}
+          categoryNames={categoryNames}
+          onSelect={(id) => {
+            const target = sortedContestants.findIndex((c) => c.id === id);
+            if (target >= 0) setIdx(target);
+            setIsDrawerOpen(false);
+          }}
+          onClose={() => setIsDrawerOpen(false)}
+        />
       </div>
       <MissedToast toast={undo.toast} onUndo={undo.undo} />
     </main>

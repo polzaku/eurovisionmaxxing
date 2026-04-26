@@ -61,6 +61,7 @@ export default function HotTakeField({
         placeholder="Your one-liner"
         rows={2}
         aria-label="Hot take"
+        data-no-swipe
         className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring resize-none"
       />
       <div className="flex justify-end">
