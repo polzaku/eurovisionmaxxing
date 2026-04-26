@@ -100,6 +100,25 @@
       "placeholder": "Your one-liner",
       "counter": "{count} / {max}"
     },
+    "status": {
+      "scored": "✓ scored {value}",
+      "unscored": "Not scored"
+    },
+    "scale": {
+      "openAria": "Show scale anchors",
+      "closeAria": "Close scale anchors",
+      "title": "Scale",
+      "1": "Devastating",
+      "5": "Fine",
+      "10": "Iconic"
+    },
+    "hint": {
+      "toggleAria": {
+        "collapsed": "Show hint for {category}",
+        "expanded": "Hide hint for {category}"
+      },
+      "onboarding": "Tap ⓘ on a category to hide its hint."
+    },
     "jumpTo": {
       "footerButton": "Jump to",
       "footerButtonAria": "Jump to a contestant",
