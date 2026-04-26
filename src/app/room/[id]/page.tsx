@@ -389,12 +389,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
           id: phase.room.id,
           status: phase.room.status,
           ownerUserId: phase.room.ownerUserId,
-          announcementMode: phase.room.announcementMode,
-          announcementOrder: phase.room.announcementOrder ?? null,
-          announcingUserId: phase.room.announcingUserId ?? null,
-          currentAnnounceIdx: phase.room.currentAnnounceIdx ?? null,
         }}
-        memberships={phase.memberships}
         contestants={phase.contestants}
         currentUserId={session.userId}
       />

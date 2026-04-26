@@ -7,25 +7,14 @@ import { postAnnounceNext } from "@/lib/room/api";
 import { mapRoomError } from "@/lib/room/errors";
 import type { Contestant } from "@/types";
 
-interface MembershipShape {
-  userId: string;
-  displayName: string;
-  avatarSeed: string;
-}
-
 interface RoomShape {
   id: string;
   status: string;
   ownerUserId: string;
-  announcementMode?: string;
-  announcementOrder: string[] | null;
-  announcingUserId: string | null;
-  currentAnnounceIdx: number | null;
 }
 
 interface AnnouncingViewProps {
   room: RoomShape;
-  memberships: MembershipShape[];
   contestants: Contestant[];
   currentUserId: string;
 }
@@ -36,35 +25,59 @@ interface LeaderboardEntry {
   rank: number;
 }
 
+interface AnnouncementState {
+  announcingUserId: string;
+  announcingDisplayName: string;
+  announcingAvatarSeed: string;
+  currentAnnounceIdx: number;
+  pendingReveal: { contestantId: string; points: number } | null;
+  queueLength: number;
+}
+
 interface ResultsResponse {
   status?: string;
   leaderboard?: LeaderboardEntry[];
-  contestants?: Contestant[];
+  announcement?: AnnouncementState | null;
 }
+
+interface JustRevealedFlash {
+  contestantId: string;
+  points: number;
+  timestamp: number;
+}
+
+const FLASH_TIMEOUT_MS = 4000;
 
 /**
  * Minimal announce surface for /room/[id] when status === 'announcing'.
- * The full `/present` TV view (animations, fullscreen, wake-lock, landscape
- * override) lands in Phase 5c.
+ * Refetches `/api/results/{id}` on every `announce_next` and `score_update`
+ * broadcast — that's how rotation between announcers becomes visible (the
+ * room's `announcing_user_id` is server-authoritative and lives only in the
+ * announcing payload). The full `/present` TV view (animations, fullscreen,
+ * wake-lock, landscape override) lands in Phase 5c.
  */
 export default function AnnouncingView({
   room,
-  memberships,
   contestants,
   currentUserId,
 }: AnnouncingViewProps) {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [announcement, setAnnouncement] = useState<AnnouncementState | null>(
+    null,
+  );
   const [advanceState, setAdvanceState] = useState<{
     kind: "idle" | "submitting";
     error?: string;
   }>({ kind: "idle" });
+  const [justRevealed, setJustRevealed] = useState<JustRevealedFlash | null>(
+    null,
+  );
 
   const roomId = room.id;
   const isOwner = currentUserId === room.ownerUserId;
-  const isAnnouncer = currentUserId === room.announcingUserId;
-  const canAdvance = isOwner || isAnnouncer;
+  const isAnnouncer = currentUserId === announcement?.announcingUserId;
+  const canAdvance = (isOwner || isAnnouncer) && !!announcement;
 
-  const announcer = memberships.find((m) => m.userId === room.announcingUserId);
   const contestantById = useRef(new Map(contestants.map((c) => [c.id, c])));
   contestantById.current = new Map(contestants.map((c) => [c.id, c]));
 
@@ -76,6 +89,7 @@ export default function AnnouncingView({
       if (!res.ok) return;
       const body = (await res.json()) as ResultsResponse;
       if (body.leaderboard) setLeaderboard(body.leaderboard);
+      if (body.announcement !== undefined) setAnnouncement(body.announcement);
     } catch {
       // ignore — next event will retry.
     }
@@ -86,10 +100,32 @@ export default function AnnouncingView({
   }, [refetch]);
 
   useRoomRealtime(roomId, (event) => {
-    if (event.type === "announce_next" || event.type === "score_update") {
+    if (event.type === "announce_next") {
+      // Show the prominent flash for the just-revealed pick (driven by the
+      // broadcast payload itself so every client sees it, not just the
+      // refetch winner).
+      setJustRevealed({
+        contestantId: event.contestantId,
+        points: event.points,
+        timestamp: Date.now(),
+      });
+      void refetch();
+      return;
+    }
+    if (event.type === "score_update") {
       void refetch();
     }
   });
+
+  // Auto-clear the just-revealed flash after FLASH_TIMEOUT_MS.
+  useEffect(() => {
+    if (!justRevealed) return;
+    const ts = justRevealed.timestamp;
+    const timer = setTimeout(() => {
+      setJustRevealed((prev) => (prev?.timestamp === ts ? null : prev));
+    }, FLASH_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [justRevealed]);
 
   const handleReveal = useCallback(async () => {
     if (!canAdvance) return;
@@ -99,6 +135,8 @@ export default function AnnouncingView({
     });
     if (result.ok) {
       setAdvanceState({ kind: "idle" });
+      // Optimistic: trust the broadcast we just emitted, but also refetch as
+      // a safety net in case the announcer reconnected mid-request.
       void refetch();
       return;
     }
@@ -108,6 +146,13 @@ export default function AnnouncingView({
     });
   }, [canAdvance, currentUserId, refetch, roomId]);
 
+  const flashContestant = justRevealed
+    ? contestantById.current.get(justRevealed.contestantId)
+    : null;
+  const pendingContestant = announcement?.pendingReveal
+    ? contestantById.current.get(announcement.pendingReveal.contestantId)
+    : null;
+
   return (
     <main className="flex min-h-screen flex-col items-center px-4 py-8">
       <div className="max-w-xl w-full space-y-6 motion-safe:animate-fade-in">
@@ -115,11 +160,16 @@ export default function AnnouncingView({
           <h1 className="text-2xl font-bold tracking-tight emx-wordmark">
             Live announcement
           </h1>
-          {announcer ? (
+          {announcement ? (
             <div className="flex items-center justify-center gap-3">
-              <Avatar seed={announcer.avatarSeed} size={40} />
+              <Avatar
+                seed={announcement.announcingAvatarSeed}
+                size={40}
+              />
               <p className="text-base">
-                <span className="font-semibold">{announcer.displayName}</span>{" "}
+                <span className="font-semibold">
+                  {announcement.announcingDisplayName}
+                </span>{" "}
                 <span className="text-muted-foreground">is announcing</span>
               </p>
             </div>
@@ -128,13 +178,60 @@ export default function AnnouncingView({
               Waiting for an announcer…
             </p>
           )}
-          <p className="text-xs font-mono text-muted-foreground">
-            Reveal {(room.currentAnnounceIdx ?? 0) + 1}
-          </p>
+          {announcement ? (
+            <p className="text-xs font-mono text-muted-foreground">
+              Reveal {announcement.currentAnnounceIdx + 1} /{" "}
+              {announcement.queueLength}
+            </p>
+          ) : null}
         </header>
 
-        {canAdvance ? (
-          <div className="space-y-2">
+        {/* Just-revealed flash — visible to everyone for ~4s after each tap */}
+        {justRevealed ? (
+          <div className="rounded-2xl border-2 border-primary bg-primary/10 px-6 py-5 text-center motion-safe:animate-fade-in">
+            <p className="text-xs uppercase tracking-widest text-primary/80">
+              Just revealed
+            </p>
+            <p className="mt-2 text-3xl font-extrabold tabular-nums">
+              {justRevealed.points}{" "}
+              <span className="text-base font-medium text-muted-foreground">
+                {justRevealed.points === 1 ? "point goes to" : "points go to"}
+              </span>
+            </p>
+            <p className="mt-1 text-2xl">
+              <span className="mr-2" aria-hidden>
+                {flashContestant?.flagEmoji ?? "🏳️"}
+              </span>
+              <span className="font-bold">
+                {flashContestant?.country ?? justRevealed.contestantId}
+              </span>
+            </p>
+          </div>
+        ) : null}
+
+        {/* Pending reveal panel — only the announcer / owner sees the queue
+            preview. Other guests only learn what's revealed when it happens. */}
+        {canAdvance && announcement?.pendingReveal ? (
+          <div className="rounded-2xl border-2 border-accent/60 bg-accent/5 px-5 py-4 space-y-3">
+            <p className="text-xs uppercase tracking-widest text-accent">
+              Up next
+            </p>
+            <p className="text-xl font-bold">
+              <span className="text-2xl mr-2" aria-hidden>
+                {pendingContestant?.flagEmoji ?? "🏳️"}
+              </span>
+              {pendingContestant?.country ?? announcement.pendingReveal.contestantId}
+            </p>
+            <p className="text-sm">
+              <span className="font-mono text-lg font-bold tabular-nums">
+                {announcement.pendingReveal.points}
+              </span>{" "}
+              <span className="text-muted-foreground">
+                {announcement.pendingReveal.points === 1
+                  ? "point — tap to reveal"
+                  : "points — tap to reveal"}
+              </span>
+            </p>
             <button
               type="button"
               onClick={handleReveal}
@@ -153,6 +250,14 @@ export default function AnnouncingView({
                 {advanceState.error}
               </p>
             ) : null}
+          </div>
+        ) : null}
+
+        {/* If queue is exhausted but UI still says we're announcing, give the
+            announcer a "Done" hint while the rotation broadcast catches up. */}
+        {canAdvance && announcement && !announcement.pendingReveal ? (
+          <div className="rounded-2xl border-2 border-border bg-card px-5 py-4 text-center text-muted-foreground text-sm">
+            All your points revealed. Passing to the next announcer…
           </div>
         ) : null}
 
@@ -195,7 +300,10 @@ export default function AnnouncingView({
         </section>
 
         <p className="text-xs text-muted-foreground text-center">
-          Full results: <a className="underline" href={`/results/${roomId}`}>/results/{roomId.slice(0, 8)}…</a>
+          Full results:{" "}
+          <a className="underline" href={`/results/${roomId}`}>
+            /results/{roomId.slice(0, 8)}…
+          </a>
         </p>
       </div>
     </main>
