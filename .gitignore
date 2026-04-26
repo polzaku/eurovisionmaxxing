@@ -40,3 +40,6 @@ TODO.md
 
 # superpowers brainstorming artifacts (local only)
 .superpowers/
+
+# claude-managed worktrees (local only)
+.claude/worktrees/
