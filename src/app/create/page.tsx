@@ -17,7 +17,7 @@ import type { Room } from "@/types";
 
 type Step = 1 | 2 | 3;
 type Event = "semi1" | "semi2" | "final";
-type TemplateId = "classic" | "spectacle" | "banger";
+type TemplateId = "classic" | "spectacle" | "bangerTest";
 type Mode = "live" | "instant";
 
 interface ContestantsState {
