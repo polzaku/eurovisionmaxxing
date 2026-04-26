@@ -3,6 +3,7 @@ import type { Database } from "@/types/database";
 import type { Room, VotingCategory } from "@/types";
 import type { ApiErrorCode } from "@/lib/api-errors";
 import { mapRoom } from "@/lib/rooms/shared";
+import { isTestFixtureYear } from "@/lib/contestants";
 
 export interface CreateRoomInput {
   year: unknown;
@@ -85,12 +86,18 @@ function validateInput(
     };
   }
 
-  if (
-    typeof input.year !== "number" ||
-    !Number.isInteger(input.year) ||
-    input.year < MIN_YEAR ||
-    input.year > currentYear
-  ) {
+  // Standard real-year window OR the dev-only test fixture year (9999).
+  // The fixture is gated by NODE_ENV in `isTestFixtureYear`, so prod
+  // requests for year 9999 fall through to the standard rejection below.
+  const yearIsInt =
+    typeof input.year === "number" && Number.isInteger(input.year);
+  const yearInRealRange =
+    yearIsInt &&
+    (input.year as number) >= MIN_YEAR &&
+    (input.year as number) <= currentYear;
+  const yearIsTestFixture =
+    yearIsInt && isTestFixtureYear(input.year as number);
+  if (!yearInRealRange && !yearIsTestFixture) {
     return {
       ok: false,
       failure: fail(
@@ -238,7 +245,7 @@ function validateInput(
   return {
     ok: true,
     input: {
-      year: input.year,
+      year: input.year as number,
       event: input.event as (typeof EVENT_VALUES)[number],
       announcementMode: input.announcementMode as (typeof MODE_VALUES)[number],
       allowNowPerforming: input.allowNowPerforming,

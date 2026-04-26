@@ -17,6 +17,12 @@ interface EventSelectionProps {
   contestants: ContestantsState;
   minYear: number;
   maxYear: number;
+  /**
+   * Extra year options shown above the standard real-year list. Used in dev
+   * to expose the small test-fixture year (9999) for fast smoke testing.
+   * Empty in production.
+   */
+  extraYears?: number[];
   onChange: (patch: { year?: number; event?: Event }) => void;
   onNext: () => void;
 }
@@ -33,10 +39,12 @@ export default function EventSelection({
   contestants,
   minYear,
   maxYear,
+  extraYears,
   onChange,
   onNext,
 }: EventSelectionProps) {
   const years: number[] = [];
+  for (const ey of extraYears ?? []) years.push(ey);
   for (let y = maxYear; y >= minYear; y--) years.push(y);
 
   const canProceed = contestants.kind === "ready";
@@ -62,7 +70,7 @@ export default function EventSelection({
         >
           {years.map((y) => (
             <option key={y} value={y}>
-              {y}
+              {y === 9999 ? "9999 (test fixture)" : y}
             </option>
           ))}
         </select>
