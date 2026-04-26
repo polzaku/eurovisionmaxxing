@@ -4,8 +4,6 @@ import {
   type HintExpansionState,
 } from "./useHintExpansion";
 
-const NAMES = ["Vocals", "Music", "Outfit"] as const;
-
 function initialState(roomSeen: boolean, contestantId = "C1"): HintExpansionState {
   return nextHintExpansion(
     {} as HintExpansionState,
@@ -69,7 +67,6 @@ describe("nextHintExpansion", () => {
     const next = nextHintExpansion(state, {
       type: "toggle",
       name: "Vocals",
-      namesInDisplayOrder: NAMES,
     });
     expect(next.overrides).toEqual({ Vocals: false });
     expect(next.onboarding).toBe(false);
@@ -80,7 +77,6 @@ describe("nextHintExpansion", () => {
     const next = nextHintExpansion(state, {
       type: "toggle",
       name: "Vocals",
-      namesInDisplayOrder: NAMES,
     });
     expect(next.overrides).toEqual({ Vocals: true });
     expect(next.onboarding).toBe(false);
@@ -91,12 +87,10 @@ describe("nextHintExpansion", () => {
     const after1 = nextHintExpansion(state, {
       type: "toggle",
       name: "Vocals",
-      namesInDisplayOrder: NAMES,
     });
     const after2 = nextHintExpansion(after1, {
       type: "toggle",
       name: "Vocals",
-      namesInDisplayOrder: NAMES,
     });
     expect(after2.overrides).toEqual({ Vocals: false });
   });

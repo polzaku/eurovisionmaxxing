@@ -10,11 +10,7 @@ export type HintExpansionState = {
 export type HintExpansionEvent =
   | { type: "init"; roomSeen: boolean; contestantId: string }
   | { type: "contestantChanged"; contestantId: string }
-  | {
-      type: "toggle";
-      name: string;
-      namesInDisplayOrder: readonly string[];
-    }
+  | { type: "toggle"; name: string }
   | { type: "scored" }
   | { type: "navigated" };
 
@@ -95,13 +91,8 @@ export function useHintExpansion(
   }, [categoryNames, state.overrides, state.onboarding]);
 
   const toggleFor = useCallback(
-    (name: string) =>
-      dispatch({
-        type: "toggle",
-        name,
-        namesInDisplayOrder: categoryNames,
-      }),
-    [categoryNames],
+    (name: string) => dispatch({ type: "toggle", name }),
+    [],
   );
 
   const onScored = useCallback(() => dispatch({ type: "scored" }), []);
