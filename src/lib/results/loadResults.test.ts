@@ -426,7 +426,43 @@ describe("loadResults — announcing", () => {
       currentAnnounceIdx: 1,
       pendingReveal: { contestantId: "2026-be", points: 8 },
       queueLength: 3,
+      delegateUserId: null,
     });
+  });
+
+  it("exposes delegateUserId when admin has taken control via handoff", async () => {
+    const announcerUserId = "30000000-0000-4000-8000-000000000003";
+    const ownerUserId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          ...announcingRoom.data,
+          announcing_user_id: announcerUserId,
+          current_announce_idx: 0,
+          announcement_order: [announcerUserId],
+          delegate_user_id: ownerUserId,
+        },
+        error: null,
+      },
+      announcerUser: {
+        data: { display_name: "Alice", avatar_seed: "alice-seed" },
+        error: null,
+      },
+      announcerQueue: {
+        data: [{ contestant_id: "2026-al", points_awarded: 12 }],
+        error: null,
+      },
+    });
+    const result = await loadResults(
+      { roomId: VALID_ROOM_ID },
+      makeDeps(mock),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.data.status !== "announcing") return;
+    expect(result.data.announcement?.delegateUserId).toBe(ownerUserId);
+    // The "active" announcer (the one who taps) is the delegate, but the
+    // record-of-record announcer remains the original.
+    expect(result.data.announcement?.announcingUserId).toBe(announcerUserId);
   });
 
   it("returns pendingReveal: null when current_announce_idx is past the queue (transitional)", async () => {

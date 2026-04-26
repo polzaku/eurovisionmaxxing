@@ -45,6 +45,7 @@ export interface Database {
           announcement_order: string[] | null;
           announcing_user_id: string | null;
           current_announce_idx: number;
+          delegate_user_id: string | null;
           now_performing_id: string | null;
           allow_now_performing: boolean;
           created_at: string;
@@ -61,6 +62,7 @@ export interface Database {
           announcement_order?: string[] | null;
           announcing_user_id?: string | null;
           current_announce_idx?: number;
+          delegate_user_id?: string | null;
           now_performing_id?: string | null;
           allow_now_performing?: boolean;
         };
@@ -74,6 +76,7 @@ export interface Database {
           announcement_order?: string[] | null;
           announcing_user_id?: string | null;
           current_announce_idx?: number;
+          delegate_user_id?: string | null;
           now_performing_id?: string | null;
           allow_now_performing?: boolean;
         };

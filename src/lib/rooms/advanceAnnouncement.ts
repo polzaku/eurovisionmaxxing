@@ -60,6 +60,7 @@ type RoomRow = {
   announcement_order: string[] | null;
   announcing_user_id: string | null;
   current_announce_idx: number | null;
+  delegate_user_id: string | null;
 };
 
 type AnnouncerResultRow = {
@@ -111,7 +112,7 @@ export async function advanceAnnouncement(
   const roomQuery = await deps.supabase
     .from("rooms")
     .select(
-      "id, status, owner_user_id, announcement_order, announcing_user_id, current_announce_idx",
+      "id, status, owner_user_id, announcement_order, announcing_user_id, current_announce_idx, delegate_user_id",
     )
     .eq("id", roomId)
     .maybeSingle();
@@ -144,11 +145,17 @@ export async function advanceAnnouncement(
   const expectedIdx = room.current_announce_idx ?? 0;
   const currentAnnouncer = room.announcing_user_id;
 
-  // 3. Authorization: caller is current announcer OR owner.
-  if (userId !== currentAnnouncer && userId !== room.owner_user_id) {
+  // 3. Authorization: caller is current announcer, delegate, OR owner.
+  // The owner always retains the ability to drive (handoff is a UX
+  // affordance, not a security boundary).
+  const isAnnouncer = userId === currentAnnouncer;
+  const isDelegate =
+    !!room.delegate_user_id && userId === room.delegate_user_id;
+  const isOwner = userId === room.owner_user_id;
+  if (!isAnnouncer && !isDelegate && !isOwner) {
     return fail(
       "FORBIDDEN",
-      "Only the current announcer or the room owner can advance the reveal.",
+      "Only the current announcer, the delegate, or the room owner can advance the reveal.",
       403,
     );
   }

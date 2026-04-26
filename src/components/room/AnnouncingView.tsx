@@ -1,9 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import Avatar from "@/components/ui/Avatar";
 import { useRoomRealtime } from "@/hooks/useRoomRealtime";
-import { postAnnounceNext } from "@/lib/room/api";
+import {
+  postAnnounceNext,
+  postAnnounceHandoff,
+} from "@/lib/room/api";
 import { mapRoomError } from "@/lib/room/errors";
 import type { Contestant } from "@/types";
 
@@ -32,6 +36,7 @@ interface AnnouncementState {
   currentAnnounceIdx: number;
   pendingReveal: { contestantId: string; points: number } | null;
   queueLength: number;
+  delegateUserId: string | null;
 }
 
 interface ResultsResponse {
@@ -43,18 +48,30 @@ interface ResultsResponse {
 interface JustRevealedFlash {
   contestantId: string;
   points: number;
+  announcingUserId: string;
   timestamp: number;
 }
 
-const FLASH_TIMEOUT_MS = 4000;
+const FLASH_TIMEOUT_MS = 4500;
 
 /**
  * Minimal announce surface for /room/[id] when status === 'announcing'.
- * Refetches `/api/results/{id}` on every `announce_next` and `score_update`
- * broadcast — that's how rotation between announcers becomes visible (the
- * room's `announcing_user_id` is server-authoritative and lives only in the
- * announcing payload). The full `/present` TV view (animations, fullscreen,
- * wake-lock, landscape override) lands in Phase 5c.
+ *
+ * Five render modes, depending on (currentUserId, announcement.announcingUserId,
+ * announcement.delegateUserId, room.ownerUserId):
+ *
+ * 1. **Active announcer** (currentUser is announcer, no delegate): big
+ *    "It's your turn!" header + "Up next" panel + Reveal CTA + explainer.
+ * 2. **Active delegate** (currentUser is owner, delegate set to self):
+ *    "You're announcing for X" header + "Up next" + Reveal + Give-back CTA.
+ * 3. **Passive announcer** (currentUser is announcer, delegate set to admin):
+ *    "Admin is announcing for you" passive copy + plain leaderboard.
+ * 4. **Owner watching** (currentUser is owner, no delegate, not announcer):
+ *    "X is announcing" + leaderboard + "Take control" CTA. No spoilers.
+ * 5. **Guest watching** (everyone else): "X is announcing" + leaderboard.
+ *
+ * Plus a sixth state: **show finished** — last reveal returned
+ * `finished: true`. Big "Show's over" card + link to /results/{id}.
  */
 export default function AnnouncingView({
   room,
@@ -69,14 +86,23 @@ export default function AnnouncingView({
     kind: "idle" | "submitting";
     error?: string;
   }>({ kind: "idle" });
+  const [handoffState, setHandoffState] = useState<{
+    kind: "idle" | "submitting";
+    error?: string;
+  }>({ kind: "idle" });
   const [justRevealed, setJustRevealed] = useState<JustRevealedFlash | null>(
     null,
   );
+  const [finishedLocal, setFinishedLocal] = useState(false);
 
   const roomId = room.id;
   const isOwner = currentUserId === room.ownerUserId;
   const isAnnouncer = currentUserId === announcement?.announcingUserId;
-  const canAdvance = (isOwner || isAnnouncer) && !!announcement;
+  const delegateUserId = announcement?.delegateUserId ?? null;
+  const isDelegate = !!delegateUserId && currentUserId === delegateUserId;
+  const adminHasTakenControl = !!delegateUserId;
+  const isActiveDriver =
+    !!announcement && (isDelegate || (isAnnouncer && !adminHasTakenControl));
 
   const contestantById = useRef(new Map(contestants.map((c) => [c.id, c])));
   contestantById.current = new Map(contestants.map((c) => [c.id, c]));
@@ -101,12 +127,10 @@ export default function AnnouncingView({
 
   useRoomRealtime(roomId, (event) => {
     if (event.type === "announce_next") {
-      // Show the prominent flash for the just-revealed pick (driven by the
-      // broadcast payload itself so every client sees it, not just the
-      // refetch winner).
       setJustRevealed({
         contestantId: event.contestantId,
         points: event.points,
+        announcingUserId: event.announcingUserId,
         timestamp: Date.now(),
       });
       void refetch();
@@ -117,7 +141,6 @@ export default function AnnouncingView({
     }
   });
 
-  // Auto-clear the just-revealed flash after FLASH_TIMEOUT_MS.
   useEffect(() => {
     if (!justRevealed) return;
     const ts = justRevealed.timestamp;
@@ -128,15 +151,14 @@ export default function AnnouncingView({
   }, [justRevealed]);
 
   const handleReveal = useCallback(async () => {
-    if (!canAdvance) return;
+    if (!isActiveDriver) return;
     setAdvanceState({ kind: "submitting" });
     const result = await postAnnounceNext(roomId, currentUserId, {
       fetch: window.fetch.bind(window),
     });
     if (result.ok) {
       setAdvanceState({ kind: "idle" });
-      // Optimistic: trust the broadcast we just emitted, but also refetch as
-      // a safety net in case the announcer reconnected mid-request.
+      if (result.data?.finished) setFinishedLocal(true);
       void refetch();
       return;
     }
@@ -144,7 +166,30 @@ export default function AnnouncingView({
       kind: "idle",
       error: mapRoomError(result.code),
     });
-  }, [canAdvance, currentUserId, refetch, roomId]);
+  }, [currentUserId, isActiveDriver, refetch, roomId]);
+
+  const handleTakeControl = useCallback(
+    async (takeControl: boolean) => {
+      if (!isOwner) return;
+      setHandoffState({ kind: "submitting" });
+      const result = await postAnnounceHandoff(
+        roomId,
+        currentUserId,
+        takeControl,
+        { fetch: window.fetch.bind(window) },
+      );
+      if (result.ok) {
+        setHandoffState({ kind: "idle" });
+        void refetch();
+        return;
+      }
+      setHandoffState({
+        kind: "idle",
+        error: mapRoomError(result.code),
+      });
+    },
+    [currentUserId, isOwner, refetch, roomId],
+  );
 
   const flashContestant = justRevealed
     ? contestantById.current.get(justRevealed.contestantId)
@@ -153,31 +198,53 @@ export default function AnnouncingView({
     ? contestantById.current.get(announcement.pendingReveal.contestantId)
     : null;
 
+  // ─── Show-finished state ─────────────────────────────────────────────────
+  if (finishedLocal) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center px-4 py-8">
+        <div className="max-w-md w-full space-y-6 motion-safe:animate-fade-in text-center">
+          <h1 className="text-3xl font-extrabold tracking-tight emx-wordmark">
+            Show&rsquo;s over
+          </h1>
+          <p className="text-base text-muted-foreground">
+            Every score has been revealed. Time for the final picture.
+          </p>
+          <Link
+            href={`/results/${roomId}`}
+            className="block rounded-xl bg-primary px-6 py-4 text-lg font-semibold text-primary-foreground transition-all hover:scale-[1.02] hover:emx-glow-gold active:scale-[0.98]"
+          >
+            See full results
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  const announcerName = announcement?.announcingDisplayName ?? "";
+  const headerCard = announcement
+    ? renderHeader({
+        mode: pickMode({
+          isActiveDriver,
+          isAnnouncer,
+          adminHasTakenControl,
+          isOwner,
+        }),
+        announcer: announcement,
+      })
+    : (
+      <p className="text-muted-foreground text-sm text-center">
+        Waiting for an announcer&hellip;
+      </p>
+    );
+
   return (
     <main className="flex min-h-screen flex-col items-center px-4 py-8">
       <div className="max-w-xl w-full space-y-6 motion-safe:animate-fade-in">
-        <header className="space-y-2 text-center">
-          <h1 className="text-2xl font-bold tracking-tight emx-wordmark">
+        <header className="space-y-3 text-center">
+          <h1 className="text-xl font-bold tracking-tight emx-wordmark">
             Live announcement
           </h1>
-          {announcement ? (
-            <div className="flex items-center justify-center gap-3">
-              <Avatar
-                seed={announcement.announcingAvatarSeed}
-                size={40}
-              />
-              <p className="text-base">
-                <span className="font-semibold">
-                  {announcement.announcingDisplayName}
-                </span>{" "}
-                <span className="text-muted-foreground">is announcing</span>
-              </p>
-            </div>
-          ) : (
-            <p className="text-muted-foreground text-sm">
-              Waiting for an announcer…
-            </p>
-          )}
+          {headerCard}
           {announcement ? (
             <p className="text-xs font-mono text-muted-foreground">
               Reveal {announcement.currentAnnounceIdx + 1} /{" "}
@@ -186,7 +253,6 @@ export default function AnnouncingView({
           ) : null}
         </header>
 
-        {/* Just-revealed flash — visible to everyone for ~4s after each tap */}
         {justRevealed ? (
           <div className="rounded-2xl border-2 border-primary bg-primary/10 px-6 py-5 text-center motion-safe:animate-fade-in">
             <p className="text-xs uppercase tracking-widest text-primary/80">
@@ -209,9 +275,8 @@ export default function AnnouncingView({
           </div>
         ) : null}
 
-        {/* Pending reveal panel — only the announcer / owner sees the queue
-            preview. Other guests only learn what's revealed when it happens. */}
-        {canAdvance && announcement?.pendingReveal ? (
+        {/* Up Next + Reveal — only the active driver sees the queue spoiler. */}
+        {isActiveDriver && announcement?.pendingReveal ? (
           <div className="rounded-2xl border-2 border-accent/60 bg-accent/5 px-5 py-4 space-y-3">
             <p className="text-xs uppercase tracking-widest text-accent">
               Up next
@@ -220,7 +285,8 @@ export default function AnnouncingView({
               <span className="text-2xl mr-2" aria-hidden>
                 {pendingContestant?.flagEmoji ?? "🏳️"}
               </span>
-              {pendingContestant?.country ?? announcement.pendingReveal.contestantId}
+              {pendingContestant?.country ??
+                announcement.pendingReveal.contestantId}
             </p>
             <p className="text-sm">
               <span className="font-mono text-lg font-bold tabular-nums">
@@ -228,8 +294,8 @@ export default function AnnouncingView({
               </span>{" "}
               <span className="text-muted-foreground">
                 {announcement.pendingReveal.points === 1
-                  ? "point — tap to reveal"
-                  : "points — tap to reveal"}
+                  ? "point — tap below to reveal"
+                  : "points — tap below to reveal"}
               </span>
             </p>
             <button
@@ -242,6 +308,12 @@ export default function AnnouncingView({
                 ? "Revealing…"
                 : "Reveal next point"}
             </button>
+            <p className="text-xs text-muted-foreground">
+              Eurovision style — points reveal lowest to highest. Each tap
+              calls one more country and pushes the leaderboard. After your
+              last reveal it&rsquo;ll automatically pass to the next
+              announcer.
+            </p>
             {advanceState.error ? (
               <p
                 role="alert"
@@ -250,14 +322,67 @@ export default function AnnouncingView({
                 {advanceState.error}
               </p>
             ) : null}
+            {isDelegate ? (
+              <button
+                type="button"
+                onClick={() => handleTakeControl(false)}
+                disabled={handoffState.kind === "submitting"}
+                className="w-full rounded-lg border-2 border-border bg-background px-3 py-2 text-sm font-medium transition-all hover:border-accent active:scale-[0.98] disabled:opacity-60"
+              >
+                {handoffState.kind === "submitting"
+                  ? "Releasing…"
+                  : `Give back control to ${announcerName}`}
+              </button>
+            ) : null}
+            {handoffState.error ? (
+              <p role="alert" className="text-xs text-destructive text-center">
+                {handoffState.error}
+              </p>
+            ) : null}
           </div>
         ) : null}
 
-        {/* If queue is exhausted but UI still says we're announcing, give the
-            announcer a "Done" hint while the rotation broadcast catches up. */}
-        {canAdvance && announcement && !announcement.pendingReveal ? (
+        {/* Owner watching — Take control button. No spoilers. */}
+        {isOwner && !isActiveDriver && !adminHasTakenControl && announcement ? (
+          <div className="rounded-2xl border-2 border-border bg-card px-5 py-4 space-y-2">
+            <p className="text-sm font-semibold">
+              {announcerName} is announcing
+            </p>
+            <p className="text-xs text-muted-foreground">
+              If they&rsquo;re away or stuck, you can take over their reveals.
+              You can hand back any time.
+            </p>
+            <button
+              type="button"
+              onClick={() => handleTakeControl(true)}
+              disabled={handoffState.kind === "submitting"}
+              className="w-full rounded-lg border-2 border-accent bg-accent/5 px-3 py-2 text-sm font-medium transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60"
+            >
+              {handoffState.kind === "submitting"
+                ? "Taking over…"
+                : `Announce for ${announcerName}`}
+            </button>
+            {handoffState.error ? (
+              <p role="alert" className="text-xs text-destructive">
+                {handoffState.error}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* Passive announcer (admin took over). */}
+        {isAnnouncer && adminHasTakenControl && !isActiveDriver ? (
+          <div className="rounded-2xl border-2 border-muted-foreground/20 bg-muted/30 px-5 py-4 text-center">
+            <p className="text-sm text-muted-foreground">
+              The room admin is announcing on your behalf. Sit back and watch.
+            </p>
+          </div>
+        ) : null}
+
+        {/* Active driver, queue exhausted but rotation broadcast hasn't landed. */}
+        {isActiveDriver && announcement && !announcement.pendingReveal ? (
           <div className="rounded-2xl border-2 border-border bg-card px-5 py-4 text-center text-muted-foreground text-sm">
-            All your points revealed. Passing to the next announcer…
+            All your points revealed. Passing to the next announcer&hellip;
           </div>
         ) : null}
 
@@ -298,14 +423,95 @@ export default function AnnouncingView({
             </ol>
           )}
         </section>
-
-        <p className="text-xs text-muted-foreground text-center">
-          Full results:{" "}
-          <a className="underline" href={`/results/${roomId}`}>
-            /results/{roomId.slice(0, 8)}…
-          </a>
-        </p>
       </div>
     </main>
+  );
+}
+
+type Mode =
+  | "active-announcer"
+  | "active-delegate"
+  | "passive-announcer"
+  | "owner-watching"
+  | "guest-watching";
+
+function pickMode({
+  isActiveDriver,
+  isAnnouncer,
+  adminHasTakenControl,
+  isOwner,
+}: {
+  isActiveDriver: boolean;
+  isAnnouncer: boolean;
+  adminHasTakenControl: boolean;
+  isOwner: boolean;
+}): Mode {
+  if (isActiveDriver && isAnnouncer && !adminHasTakenControl)
+    return "active-announcer";
+  if (isActiveDriver && !isAnnouncer) return "active-delegate";
+  if (isAnnouncer && adminHasTakenControl) return "passive-announcer";
+  if (isOwner) return "owner-watching";
+  return "guest-watching";
+}
+
+function renderHeader({
+  mode,
+  announcer,
+}: {
+  mode: Mode;
+  announcer: AnnouncementState;
+}) {
+  const announcerName = announcer.announcingDisplayName;
+  const announcerSeed = announcer.announcingAvatarSeed;
+
+  if (mode === "active-announcer") {
+    return (
+      <div className="rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 border-2 border-primary px-5 py-4 space-y-2">
+        <p className="text-2xl font-extrabold text-primary">
+          🎤 It&rsquo;s your turn to announce!
+        </p>
+        <p className="text-sm text-muted-foreground">
+          The room is watching. Reveal your points one at a time.
+        </p>
+      </div>
+    );
+  }
+
+  if (mode === "active-delegate") {
+    return (
+      <div className="rounded-2xl bg-accent/10 border-2 border-accent px-5 py-4 space-y-2">
+        <p className="text-lg font-bold">
+          You&rsquo;re announcing for {announcerName}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Their points are still attributed to them — you&rsquo;re just
+          driving.
+        </p>
+      </div>
+    );
+  }
+
+  if (mode === "passive-announcer") {
+    return (
+      <div className="flex items-center justify-center gap-3">
+        <Avatar seed={announcerSeed} size={36} />
+        <p className="text-base">
+          <span className="font-semibold">The admin</span>{" "}
+          <span className="text-muted-foreground">
+            is announcing on your behalf
+          </span>
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-center gap-3">
+      <Avatar seed={announcerSeed} size={40} />
+      <p className="text-base">
+        <span className="font-semibold">{announcerName}</span>{" "}
+        <span className="text-muted-foreground">is announcing</span>
+      </p>
+    </div>
   );
 }

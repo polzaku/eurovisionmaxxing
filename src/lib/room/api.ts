@@ -153,3 +153,22 @@ export async function postAnnounceNext(
     })
   );
 }
+
+/**
+ * Owner-only handoff: take over (`takeControl: true`) or release back to
+ * the original announcer (`takeControl: false`). SPEC §10.2 step 7.
+ */
+export async function postAnnounceHandoff(
+  roomId: string,
+  userId: string,
+  takeControl: boolean,
+  deps: Deps
+): Promise<ApiOk<{ delegateUserId: string | null }> | ApiFail> {
+  return runRequest(() =>
+    deps.fetch(`/api/rooms/${roomId}/announce/handoff`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ userId, takeControl }),
+    })
+  );
+}

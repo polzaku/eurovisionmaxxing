@@ -47,6 +47,14 @@ export interface AnnouncementState {
    * "{idx + 1} / {queueLength}" progress.
    */
   queueLength: number;
+  /**
+   * If non-null, the room owner has taken control via `POST /announce/handoff`
+   * and is driving the reveals on the original announcer's behalf. The
+   * announcer still owns the points being revealed (record-of-record); the
+   * delegate is just tapping the button. The original announcer's UI shows
+   * a passive "Admin is announcing for you" state when this is set.
+   */
+  delegateUserId: string | null;
 }
 
 // Discriminated union per SPEC §12.5. `voting_ending` is forward-compat
@@ -127,6 +135,7 @@ type RoomBase = {
   announcement_order: string[] | null;
   announcing_user_id: string | null;
   current_announce_idx: number | null;
+  delegate_user_id: string | null;
 };
 
 type ResultRow = {
@@ -197,7 +206,7 @@ export async function loadResults(
   const roomQuery = await deps.supabase
     .from("rooms")
     .select(
-      "id, status, pin, year, event, announcement_order, announcing_user_id, current_announce_idx",
+      "id, status, pin, year, event, announcement_order, announcing_user_id, current_announce_idx, delegate_user_id",
     )
     .eq("id", roomId)
     .maybeSingle();
@@ -326,6 +335,7 @@ async function loadAnnouncing(
       currentAnnounceIdx: idx,
       pendingReveal: pending,
       queueLength: announcerRows.length,
+      delegateUserId: room.delegate_user_id ?? null,
     };
   }
 
