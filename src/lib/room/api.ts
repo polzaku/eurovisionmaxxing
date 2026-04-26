@@ -106,3 +106,22 @@ export async function patchRoomStatus(
     })
   );
 }
+
+/**
+ * Trigger the SPEC §9 scoring pipeline. Admin-only on the server side
+ * (`runScoring` enforces ownership); the client surface should still gate
+ * the affordance to admins for UX.
+ */
+export async function postRoomScore(
+  roomId: string,
+  userId: string,
+  deps: Deps
+): Promise<ApiOk<{ leaderboard: unknown[] }> | ApiFail> {
+  return runRequest(() =>
+    deps.fetch(`/api/rooms/${roomId}/score`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ userId }),
+    })
+  );
+}
