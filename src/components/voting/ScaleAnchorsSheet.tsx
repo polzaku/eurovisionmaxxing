@@ -20,9 +20,18 @@ export default function ScaleAnchorsSheet({
 }: ScaleAnchorsSheetProps) {
   const t = useTranslations();
   const sheetRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
+    // Capture the element that had focus before the sheet opened.
+    previouslyFocusedRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    // Move focus into the dialog so screen readers announce the title.
+    closeButtonRef.current?.focus();
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
         e.preventDefault();
@@ -30,7 +39,11 @@ export default function ScaleAnchorsSheet({
       }
     }
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      // Restore focus to the previously-focused element.
+      previouslyFocusedRef.current?.focus();
+    };
   }, [open, onClose]);
 
   if (!open) return null;
@@ -59,6 +72,7 @@ export default function ScaleAnchorsSheet({
             {t("voting.scale.title")}
           </h2>
           <button
+            ref={closeButtonRef}
             type="button"
             onClick={onClose}
             aria-label={t("voting.scale.closeAria")}

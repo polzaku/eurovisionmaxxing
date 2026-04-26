@@ -142,9 +142,12 @@ export default function VotingView({
   const [scaleSheetOpen, setScaleSheetOpen] = useState(false);
   const t = useTranslations();
   const swipeStartXRef = useRef<number | null>(null);
-  // Stable ref so touch/keyboard handlers (defined before early-returns) can
-  // call hintExpansion.onNavigated() without closing over a stale value.
-  const onNavigatedRef = useRef<() => void>(() => {});
+
+  // Hoisted above early-returns to keep the hook call count stable across renders.
+  const categoryNames = useMemo(() => categories.map((c) => c.name), [categories]);
+  const fallbackContestantId =
+    sortedContestants[Math.min(idx, Math.max(0, sortedContestants.length - 1))]?.id ?? "";
+  const hintExpansion = useHintExpansion(roomId, fallbackContestantId, categoryNames);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length !== 1) {
@@ -167,11 +170,11 @@ export default function VotingView({
       const endX = e.changedTouches[0]?.clientX ?? startX;
       const next = nextIdxFromSwipe(idx, sortedContestants.length, endX - startX);
       if (next !== null) {
-        onNavigatedRef.current();
+        hintExpansion.onNavigated();
         setIdx(next);
       }
     },
-    [idx, sortedContestants.length]
+    [idx, sortedContestants.length, hintExpansion.onNavigated]
   );
 
   useEffect(() => {
@@ -190,18 +193,18 @@ export default function VotingView({
       }
       const total = sortedContestants.length;
       if (e.key === "ArrowLeft" && idx > 0) {
-        onNavigatedRef.current();
+        hintExpansion.onNavigated();
         setIdx(idx - 1);
         e.preventDefault();
       } else if (e.key === "ArrowRight" && idx < total - 1) {
-        onNavigatedRef.current();
+        hintExpansion.onNavigated();
         setIdx(idx + 1);
         e.preventDefault();
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [idx, sortedContestants.length]);
+  }, [idx, sortedContestants.length, hintExpansion.onNavigated]);
 
   const setHotTake = useCallback(
     (contestantId: string, next: string) => {
@@ -268,14 +271,6 @@ export default function VotingView({
 
   const contestant = sortedContestants[Math.min(idx, sortedContestants.length - 1)];
   const totalContestants = sortedContestants.length;
-  const categoryNames = useMemo(() => categories.map((c) => c.name), [categories]);
-  const hintExpansion = useHintExpansion(
-    roomId,
-    contestant.id,
-    categoryNames,
-  );
-  // Keep the ref in sync so touch/keyboard handlers can call onNavigated.
-  onNavigatedRef.current = hintExpansion.onNavigated;
   const fullyScoredCount = sortedContestants.reduce(
     (acc, c) =>
       acc +
