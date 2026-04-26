@@ -341,12 +341,15 @@ Admin goes through a 3-step wizard:
 - If both the EurovisionAPI call **and** the hardcoded-JSON fallback fail (§5.1 step 4), the wizard renders an inline error: *"We couldn't load contestant data for this event. Try a different year or event."* with a "Back" CTA that returns to year/event selection (it does not silently fail).
 
 **Step 2: Voting configuration**
-- Template selection: four **compact** cards (Classic / Spectacle / Banger Test / Custom). Each card collapses to **template name + one-line tagline + ⓘ icon + "Use this template" CTA** by default. Rationale: the long category + hint list under every card produced too much vertical text for a hurried admin scanning the wizard. Detail moves behind the ⓘ.
-  - **ⓘ behaviour:** tap ⓘ → categories + hints expand inline beneath the card (same content as the previous "expand the card" UX, just gated). Tap ⓘ again → collapse. Only one card's detail is open at a time within Step 2 (opening a second auto-collapses the first).
-  - The Custom card's ⓘ shows a short *"Build your own categories from scratch"* explainer; the actual builder opens after "Use this template".
+- Template selection: four **compact** cards (Classic / Spectacle / Banger Test / Custom). Each card collapses to **template name + one-line tagline + ⓘ icon** by default; the whole card surface is the click target for selection (`selected` state shown via `border-primary` + ring). Rationale: the long category + hint list under every card produced too much vertical text for a hurried admin scanning the wizard, and a separate textual CTA inside a card whose body is already the click target was redundant noise. Detail moves behind the ⓘ.
+  - **ⓘ behaviour:** tap ⓘ → categories + hints expand inline beneath the card (same content as the previous "expand the card" UX, just gated). Tap ⓘ again → collapse. Only one card's detail is open at a time within Step 2 (opening a second auto-collapses the first). Tapping ⓘ never selects the card; tapping the card body never expands it.
+  - The Custom card's ⓘ shows a short *"Build your own categories from scratch"* explainer; the actual builder opens once the card is selected and the wizard advances.
 - Announcement mode: **two compact radio cards** — each shows a one-line tagline + ⓘ. Tap ⓘ → the longer plain-language explainer expands inline.
   - **Live:** *"Take turns announcing your points, Eurovision-style."* (ⓘ: *"Great with a TV. Each user reveals their 1 → 12 in turn.")*
   - **Instant:** *"Reveal the winner in one shot."* (ⓘ: *"Great if you're short on time. Everyone marks themselves ready, then the leaderboard appears.")*
+  - When **Live** is selected, a third compact radio appears beneath it for the **announcement style** (`announcement_style` on `rooms`, default `full`):
+    - **Full reveal** *(default)*: the 1 → 12 reveal flow described in §10.2.
+    - **Short reveal — Eurovision style** *(faithful to the Eurovision 2025 broadcast)*: 1–8 and 10 are added to the scoreboard automatically; only the 12-point reveal is live and per-user. See §10.2.2 for the full three-surface mechanic.
 - **Room bets (optional, off by default)** — toggle *"Add a betting sidegame"*. When enabled, the admin picks **exactly 3 bets** from the catalog in §22.1, or taps **"Surprise me"** for 3 random picks. Bets lock at the `lobby → voting` transition. Separate leaderboard from the main Eurovision-points game. Full mechanic in §22.
 - **"Now performing" broadcast** (internal name: `allow_now_performing`) — when enabled, the admin can tap the currently-performing country. Guests see an opt-in *"Jump to [Country]"* pill at the top of their voting view (not a forced snap). The `/present` screen always follows the broadcast. Off by default. Info icon copy: *"Shows guests a pill to jump; it never auto-snaps them while they're scoring."* See §6.5.
 
@@ -883,6 +886,49 @@ The `rooms.announcement_order` array is computed once at the `scoring → announ
 **Handoff presence-gate update:**
 - The proactive handoff offer (§10.2 step 7, "admin sees 'Announce for [User]' after 30 seconds of no advance") remains. If the current announcer reconnects mid-handoff-offer, the offer dismisses automatically.
 
+#### 10.2.2 Short reveal style — Eurovision 2025-faithful
+
+When a `live`-mode room is configured with `announcement_style = 'short'` (see §6.1), the per-user reveal flow compresses to match the Eurovision 2025 broadcast format: only the **12-point reveal** is live; ranks 1–8 and 10 are added to the scoreboard automatically the moment that user's turn begins.
+
+This style is opt-in. Default remains `full` (the 1 → 12 flow in §10.2). The choice is set at room creation in §6.1 and is editable in lobby-edit until status leaves `lobby`.
+
+**Per-user turn flow (short style):**
+
+1. The pointer advances to the next user in `rooms.announcement_order`.
+2. Server immediately writes their points-awarded rows for ranks 1–8 and 10 with `announced = true` (a single batch UPDATE, broadcast as one `score_update` event with all eight contestants in the payload). On all surfaces, the live leaderboard re-sorts in one animation step.
+3. Server holds at this point. The 12-point row stays `announced = false` until the live tap.
+4. The announcer's screen now shows a **single CTA: "Reveal 12 points"**. They are expected to tap it *simultaneously with announcing it live* on the TV — the on-screen reveal is intentionally synchronous with their voice, not preceded by it.
+5. On tap → server flips the 12-point row to `announced = true`, broadcasts `announce_next` with `points = 12`, and all surfaces render the reveal animation (large country flag/emoji, country name, artist, song — see surface table below).
+6. After ~3s of dwell, the next user's turn begins (loop to step 1) — auto-advance, with a *"Hold"* control identical to §10.2 step 4.
+
+**Three-surface render during a short-style turn:**
+
+| Surface | When points 1–8 + 10 land (auto-batch) | When announcer taps "Reveal 12 points" |
+|---|---|---|
+| **Announcer's phone** | Their personal scoresheet shows ranks 1–8 + 10 ticked off in one beat (they don't have to do anything). Below it: a single **"Reveal 12 points"** primary CTA (full-width, min 56 px tall) — disabled briefly during the auto-batch animation, then enabled. | The button compresses into a confirmed state ("Revealed ✓"), the rest of the screen replaces with the same 12-point flag/country/artist/song splash the TV shows, scaled for phone. |
+| **Present (TV) screen** | Top: *"[User] is announcing"* with avatar. Middle: live leaderboard re-sorts to reflect the eight new points (one rank-shift animation). Bottom: ticker text *"Awaiting their 12 points…"* | Middle: large country flag emoji + country name + artist + song fill the centre of the screen for ~3s. Leaderboard pushes to a smaller strip during the splash. After dwell, returns to leaderboard layout for the next turn. |
+| **Other guests' phones** | Compact live leaderboard updates inline (8 rows shifting). Top label: *"[User] is announcing"*. | Compact leaderboard updates with the 12-point delta, plus a transient toast at the top: *"[User] gave 12 to [Country] [flag]"*. Toast auto-dismisses after 3s. |
+
+**Why simultaneous tap-and-speak (not tap-then-speak):** the Eurovision broadcast moment IS the spokesperson saying *"…and 12 points goes to…"* with the on-screen graphic appearing in sync. Pre-tapping breaks the dramatic timing; post-tapping breaks it the other way. The CTA is therefore framed in the announcer's UI as *"Tap when you say it"* (microcopy under the button) so first-time announcers know.
+
+**Realtime mechanism (delta from §10.2):**
+- Two distinct broadcast events per turn: one `score_update` for the auto-batch (eight contestants), one `announce_next` for the live 12-point reveal.
+- All other state (`announcing_user_id`, `delegate_user_id`, `current_announce_idx`, `announce_skipped_user_ids`) is identical to §10.2.
+- Server is still authoritative; no client drives state.
+
+**Edge cases (delta from §10.2.1):**
+- **Absent announcer at their turn:** the auto-batch still fires (their 1–8+10 still go to the scoreboard so the room sees the contribution), but the 12-point row is suppressed and added to `announce_skipped_user_ids` per §10.2.1. Admin can restore them later from the roster.
+- **All users absent simultaneously / batch-reveal mode:** when "Finish the show" is engaged, the admin reveals only the 12-point row per remaining absent user (the auto-batch having already fired for each). One admin tap per user, not 12 — matching the short-style cadence.
+- **Mid-turn admin handoff:** the delegate's screen takes over the same "Reveal 12 points" CTA. Auto-batch never re-fires (server-state idempotent on the eight-row UPDATE).
+
+**Host-facing guide:**
+
+`/present` and the create-wizard expose a short, plain-language explainer for the host, since this is the single setting most likely to confuse on first use:
+
+- **Wizard tooltip (next to the "Short reveal — Eurovision style" radio):** *"Just like the real Eurovision: only 12-point reveals are live, the rest tick on automatically. Best on a TV with everyone watching."*
+- **Lobby info card** (visible to admin until `voting` starts when style = `short`): *"Short reveal is on. Each spokesperson will only need to reveal their 12 points live. Open `/room/{id}/present` on a TV before voting ends — that's the announcer's stage."*
+- **Present-screen first-load overlay** when style = `short` and `rooms.status = 'announcing'` for the first time: a 5-second dismissible banner: *"Short reveal mode — the announcer's phone has a single 'Reveal 12 points' button. Lower scores tick on automatically."*
+
 ### 10.3 Presentation screen (`/room/{roomId}/present`)
 - Fullscreen, no URL bar ideally (use PWA manifest + `display: standalone`).
 - **iOS/Safari fullscreen fallback:** when `display: standalone` and/or the landscape viewport override can't be acquired (common on iOS Safari when not launched from the home screen), the route surfaces a one-tap *"Enter fullscreen"* prompt that triggers `document.documentElement.requestFullscreen()` on the user gesture. Prompt is dismissible and reappears only if the browser exits fullscreen.
@@ -1110,6 +1156,8 @@ CREATE TABLE rooms (
                           CHECK (status IN ('lobby','voting','voting_ending','scoring','announcing','done')),
   announcement_mode     VARCHAR(7) NOT NULL DEFAULT 'instant'
                           CHECK (announcement_mode IN ('live','instant')),
+  announcement_style    VARCHAR(5) NOT NULL DEFAULT 'full' -- §10.2.2 — 'short' compresses the live reveal to a single 12-point tap per user; ignored when announcement_mode = 'instant'
+                          CHECK (announcement_style IN ('full','short')),
   announcement_order    UUID[],                 -- ordered array of userIds for live mode
   announce_skipped_user_ids UUID[] DEFAULT '{}', -- users skipped because absent at their turn (§10.2.1)
   voting_ends_at        TIMESTAMPTZ,            -- set when admin taps "End voting"; scoring starts when now() ≥ this (§6.3.1)

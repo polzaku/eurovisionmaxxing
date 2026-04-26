@@ -61,10 +61,11 @@ interface TemplateCardProps {
 **Collapsed render (`expanded === false`):**
 - Row 1: template name (bold) + ⓘ icon-button (top-right corner, 24×24 hit target).
 - Row 2: one-line tagline (`description` from `VOTING_TEMPLATES`).
-- Row 3: "Use this template" CTA — visually a button label, semantically part of the selection target.
+
+(*Update 2026-04-26 post-ship*: an earlier draft included a "Use this template" CTA on a third row. It was dropped because the card surface itself is the click target and the `selected` border + ring is unambiguous; the CTA was redundant noise. SPEC §6.1 was updated to match. See commit `1f1668d`.)
 
 **Expanded render (`expanded === true`):**
-- Same three rows above PLUS the inline category + hint list (current ul/li from `VotingConfig`).
+- Same two rows above PLUS the inline category + hint list (current ul/li from `VotingConfig`).
 - ⓘ icon switches to "ⓘ open" visual state (e.g. filled vs outline).
 
 **Selection visual:** when `selected === true`, border-primary + ring-primary/30 (matches existing pattern).
@@ -72,7 +73,6 @@ interface TemplateCardProps {
 **Click semantics:**
 - Card surface (anywhere except ⓘ) → `onSelect()`.
 - ⓘ button → `event.stopPropagation()` + `onToggleInfo()`.
-- CTA "Use this template" → `onSelect()` (parent of the card-surface click target).
 
 **Keyboard:**
 - Card is a `<button type="button">` (existing pattern).
