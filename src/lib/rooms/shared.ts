@@ -14,6 +14,18 @@ export type RoomEventPayload =
       userId: string;
       contestantId: string;
       scoredCount: number;
+    }
+  | {
+      type: "announce_next";
+      contestantId: string;
+      points: number;
+      announcingUserId: string;
+    }
+  | {
+      type: "score_update";
+      contestantId: string;
+      newTotal: number;
+      newRank: number;
     };
 
 type RoomRow = Database["public"]["Tables"]["rooms"]["Row"];

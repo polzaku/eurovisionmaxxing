@@ -125,3 +125,31 @@ export async function postRoomScore(
     })
   );
 }
+
+/**
+ * Advance the live-mode announcement by one reveal. Server enforces that
+ * the caller is the current announcer or the room owner.
+ */
+export interface AnnounceNextSuccess {
+  contestantId: string;
+  points: number;
+  announcingUserId: string;
+  newTotal: number;
+  newRank: number;
+  nextAnnouncingUserId: string | null;
+  finished: boolean;
+}
+
+export async function postAnnounceNext(
+  roomId: string,
+  userId: string,
+  deps: Deps
+): Promise<ApiOk<AnnounceNextSuccess> | ApiFail> {
+  return runRequest(() =>
+    deps.fetch(`/api/rooms/${roomId}/announce/next`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ userId }),
+    })
+  );
+}
