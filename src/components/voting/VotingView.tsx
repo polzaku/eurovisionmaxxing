@@ -2,8 +2,10 @@
 
 import { useMemo, useState, useCallback, useRef } from "react";
 import type { Contestant, VotingCategory } from "@/types";
-import { SCORE_ANCHORS } from "@/types";
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
+import ScaleAnchorsSheet from "@/components/voting/ScaleAnchorsSheet";
+import { useHintExpansion } from "@/components/voting/useHintExpansion";
 import Button from "@/components/ui/Button";
 import ScoreRow from "@/components/voting/ScoreRow";
 import MissedCard from "@/components/voting/MissedCard";
@@ -137,7 +139,15 @@ export default function VotingView({
   >(() => initialHotTakes ?? {});
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [scaleSheetOpen, setScaleSheetOpen] = useState(false);
+  const t = useTranslations();
   const swipeStartXRef = useRef<number | null>(null);
+
+  // Hoisted above early-returns to keep the hook call count stable across renders.
+  const categoryNames = useMemo(() => categories.map((c) => c.name), [categories]);
+  const fallbackContestantId =
+    sortedContestants[Math.min(idx, Math.max(0, sortedContestants.length - 1))]?.id ?? "";
+  const hintExpansion = useHintExpansion(roomId, fallbackContestantId, categoryNames);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length !== 1) {
@@ -159,9 +169,12 @@ export default function VotingView({
       if (startX === null) return;
       const endX = e.changedTouches[0]?.clientX ?? startX;
       const next = nextIdxFromSwipe(idx, sortedContestants.length, endX - startX);
-      if (next !== null) setIdx(next);
+      if (next !== null) {
+        hintExpansion.onNavigated();
+        setIdx(next);
+      }
     },
-    [idx, sortedContestants.length]
+    [idx, sortedContestants.length, hintExpansion]
   );
 
   useEffect(() => {
@@ -180,16 +193,18 @@ export default function VotingView({
       }
       const total = sortedContestants.length;
       if (e.key === "ArrowLeft" && idx > 0) {
+        hintExpansion.onNavigated();
         setIdx(idx - 1);
         e.preventDefault();
       } else if (e.key === "ArrowRight" && idx < total - 1) {
+        hintExpansion.onNavigated();
         setIdx(idx + 1);
         e.preventDefault();
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [idx, sortedContestants.length]);
+  }, [idx, sortedContestants.length, hintExpansion]);
 
   const setHotTake = useCallback(
     (contestantId: string, next: string) => {
@@ -256,7 +271,6 @@ export default function VotingView({
 
   const contestant = sortedContestants[Math.min(idx, sortedContestants.length - 1)];
   const totalContestants = sortedContestants.length;
-  const categoryNames = categories.map((c) => c.name);
   const fullyScoredCount = sortedContestants.reduce(
     (acc, c) =>
       acc +
@@ -300,6 +314,14 @@ export default function VotingView({
             </p>
           </div>
           <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setScaleSheetOpen(true)}
+              aria-label={t("voting.scale.openAria")}
+              className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-muted-foreground text-xs text-muted-foreground hover:text-foreground hover:border-foreground"
+            >
+              i
+            </button>
             {saveStatus !== undefined && <SaveChip status={saveStatus} />}
             <span className="text-sm font-mono text-muted-foreground tabular-nums">
               {contestant.runningOrder}/{totalContestants}
@@ -316,12 +338,6 @@ export default function VotingView({
           </div>
         </header>
 
-        <p className="text-xs text-muted-foreground text-center">
-          Scale: <span className="font-medium">1</span> {SCORE_ANCHORS[1].split(".")[0]} ·{" "}
-          <span className="font-medium">5</span> {SCORE_ANCHORS[5].split(".")[0]} ·{" "}
-          <span className="font-medium">10</span> {SCORE_ANCHORS[10].split(".")[0]}
-        </p>
-
         {isMissed ? (
           <MissedCard
             projected={projected}
@@ -335,11 +351,21 @@ export default function VotingView({
                 key={cat.name}
                 categoryName={cat.name}
                 hint={cat.hint}
+                hintExpanded={hintExpansion.expandedFor[cat.name]}
+                onToggleHint={() => hintExpansion.toggleFor(cat.name)}
                 value={scoresByContestant[contestant.id]?.[cat.name] ?? null}
                 weightMultiplier={nonUniformWeights ? cat.weight : undefined}
-                onChange={(next) => updateScore(contestant.id, cat.name, next)}
+                onChange={(next) => {
+                  hintExpansion.onScored();
+                  updateScore(contestant.id, cat.name, next);
+                }}
               />
             ))}
+            {hintExpansion.onboarding && (
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                {t("voting.hint.onboarding")}
+              </p>
+            )}
           </div>
         )}
 
@@ -353,7 +379,7 @@ export default function VotingView({
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => setIdx((i) => Math.max(0, i - 1))}
+            onClick={() => { hintExpansion.onNavigated(); setIdx((i) => Math.max(0, i - 1)); }}
             disabled={!canPrev}
             aria-label="Previous contestant"
             className="flex flex-col items-center gap-0.5 py-2 leading-tight"
@@ -385,7 +411,7 @@ export default function VotingView({
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => setIdx((i) => Math.min(totalContestants - 1, i + 1))}
+            onClick={() => { hintExpansion.onNavigated(); setIdx((i) => Math.min(totalContestants - 1, i + 1)); }}
             disabled={!canNext}
             aria-label="Next contestant"
             className="flex flex-col items-center gap-0.5 py-2 leading-tight"
@@ -404,13 +430,20 @@ export default function VotingView({
           categoryNames={categoryNames}
           onSelect={(id) => {
             const target = sortedContestants.findIndex((c) => c.id === id);
-            if (target >= 0) setIdx(target);
+            if (target >= 0) {
+              hintExpansion.onNavigated();
+              setIdx(target);
+            }
             setIsDrawerOpen(false);
           }}
           onClose={() => setIsDrawerOpen(false)}
         />
       </div>
       <MissedToast toast={undo.toast} onUndo={undo.undo} />
+      <ScaleAnchorsSheet
+        open={scaleSheetOpen}
+        onClose={() => setScaleSheetOpen(false)}
+      />
     </main>
   );
 }
