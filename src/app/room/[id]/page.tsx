@@ -335,6 +335,9 @@ export default function RoomPage({ params }: { params: { id: string } }) {
       phase.votes,
       phase.contestants.map((c) => c.id)
     );
+    const adminDisplayName = phase.memberships.find(
+      (m) => m.userId === phase.room.ownerUserId
+    )?.displayName;
     return (
       <>
         {isAdmin ? (
@@ -363,6 +366,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
           contestants={phase.contestants}
           categories={phase.room.categories ?? []}
           isAdmin={isAdmin}
+          adminDisplayName={adminDisplayName}
           onScoreChange={autosave.onScoreChange}
           onMissedChange={autosave.onMissedChange}
           onHotTakeChange={autosave.onHotTakeChange}
