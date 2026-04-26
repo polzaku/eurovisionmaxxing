@@ -77,6 +77,23 @@ Open [http://loca lhost:3000](http://localhost:3000) — you should see the land
 
 ---
 
+## Schema migrations
+
+`supabase/schema.sql` is the canonical **fresh-install** definition. It uses bare `CREATE TABLE` / `CREATE INDEX` / `CREATE POLICY` statements, so re-applying the whole file against an existing project will fail with `relation "users" already exists` and similar errors.
+
+For existing projects, run the per-migration SQL listed in the changelog below in the Supabase SQL Editor. Each statement is idempotent (uses `IF NOT EXISTS` or equivalent), so re-running is safe.
+
+### Changelog
+
+- **2026-04-26 — Phase S0:** added `room_memberships.scores_locked_at TIMESTAMPTZ` (nullable, default NULL) for the Phase S3 calibration drawer's soft lock-in. Apply with:
+
+  ```sql
+  ALTER TABLE room_memberships
+    ADD COLUMN IF NOT EXISTS scores_locked_at TIMESTAMPTZ;
+  ```
+
+---
+
 ## Keeping it alive (free tier)
 
 Supabase free-tier projects pause after 1 week of inactivity. To prevent this:
