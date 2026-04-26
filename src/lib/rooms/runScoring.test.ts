@@ -63,8 +63,16 @@ const U1 = "10000000-0000-4000-8000-000000000001";
 const U2 = "20000000-0000-4000-8000-000000000002";
 
 const TWO_USER_MEMBERSHIPS = [
-  { user_id: U1, joined_at: "2026-04-21T10:00:00Z" },
-  { user_id: U2, joined_at: "2026-04-21T10:01:00Z" },
+  {
+    user_id: U1,
+    joined_at: "2026-04-21T10:00:00Z",
+    users: { display_name: "Alice" },
+  },
+  {
+    user_id: U2,
+    joined_at: "2026-04-21T10:01:00Z",
+    users: { display_name: "Bob" },
+  },
 ];
 
 const TWO_USER_VOTES = [
@@ -139,6 +147,7 @@ interface Scripted {
   votesSelect?: Result<unknown>;
   voteUpdateError?: { message: string } | null;
   resultsUpsertError?: { message: string } | null;
+  awardsUpsertError?: { message: string } | null;
   roomToAnnouncing?: Result<unknown>;
 }
 
@@ -153,12 +162,17 @@ function makeSupabaseMock(s: Scripted = {}) {
     s.votesSelect ?? { data: TWO_USER_VOTES, error: null };
   const voteUpdateError = s.voteUpdateError ?? null;
   const resultsUpsertError = s.resultsUpsertError ?? null;
+  const awardsUpsertError = s.awardsUpsertError ?? null;
   const roomToAnnouncing =
     s.roomToAnnouncing ?? { data: { id: VALID_ROOM_ID }, error: null };
 
   // Spies.
   const voteUpdateCalls: Array<{ id: string; patch: Record<string, unknown> }> = [];
   const resultsUpsertCalls: Array<{
+    rows: Record<string, unknown>[];
+    options: Record<string, unknown>;
+  }> = [];
+  const awardsUpsertCalls: Array<{
     rows: Record<string, unknown>[];
     options: Record<string, unknown>;
   }> = [];
@@ -213,6 +227,16 @@ function makeSupabaseMock(s: Scripted = {}) {
         })),
       };
     }
+    if (table === "room_awards") {
+      return {
+        upsert: vi.fn(
+          (rows: Record<string, unknown>[], options: Record<string, unknown>) => {
+            awardsUpsertCalls.push({ rows, options });
+            return Promise.resolve({ data: null, error: awardsUpsertError });
+          },
+        ),
+      };
+    }
     if (table === "votes") {
       return {
         select: vi.fn(() => ({
@@ -243,6 +267,7 @@ function makeSupabaseMock(s: Scripted = {}) {
     supabase: { from } as unknown as RunScoringDeps["supabase"],
     voteUpdateCalls,
     resultsUpsertCalls,
+    awardsUpsertCalls,
     roomUpdatePatches,
     roomUpdateGuards,
   };
@@ -461,6 +486,35 @@ describe("runScoring — happy path", () => {
       { contestantId: "2026-be", totalPoints: 20 },
       { contestantId: "2026-cr", totalPoints: 16 },
     ]);
+
+    // Awards UPSERT — one call, options on the composite key.
+    expect(mock.awardsUpsertCalls).toHaveLength(1);
+    expect(mock.awardsUpsertCalls[0].options).toEqual({
+      onConflict: "room_id,award_key",
+    });
+    // Personality awards landed (2 users → no Hive/Contrarian/Neighbours;
+    // best_<cat>, biggest_stan, harshest_critic, dark_horse, enabler all OK).
+    const awardKeys = (mock.awardsUpsertCalls[0].rows as Array<{
+      award_key: string;
+    }>).map((r) => r.award_key);
+    expect(awardKeys).toContain("biggest_stan");
+    expect(awardKeys).toContain("harshest_critic");
+    expect(awardKeys).toContain("the_dark_horse");
+  });
+
+  it("returns 500 when room_awards upsert fails", async () => {
+    const mock = makeSupabaseMock({
+      awardsUpsertError: { message: "awards write failed" },
+    });
+    const result = await runScoring(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock),
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 500,
+      error: { code: "INTERNAL_ERROR" },
+    });
   });
 
   it("accepts incoming status=scoring (retry idempotency)", async () => {
@@ -577,7 +631,11 @@ describe("runScoring — live-mode announcement order initialisation", () => {
     const U3 = "30000000-0000-4000-8000-000000000003";
     const memWithU3 = [
       ...TWO_USER_MEMBERSHIPS,
-      { user_id: U3, joined_at: "2026-04-21T10:02:00Z" },
+      {
+        user_id: U3,
+        joined_at: "2026-04-21T10:02:00Z",
+        users: { display_name: "Charlie" },
+      },
     ];
     const mock = makeSupabaseMock({
       roomSelect: {

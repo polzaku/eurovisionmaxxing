@@ -158,6 +158,7 @@ export interface Database {
           award_key: string;
           award_name: string;
           winner_user_id: string | null;
+          winner_user_id_b: string | null;
           winner_contestant_id: string | null;
           stat_value: number | null;
           stat_label: string | null;
@@ -167,6 +168,7 @@ export interface Database {
           award_key: string;
           award_name: string;
           winner_user_id?: string | null;
+          winner_user_id_b?: string | null;
           winner_contestant_id?: string | null;
           stat_value?: number | null;
           stat_label?: string | null;
@@ -174,6 +176,7 @@ export interface Database {
         Update: {
           award_name?: string;
           winner_user_id?: string | null;
+          winner_user_id_b?: string | null;
           winner_contestant_id?: string | null;
           stat_value?: number | null;
           stat_label?: string | null;

@@ -90,6 +90,12 @@ export type ResultsData =
       breakdowns: UserBreakdown[];
       hotTakes: HotTakeEntry[];
       awards: RoomAward[];
+      /** Roster (for awards rendering when winners aren't already in `breakdowns`). */
+      members: Array<{
+        userId: string;
+        displayName: string;
+        avatarSeed: string;
+      }>;
     };
 
 export interface LoadResultsInput {
@@ -429,6 +435,7 @@ async function loadDone(
     awardKey: row.award_key,
     awardName: row.award_name,
     winnerUserId: row.winner_user_id,
+    winnerUserIdB: row.winner_user_id_b,
     winnerContestantId: row.winner_contestant_id,
     statValue: row.stat_value,
     statLabel: row.stat_label,
@@ -485,6 +492,12 @@ async function loadDone(
     });
   }
 
+  const members = [...userLookup.entries()].map(([userId, info]) => ({
+    userId,
+    displayName: info.displayName,
+    avatarSeed: info.avatarSeed,
+  }));
+
   return {
     ok: true,
     data: {
@@ -497,6 +510,7 @@ async function loadDone(
       breakdowns,
       hotTakes,
       awards,
+      members,
     },
   };
 }
