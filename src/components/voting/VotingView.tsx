@@ -164,6 +164,33 @@ export default function VotingView({
     [idx, sortedContestants.length]
   );
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (
+          tag === "INPUT" ||
+          tag === "TEXTAREA" ||
+          target.isContentEditable
+        ) {
+          return;
+        }
+      }
+      const total = sortedContestants.length;
+      if (e.key === "ArrowLeft" && idx > 0) {
+        setIdx(idx - 1);
+        e.preventDefault();
+      } else if (e.key === "ArrowRight" && idx < total - 1) {
+        setIdx(idx + 1);
+        e.preventDefault();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [idx, sortedContestants.length]);
+
   const setHotTake = useCallback(
     (contestantId: string, next: string) => {
       setHotTakesByContestant((prev) => {
@@ -329,9 +356,10 @@ export default function VotingView({
             onClick={() => setIdx((i) => Math.max(0, i - 1))}
             disabled={!canPrev}
             aria-label="Previous contestant"
-            className="text-lg"
+            className="flex flex-col items-center gap-0.5 py-2 leading-tight"
           >
-            ←
+            <span aria-hidden="true" className="text-base">←</span>
+            <span className="text-[10px]">Prev</span>
           </Button>
           <Button
             variant="ghost"
@@ -339,18 +367,20 @@ export default function VotingView({
             onClick={() => handleMarkMissed(contestant.id)}
             disabled={isMissed}
             aria-label="Mark this contestant as missed"
-            className="text-lg"
+            className="flex flex-col items-center gap-0.5 py-2 leading-tight"
           >
-            👻
+            <span aria-hidden="true" className="text-base">👻</span>
+            <span className="text-[10px]">Missed</span>
           </Button>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setIsDrawerOpen(true)}
             aria-label="Jump to a contestant"
-            className="text-lg"
+            className="flex flex-col items-center gap-0.5 py-2 leading-tight"
           >
-            ☰
+            <span aria-hidden="true" className="text-base">☰</span>
+            <span className="text-[10px]">Jump to</span>
           </Button>
           <Button
             variant="secondary"
@@ -358,9 +388,10 @@ export default function VotingView({
             onClick={() => setIdx((i) => Math.min(totalContestants - 1, i + 1))}
             disabled={!canNext}
             aria-label="Next contestant"
-            className="text-lg"
+            className="flex flex-col items-center gap-0.5 py-2 leading-tight"
           >
-            →
+            <span aria-hidden="true" className="text-base">→</span>
+            <span className="text-[10px]">Next</span>
           </Button>
         </nav>
 
