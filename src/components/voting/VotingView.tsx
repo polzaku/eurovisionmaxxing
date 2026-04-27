@@ -12,6 +12,8 @@ import MissedCard from "@/components/voting/MissedCard";
 import MissedToast from "@/components/voting/MissedToast";
 import HotTakeField from "@/components/voting/HotTakeField";
 import JumpToDrawer from "@/components/voting/JumpToDrawer";
+import EndOfVotingCard from "@/components/voting/EndOfVotingCard";
+import { endOfVotingState } from "@/lib/voting/endOfVotingState";
 import { nextIdxFromSwipe } from "@/lib/voting/nextIdxFromSwipe";
 import { useMissedUndo } from "@/hooks/useMissedUndo";
 import { scoredCount } from "@/components/voting/scoredCount";
@@ -48,6 +50,8 @@ export interface VotingViewProps {
   /** When both roomId and userId are provided, persists the current contestant in localStorage so reloads land on the same card. */
   roomId?: string;
   userId?: string;
+  /** Display name of the room owner — shown in the end-of-voting "waiting for X" copy on the last contestant. */
+  adminDisplayName?: string;
   offlineBannerVisible?: boolean;
   drainNotice?: DrainNoticePayload | null;
   onDismissDrainNotice?: () => void;
@@ -75,6 +79,7 @@ export default function VotingView({
   onHotTakeChange,
   roomId,
   userId,
+  adminDisplayName,
   offlineBannerVisible,
   drainNotice,
   onDismissDrainNotice,
@@ -250,6 +255,17 @@ export default function VotingView({
     [scoresByContestant, missedByContestant, categories]
   );
 
+  const endState = useMemo(
+    () =>
+      endOfVotingState({
+        contestants: sortedContestants,
+        categoryNames: categories.map((c) => c.name),
+        scoresByContestant,
+        missedByContestant,
+      }),
+    [sortedContestants, categories, scoresByContestant, missedByContestant]
+  );
+
   if (categories.length === 0) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
@@ -374,6 +390,17 @@ export default function VotingView({
           value={hotTakesByContestant[contestant.id] ?? ""}
           onChange={(next) => setHotTake(contestant.id, next)}
         />
+
+        {idx === totalContestants - 1 && (
+          <EndOfVotingCard
+            state={endState}
+            adminDisplayName={adminDisplayName}
+            onJumpTo={(id) => {
+              const target = sortedContestants.findIndex((c) => c.id === id);
+              if (target >= 0) setIdx(target);
+            }}
+          />
+        )}
 
         <nav className="grid grid-cols-4 gap-2 pt-4">
           <Button

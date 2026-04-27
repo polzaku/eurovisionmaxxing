@@ -130,6 +130,14 @@
         "scored": "✓ Scored",
         "missed": "👻 Missed"
       }
+    },
+    "endOfVoting": {
+      "allScored": "✅ All {count} scored — waiting for {admin} to end voting.",
+      "allScoredFallback": "✅ All {count} scored — waiting for the host to end voting.",
+      "missedSome": "⚠️ You marked {count} as missed — they'll be filled with your average. Tap to rescore any.",
+      "unscoredCount": "⚠️ {count} still unscored",
+      "rescoreCta": "Rescore",
+      "jumpToCta": "Score now"
     }
   },
   "errors": {
