@@ -11,6 +11,7 @@ const defaultRoomRow = {
   id: VALID_ROOM_ID,
   status: "lobby",
   owner_user_id: VALID_USER_ID,
+  voting_ends_at: null,
 };
 
 const defaultUpdatedRow = {
@@ -25,8 +26,11 @@ const defaultUpdatedRow = {
   announcement_order: null,
   announcing_user_id: null,
   current_announce_idx: 0,
+  delegate_user_id: null,
   now_performing_id: null,
   allow_now_performing: false,
+  voting_ends_at: null,
+  voting_ended_at: null,
   created_at: "2026-04-19T12:00:00Z",
 };
 
@@ -158,8 +162,8 @@ describe("updateRoomStatus — input validation", () => {
     }
   );
 
-  it.each([undefined, null, 42, "", "scoring", "announcing", "lobby", "voting_ending"])(
-    "rejects status=%s (outside {voting, done}) with INVALID_STATUS",
+  it.each([undefined, null, 42, "", "scoring", "announcing", "lobby"])(
+    "rejects status=%s (outside {voting, voting_ending, done}) with INVALID_STATUS",
     async (status) => {
       const mock = makeSupabaseMock();
       const result = await updateRoomStatus(
@@ -336,6 +340,83 @@ describe("updateRoomStatus — UPDATE error", () => {
       status: 500,
       error: { code: "INTERNAL_ERROR" },
     });
+    expect(broadcastSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateRoomStatus — voting_ending undo window (R4 §6.3.1)", () => {
+  const FAKE_NOW = new Date("2026-04-27T10:00:00.000Z");
+  const FUTURE_DEADLINE = new Date("2026-04-27T10:00:05.000Z").toISOString();
+  const PAST_DEADLINE = new Date("2026-04-27T09:59:55.000Z").toISOString();
+
+  it("transitions voting → voting_ending and writes voting_ends_at + broadcasts new event", async () => {
+    const mock = makeSupabaseMock({
+      roomSelectResult: {
+        data: { ...defaultRoomRow, status: "voting", voting_ends_at: null },
+        error: null,
+      },
+      roomUpdateResult: {
+        data: { ...defaultUpdatedRow, status: "voting_ending", voting_ends_at: FUTURE_DEADLINE },
+        error: null,
+      },
+    });
+    const broadcastSpy = vi.fn().mockResolvedValue(undefined);
+    const result = await updateRoomStatus(
+      { roomId: VALID_ROOM_ID, status: "voting_ending", userId: VALID_USER_ID },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy, now: () => FAKE_NOW })
+    );
+    expect(result.ok).toBe(true);
+    expect(mock.updatePatches).toEqual([
+      { status: "voting_ending", voting_ends_at: FUTURE_DEADLINE },
+    ]);
+    expect(broadcastSpy).toHaveBeenCalledWith(VALID_ROOM_ID, {
+      type: "voting_ending",
+      votingEndsAt: FUTURE_DEADLINE,
+    });
+  });
+
+  it("transitions voting_ending → voting (undo) clearing voting_ends_at and broadcasting status_changed", async () => {
+    const mock = makeSupabaseMock({
+      roomSelectResult: {
+        data: { ...defaultRoomRow, status: "voting_ending", voting_ends_at: FUTURE_DEADLINE },
+        error: null,
+      },
+      roomUpdateResult: {
+        data: { ...defaultUpdatedRow, status: "voting", voting_ends_at: null },
+        error: null,
+      },
+    });
+    const broadcastSpy = vi.fn().mockResolvedValue(undefined);
+    const result = await updateRoomStatus(
+      { roomId: VALID_ROOM_ID, status: "voting", userId: VALID_USER_ID },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy, now: () => FAKE_NOW })
+    );
+    expect(result.ok).toBe(true);
+    expect(mock.updatePatches).toEqual([{ status: "voting", voting_ends_at: null }]);
+    expect(broadcastSpy).toHaveBeenCalledWith(VALID_ROOM_ID, {
+      type: "status_changed",
+      status: "voting",
+    });
+  });
+
+  it("rejects voting_ending → voting undo after deadline with 409 INVALID_TRANSITION", async () => {
+    const mock = makeSupabaseMock({
+      roomSelectResult: {
+        data: { ...defaultRoomRow, status: "voting_ending", voting_ends_at: PAST_DEADLINE },
+        error: null,
+      },
+    });
+    const broadcastSpy = vi.fn();
+    const result = await updateRoomStatus(
+      { roomId: VALID_ROOM_ID, status: "voting", userId: VALID_USER_ID },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy, now: () => FAKE_NOW })
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 409,
+      error: { code: "INVALID_TRANSITION" },
+    });
+    expect(mock.updatePatches).toEqual([]);
     expect(broadcastSpy).not.toHaveBeenCalled();
   });
 });

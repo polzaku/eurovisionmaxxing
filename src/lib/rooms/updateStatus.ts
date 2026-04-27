@@ -13,6 +13,8 @@ export interface UpdateStatusInput {
 export interface UpdateStatusDeps {
   supabase: SupabaseClient<Database>;
   broadcastRoomEvent: (roomId: string, event: RoomEventPayload) => Promise<void>;
+  /** Injected for tests; defaults to `() => new Date()`. */
+  now?: () => Date;
 }
 
 export interface UpdateStatusSuccess {
@@ -33,13 +35,19 @@ const UUID_REGEX =
 
 const ALLOWED_REQUESTED_STATUSES: ReadonlySet<string> = new Set([
   "voting",
+  "voting_ending",
   "done",
 ]);
 
 const ALLOWED_TRANSITIONS: Record<string, readonly string[]> = {
   lobby: ["voting"],
+  voting: ["voting_ending"],
+  voting_ending: ["voting"],
   announcing: ["done"],
 };
+
+/** SPEC §6.3.1: 5-second undo window. */
+const VOTING_ENDING_WINDOW_MS = 5000;
 
 function fail(
   code: ApiErrorCode,
@@ -65,7 +73,7 @@ export async function updateRoomStatus(
   if (typeof input.status !== "string" || !ALLOWED_REQUESTED_STATUSES.has(input.status)) {
     return fail(
       "INVALID_STATUS",
-      "status must be one of 'voting' or 'done'.",
+      "status must be one of 'voting', 'voting_ending', or 'done'.",
       400,
       "status"
     );
@@ -73,10 +81,11 @@ export async function updateRoomStatus(
   const roomId = input.roomId;
   const userId = input.userId;
   const status = input.status;
+  const now = deps.now ? deps.now() : new Date();
 
   const roomQuery = await deps.supabase
     .from("rooms")
-    .select("id, status, owner_user_id")
+    .select("id, status, owner_user_id, voting_ends_at")
     .eq("id", roomId)
     .maybeSingle();
 
@@ -87,6 +96,7 @@ export async function updateRoomStatus(
     id: string;
     status: string;
     owner_user_id: string;
+    voting_ends_at: string | null;
   };
 
   if (row.owner_user_id !== userId) {
@@ -106,9 +116,35 @@ export async function updateRoomStatus(
     );
   }
 
+  // Special-case: undo voting_ending → voting only allowed before deadline.
+  if (row.status === "voting_ending" && status === "voting") {
+    if (!row.voting_ends_at || Date.parse(row.voting_ends_at) <= now.getTime()) {
+      return fail(
+        "INVALID_TRANSITION",
+        "Undo window has already elapsed.",
+        409
+      );
+    }
+  }
+
+  // Build the patch + broadcast.
+  let patch: Record<string, unknown>;
+  let broadcast: RoomEventPayload;
+  if (row.status === "voting" && status === "voting_ending") {
+    const votingEndsAt = new Date(now.getTime() + VOTING_ENDING_WINDOW_MS).toISOString();
+    patch = { status, voting_ends_at: votingEndsAt };
+    broadcast = { type: "voting_ending", votingEndsAt };
+  } else if (row.status === "voting_ending" && status === "voting") {
+    patch = { status, voting_ends_at: null };
+    broadcast = { type: "status_changed", status };
+  } else {
+    patch = { status };
+    broadcast = { type: "status_changed", status };
+  }
+
   const updateResult = await deps.supabase
     .from("rooms")
-    .update({ status })
+    .update(patch)
     .eq("id", roomId)
     .select()
     .single();
@@ -118,10 +154,10 @@ export async function updateRoomStatus(
   }
 
   try {
-    await deps.broadcastRoomEvent(roomId, { type: "status_changed", status });
+    await deps.broadcastRoomEvent(roomId, broadcast);
   } catch (err) {
     console.warn(
-      `broadcast 'status_changed' failed for room ${roomId}; state committed regardless:`,
+      `broadcast failed for room ${roomId}; state committed regardless:`,
       err
     );
   }
