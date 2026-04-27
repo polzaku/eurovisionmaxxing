@@ -33,7 +33,8 @@ export default function EndVotingModal({
           End voting?
         </h2>
         <p className="text-sm text-muted-foreground">
-          Voting ends in 5 seconds. You can undo within that window.
+          Tapping <span className="font-semibold">End voting</span> starts a 5-second countdown.
+          You can tap <span className="font-semibold">Undo</span> during the countdown to cancel.
         </p>
         {errorMessage ? (
           <p

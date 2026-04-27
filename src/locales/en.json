@@ -143,7 +143,7 @@
       "button": "End voting",
       "modal": {
         "title": "End voting?",
-        "body": "Voting ends in 5 seconds. You can undo within that window.",
+        "body": "Tapping End voting starts a 5-second countdown. You can tap Undo during the countdown to cancel.",
         "confirm": "End voting",
         "cancel": "Cancel"
       },
