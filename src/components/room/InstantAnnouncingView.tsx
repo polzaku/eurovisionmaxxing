@@ -4,9 +4,8 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { Contestant } from "@/types";
 import Button from "@/components/ui/Button";
-import InstantOwnBreakdown, {
-  type OwnBreakdownEntry,
-} from "@/components/room/InstantOwnBreakdown";
+import { type OwnBreakdownEntry } from "@/components/room/InstantOwnBreakdown";
+import OwnPointsCeremony from "@/components/instant/OwnPointsCeremony";
 import RevealCtaPanel from "@/components/room/RevealCtaPanel";
 
 export interface InstantAnnouncingMember {
@@ -54,6 +53,8 @@ export default function InstantAnnouncingView({
     return readyAts[0] ?? null;
   }, [memberships]);
 
+  const [allRevealed, setAllRevealed] = useState(false);
+
   const handleReady = async () => {
     if (busy) return;
     setBusy(true);
@@ -79,9 +80,10 @@ export default function InstantAnnouncingView({
           </p>
         </header>
 
-        <InstantOwnBreakdown
+        <OwnPointsCeremony
           entries={ownBreakdown}
           contestants={contestants}
+          onAllRevealed={() => setAllRevealed(true)}
         />
 
         {ownIsReady ? (
@@ -93,7 +95,7 @@ export default function InstantAnnouncingView({
         ) : (
           <Button
             variant="primary"
-            disabled={busy}
+            disabled={busy || !allRevealed}
             onClick={handleReady}
             className="w-full"
           >
