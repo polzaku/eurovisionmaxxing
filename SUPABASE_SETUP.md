@@ -92,6 +92,13 @@ For existing projects, run the per-migration SQL listed in the changelog below i
     ADD COLUMN IF NOT EXISTS scores_locked_at TIMESTAMPTZ;
   ```
 
+- **2026-04-27 — Phase 5c.1**: added `room_memberships.ready_at TIMESTAMPTZ` (nullable, default NULL) for the instant-mode 60-s countdown anchor. Apply with:
+
+  ```sql
+  ALTER TABLE room_memberships
+    ADD COLUMN IF NOT EXISTS ready_at TIMESTAMPTZ;
+  ```
+
 ---
 
 ## Keeping it alive (free tier)

@@ -27,12 +27,14 @@ const membershipRows = [
     user_id: "user-owner",
     joined_at: "2026-04-19T12:00:00Z",
     is_ready: false,
+    ready_at: null,
     users: { display_name: "Owner", avatar_seed: "seed-owner" },
   },
   {
     user_id: "user-guest",
     joined_at: "2026-04-19T12:05:00Z",
     is_ready: true,
+    ready_at: null,
     users: { display_name: "Guest", avatar_seed: "seed-guest" },
   },
 ];
@@ -161,6 +163,7 @@ describe("getRoom — happy path", () => {
         avatarSeed: "seed-owner",
         joinedAt: "2026-04-19T12:00:00Z",
         isReady: false,
+        readyAt: null,
       },
       {
         userId: "user-guest",
@@ -168,6 +171,7 @@ describe("getRoom — happy path", () => {
         avatarSeed: "seed-guest",
         joinedAt: "2026-04-19T12:05:00Z",
         isReady: true,
+        readyAt: null,
       },
     ]);
     expect(result.data.contestants).toEqual(contestants);
@@ -195,6 +199,7 @@ describe("getRoom — happy path", () => {
             user_id: "user-ghost",
             joined_at: "2026-04-19T12:00:00Z",
             is_ready: false,
+            ready_at: null,
             users: null,
           },
           ...membershipRows,

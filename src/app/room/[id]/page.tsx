@@ -9,8 +9,12 @@ import {
   joinRoomApi,
   patchRoomStatus,
   postRoomScore,
+  postRoomReady,
+  postRoomOwnPoints,
   type FetchRoomData,
 } from "@/lib/room/api";
+import InstantAnnouncingView from "@/components/room/InstantAnnouncingView";
+import type { OwnBreakdownEntry } from "@/components/room/InstantOwnBreakdown";
 import { mapRoomError } from "@/lib/room/errors";
 import LobbyView, {
   type LobbyMember,
@@ -34,6 +38,7 @@ interface MembershipShape {
   avatarSeed: string;
   joinedAt?: string;
   isReady?: boolean;
+  readyAt?: string | null;
 }
 
 interface RoomShape {
@@ -89,6 +94,9 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     kind: "idle" | "submitting";
     error?: string;
   }>({ kind: "idle" });
+  const [ownBreakdown, setOwnBreakdown] = useState<OwnBreakdownEntry[] | null>(
+    null,
+  );
 
   const roomId = params.id;
 
@@ -180,6 +188,21 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         };
       });
     }
+    if (event.type === "member_ready") {
+      // Optimistically update the membership's isReady + readyAt so the UI
+      // reflects the change before the next full refetch lands.
+      setPhase((prev) => {
+        if (prev.kind !== "ready") return prev;
+        return {
+          ...prev,
+          memberships: prev.memberships.map((m) =>
+            m.userId === event.userId
+              ? { ...m, isReady: true, readyAt: event.readyAt ?? null }
+              : m,
+          ),
+        };
+      });
+    }
   });
 
   const handleStartVoting = useCallback(async () => {
@@ -238,6 +261,71 @@ export default function RoomPage({ params }: { params: { id: string } }) {
       (typeof window !== "undefined" ? window.location.origin : "");
     void navigator.clipboard?.writeText(`${base}/room/${phase.room.id}`);
   }, [phase]);
+
+  const handleMarkReady = useCallback(async () => {
+    if (!phase || phase.kind !== "ready") return;
+    const session = getSession();
+    if (!session) return;
+    const result = await postRoomReady(phase.room.id, session.userId, {
+      fetch: window.fetch.bind(window),
+    });
+    if (!result.ok) {
+      // Best-effort — failures are visible by the chip not updating.
+      return;
+    }
+    // The member_ready broadcast will refresh memberships via realtime;
+    // also refetch as a safety net in case the broadcast lands later.
+    void loadRoom();
+  }, [phase, loadRoom]);
+
+  const handleReveal = useCallback(async () => {
+    if (!phase || phase.kind !== "ready") return;
+    const session = getSession();
+    if (!session) return;
+    const result = await patchRoomStatus(
+      phase.room.id,
+      "done",
+      session.userId,
+      { fetch: window.fetch.bind(window) },
+    );
+    if (!result.ok) return;
+    // status_changed broadcast will drive refetch + DoneCard render.
+  }, [phase]);
+
+  // Fetch own Eurovision points when entering instant-mode announcing.
+  useEffect(() => {
+    if (
+      phase.kind !== "ready" ||
+      phase.room.status !== "announcing" ||
+      phase.room.announcementMode !== "instant"
+    ) {
+      setOwnBreakdown(null);
+      return;
+    }
+    if (ownBreakdown !== null) return;
+
+    let cancelled = false;
+    void (async () => {
+      const session = getSession();
+      if (!session) return;
+      const result = await postRoomOwnPoints(
+        phase.room.id,
+        session.userId,
+        { fetch: window.fetch.bind(window) },
+      );
+      if (cancelled || !result.ok) return;
+      setOwnBreakdown(
+        result.data!.entries.map((e) => ({
+          contestantId: e.contestantId,
+          pointsAwarded: e.pointsAwarded,
+          hotTake: e.hotTake,
+        })),
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [phase, ownBreakdown]);
 
   const memoizedPostVote = useCallback(
     (payload: Parameters<typeof postVote>[0]) =>
@@ -388,6 +476,31 @@ export default function RoomPage({ params }: { params: { id: string } }) {
   if (phase.room.status === "announcing") {
     const session = getSession();
     if (!session) return <StatusStub status={phase.room.status} />;
+
+    if (phase.room.announcementMode === "instant") {
+      const members = phase.memberships.map((m) => ({
+        userId: m.userId,
+        displayName: m.displayName,
+        isReady: m.isReady ?? false,
+        readyAt: m.readyAt ?? null,
+      }));
+
+      return (
+        <InstantAnnouncingView
+          room={{
+            id: phase.room.id,
+            ownerUserId: phase.room.ownerUserId,
+          }}
+          contestants={phase.contestants}
+          memberships={members}
+          currentUserId={session.userId}
+          ownBreakdown={ownBreakdown ?? []}
+          onMarkReady={handleMarkReady}
+          onReveal={handleReveal}
+        />
+      );
+    }
+
     return (
       <AnnouncingView
         room={{

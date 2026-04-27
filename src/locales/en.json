@@ -192,6 +192,37 @@
       "semi2": "Eurovision {year} — Semi-final 2"
     }
   },
+  "instantAnnounce": {
+    "lede": "Voting's done. Here are the points you gave — tap when you're ready to see the room's leaderboard.",
+    "ownResults": {
+      "title": "Your top picks",
+      "subtitle": "These are the Eurovision points you gave each country. The leaderboard is hidden until everyone's ready.",
+      "empty": "You didn't score any contestants this round."
+    },
+    "ready": {
+      "button": "I'm ready — show the leaderboard",
+      "busy": "Marking ready…",
+      "waiting": "You're ready. Waiting on {count} more — the leaderboard appears once everyone's ready."
+    },
+    "admin": {
+      "readyCount": "{ready} / {total} ready",
+      "hostHeading": "As host, you decide when to reveal.",
+      "hostSubtitle": "Pick one of the three below.",
+      "revealAll": "Reveal to everyone",
+      "revealAllSublineReady": "Everyone marked ready ({ready}/{total}). Tap to show the leaderboard.",
+      "revealAllSublineWaiting": "Available once everyone's ready ({ready}/{total}).",
+      "revealAnyway": "Reveal early",
+      "revealAnywaySublineHalf": "Half the room is ready ({ready}/{total}) — fine to reveal.",
+      "revealAnywaySublineCountdown": "Available in {minutes}:{seconds}.",
+      "revealAnywaySublineDisabled": "Unlocks once half are ready, or 60s after the first.",
+      "override": "Skip the wait — reveal now",
+      "overrideSubline": "Bypasses the wait. Use if folks aren't responsive.",
+      "overrideConfirmTitle": "Skip the wait?",
+      "overrideConfirmBody": "Everyone will see the group's leaderboard immediately, even if they haven't marked ready.",
+      "overrideConfirmCancel": "Cancel",
+      "overrideConfirmGo": "Reveal now"
+    }
+  },
   "awards": {
     "jointCaption": "joint winners",
     "neighbourhoodCaption": "voted most alike",

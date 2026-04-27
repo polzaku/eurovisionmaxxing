@@ -29,6 +29,7 @@ export interface MembershipView {
   avatarSeed: string;
   joinedAt: string;
   isReady: boolean;
+  readyAt: string | null;
 }
 
 export interface GetRoomData {
@@ -69,6 +70,7 @@ interface MembershipJoinedRow {
   user_id: string;
   joined_at: string;
   is_ready: boolean;
+  ready_at: string | null;
   users: { display_name: string; avatar_seed: string } | null;
 }
 
@@ -80,6 +82,7 @@ function mapMembership(row: MembershipJoinedRow): MembershipView | null {
     avatarSeed: row.users.avatar_seed,
     joinedAt: row.joined_at,
     isReady: row.is_ready,
+    readyAt: row.ready_at,
   };
 }
 
@@ -109,7 +112,7 @@ export async function getRoom(
 
   const membershipQuery = await deps.supabase
     .from("room_memberships")
-    .select("user_id, joined_at, is_ready, users(display_name, avatar_seed)")
+    .select("user_id, joined_at, is_ready, ready_at, users(display_name, avatar_seed)")
     .eq("room_id", roomId);
 
   if (membershipQuery.error) {
