@@ -13,7 +13,7 @@ interface DoneCardProps {
   autoRedirectSeconds?: number | null;
 }
 
-const DEFAULT_REDIRECT_SECONDS = 30;
+const DEFAULT_REDIRECT_SECONDS = 10;
 const TICK_MS = 1000;
 
 /**
