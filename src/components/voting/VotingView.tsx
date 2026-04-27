@@ -16,6 +16,7 @@ import EndOfVotingCard from "@/components/voting/EndOfVotingCard";
 import { endOfVotingState } from "@/lib/voting/endOfVotingState";
 import { nextIdxFromSwipe } from "@/lib/voting/nextIdxFromSwipe";
 import { useMissedUndo } from "@/hooks/useMissedUndo";
+import { useWakeLock } from "@/hooks/useWakeLock";
 import { scoredCount } from "@/components/voting/scoredCount";
 import SaveChip, { type DisplaySaveStatus } from "@/components/voting/SaveChip";
 import OfflineBanner from "@/components/voting/OfflineBanner";
@@ -147,6 +148,8 @@ export default function VotingView({
   const [scaleSheetOpen, setScaleSheetOpen] = useState(false);
   const t = useTranslations();
   const swipeStartXRef = useRef<number | null>(null);
+
+  useWakeLock(true);
 
   // Hoisted above early-returns to keep the hook call count stable across renders.
   const categoryNames = useMemo(() => categories.map((c) => c.name), [categories]);
