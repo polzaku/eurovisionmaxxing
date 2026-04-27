@@ -202,3 +202,27 @@ export async function postRoomReady(
     (body) => body as PostRoomReadySuccess,
   );
 }
+
+export interface PostRoomOwnPointsSuccess {
+  entries: Array<{
+    contestantId: string;
+    pointsAwarded: number;
+    hotTake: string | null;
+  }>;
+}
+
+export async function postRoomOwnPoints(
+  roomId: string,
+  userId: string,
+  deps: Deps,
+): Promise<ApiOk<PostRoomOwnPointsSuccess> | ApiFail> {
+  return runRequest<PostRoomOwnPointsSuccess>(
+    () =>
+      deps.fetch(`/api/rooms/${roomId}/own-points`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ userId }),
+      }),
+    (body) => body as PostRoomOwnPointsSuccess,
+  );
+}

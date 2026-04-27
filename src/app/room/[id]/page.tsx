@@ -10,6 +10,7 @@ import {
   patchRoomStatus,
   postRoomScore,
   postRoomReady,
+  postRoomOwnPoints,
   type FetchRoomData,
 } from "@/lib/room/api";
 import InstantAnnouncingView from "@/components/room/InstantAnnouncingView";
@@ -93,6 +94,9 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     kind: "idle" | "submitting";
     error?: string;
   }>({ kind: "idle" });
+  const [ownBreakdown, setOwnBreakdown] = useState<OwnBreakdownEntry[] | null>(
+    null,
+  );
 
   const roomId = params.id;
 
@@ -288,6 +292,50 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     // status_changed broadcast will drive refetch + DoneCard render.
   }, [phase]);
 
+  // Fetch own Eurovision points when entering instant-mode announcing.
+  useEffect(() => {
+    if (
+      phase.kind !== "ready" ||
+      phase.room.status !== "announcing" ||
+      phase.room.announcementMode !== "instant"
+    ) {
+      setOwnBreakdown(null);
+      return;
+    }
+    if (ownBreakdown !== null) return;
+
+    let cancelled = false;
+    void (async () => {
+      const session = getSession();
+      if (!session) return;
+      const result = await postRoomOwnPoints(
+        phase.room.id,
+        session.userId,
+        { fetch: window.fetch.bind(window) },
+      );
+      if (cancelled || !result.ok) return;
+      setOwnBreakdown(
+        result.data!.entries.map((e) => ({
+          contestantId: e.contestantId,
+          pointsAwarded: e.pointsAwarded,
+          hotTake: e.hotTake,
+        })),
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    phase.kind,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    phase.kind === "ready" ? phase.room.status : undefined,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    phase.kind === "ready" ? phase.room.announcementMode : undefined,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    phase.kind === "ready" ? phase.room.id : undefined,
+    ownBreakdown,
+  ]);
+
   const memoizedPostVote = useCallback(
     (payload: Parameters<typeof postVote>[0]) =>
       postVote(payload, { fetch: window.fetch.bind(window) }),
@@ -439,25 +487,6 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     if (!session) return <StatusStub status={phase.room.status} />;
 
     if (phase.room.announcementMode === "instant") {
-      // Build own breakdown from votes already in phase state.
-      // pointsAwarded is derived as sum of scores for the contestant
-      // (the engine-computed value is not available via the results API
-      // during announcing; the real value lands once status === "done").
-      const ownBreakdown: OwnBreakdownEntry[] = phase.votes
-        .map((v) => {
-          const scoreValues = v.scores ? Object.values(v.scores) : [];
-          const total = scoreValues.reduce<number>(
-            (acc, s) => acc + (s ?? 0),
-            0,
-          );
-          return {
-            contestantId: v.contestantId,
-            pointsAwarded: total,
-            hotTake: v.hotTake,
-          };
-        })
-        .filter((e) => e.pointsAwarded > 0 || e.hotTake !== null);
-
       const members = phase.memberships.map((m) => ({
         userId: m.userId,
         displayName: m.displayName,
@@ -474,7 +503,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
           contestants={phase.contestants}
           memberships={members}
           currentUserId={session.userId}
-          ownBreakdown={ownBreakdown}
+          ownBreakdown={ownBreakdown ?? []}
           onMarkReady={handleMarkReady}
           onReveal={handleReveal}
         />
