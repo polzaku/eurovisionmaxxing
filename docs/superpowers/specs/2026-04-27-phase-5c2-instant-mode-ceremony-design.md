@@ -132,19 +132,21 @@ A guest who lands on `/room/{id}` for the first time after `status === "done"` (
 
 ```
 src/components/instant/
-  OwnPointsCeremony.tsx          # Piece A — replaces InstantOwnBreakdown
-  OwnPointsCeremony.test.tsx
-  LeaderboardCeremony.tsx        # Piece B — replaces DoneCard for instant-mode-done
-  LeaderboardCeremony.test.tsx
-  useStaggeredReveal.ts          # generic timer-driven index ticker
-  useStaggeredReveal.test.ts
-  leaderboardSequence.ts         # PURE: leaderboard → ordered intermediate states
+  OwnPointsCeremony.tsx          # Piece A — replaces InstantOwnBreakdown (manual smoke)
+  LeaderboardCeremony.tsx        # Piece B — replaces DoneCard for instant-mode-done (manual smoke)
+  useStaggeredReveal.ts          # React hook wrapping the pure helper (manual smoke via ceremony)
+src/lib/instant/
+  leaderboardSequence.ts         # PURE: leaderboard → ordered intermediate snapshots
   leaderboardSequence.test.ts
-  sessionRevealedFlag.ts         # PURE: read/write/clear sessionStorage
+  staggerTick.ts                 # PURE: elapsed → currentStep helper (testable with fake timers)
+  staggerTick.test.ts
+  sessionRevealedFlag.ts         # PURE: read/write/clear sessionStorage with SSR + throw guards
   sessionRevealedFlag.test.ts
 ```
 
 `InstantOwnBreakdown.tsx` is **deleted**. Its sole consumer is `InstantAnnouncingView`, which swaps to `OwnPointsCeremony` directly.
+
+Test posture follows the rest of the repo (vitest `environment: "node"` per `vitest.config.ts`; no `@testing-library/react` dep, no jsdom): all logic that needs verification lives in `src/lib/instant/*.ts` pure helpers. Components (`*.tsx`) stay thin — they just wire the pure helpers to JSX — and are smoke-tested manually under `npm run dev`. Same posture as `nextRevealCtaState.ts` + `RevealCtaPanel.tsx` shipped in 5c.1.
 
 ### Wire-in
 
@@ -197,23 +199,46 @@ export function leaderboardSequence(
 
 100% pure. Deterministic. Testable without React.
 
-**`useStaggeredReveal.ts`**
+**`staggerTick.ts`** (pure)
 
 ```ts
-export interface StaggeredRevealOptions {
+export interface StaggerTickInput {
+  elapsedMs: number;
+  staggerMs: number;
+  totalSteps: number;
+}
+
+/**
+ * Maps elapsed time since ceremony start to the current step index.
+ * - elapsedMs < 0 → 0
+ * - elapsedMs >= staggerMs * totalSteps → totalSteps (clamped, complete)
+ * - otherwise → floor(elapsedMs / staggerMs) + 1, clamped to [0, totalSteps]
+ *
+ * The "+1" is because step 0 is the initial seeding snapshot (all 0s);
+ * step 1 is "first reveal applied" and fires at elapsedMs = 0 + staggerMs.
+ */
+export function staggerTick(input: StaggerTickInput): number;
+```
+
+Pure. Tested with fake timers via Vitest in node env.
+
+**`useStaggeredReveal.ts`** (thin React wrapper, no separate test — covered by manual smoke)
+
+```ts
+export interface UseStaggeredRevealOptions {
   totalSteps: number;
   staggerMs: number;
   onComplete?: () => void;
   enabled?: boolean;          // false → snap to totalSteps immediately
 }
 
-export function useStaggeredReveal(opts: StaggeredRevealOptions): {
+export function useStaggeredReveal(opts: UseStaggeredRevealOptions): {
   currentStep: number;        // 0 .. totalSteps
   isComplete: boolean;
 };
 ```
 
-Single `setTimeout` chain. Cancels on unmount. `enabled: false` (reduced motion) snaps current to totalSteps in the first render.
+Implementation: tracks a start timestamp via `useRef`, drives a `requestAnimationFrame` loop that calls `staggerTick({ elapsedMs: now - start, ... })` and `setState` only when the index changes. Cancels on unmount. `enabled: false` snaps current to totalSteps in the first render. Implementation is ~30 lines; the testable arithmetic lives in `staggerTick`.
 
 **`sessionRevealedFlag.ts`**
 
@@ -259,43 +284,37 @@ New under `instantAnnounce`:
 
 `src/locales/locales.test.ts` bumps the expected key count by 7. Non-`en` locales remain skeleton (Phase L L3 deferred).
 
-## Tests (TDD order)
+## Tests (TDD order — pure helpers only)
 
 Write each test red first, then implement.
 
 1. **`leaderboardSequence.test.ts`** — pure
-   - Empty contestants → empty list of snapshots.
-   - 3 contestants, no ties → 4 snapshots (initial + 3 reveals); reveal order matches reversed leaderboard.
-   - Ties (1, 2, 2, 4) → all tied entries share rank in final snapshot; reveal order is worst-first using `contestantId.localeCompare` as the inner tiebreak.
-   - Contestants in field but not in leaderboard → present in initial snapshot at 0 pts; never "revealed" (their entry stays at 0). (Cannot occur with real data — `loadResults.buildLeaderboardSeeded` includes all contestants — but the helper is robust.)
+   - Empty contestants → single initial snapshot (no reveals) with no rows.
+   - 3 contestants, no ties → 4 snapshots (initial + 3 reveals); reveal order matches reversed leaderboard; final snapshot matches input.
+   - Ties (final ranks 1, 2, 2, 4 …) → rank ties preserved in the final snapshot; reveal order is worst-first using `contestantId.localeCompare` as the inner tiebreak (same behaviour as `loadResults.buildLeaderboard`).
+   - Contestants in `contestants` field but missing from `finalLeaderboard` → present in initial snapshot at 0 pts; never "revealed" (their entry stays at 0). (Defensive — real data always seeds via `buildLeaderboardSeeded` so this is unreachable, but the helper handles it.)
+   - 0-points entry in the leaderboard (e.g. `{contestantId, totalPoints: 0, rank: 26}`) → that step's snapshot adds the row but `pointsAwarded` stays 0; it still counts as a step (the `rank` becomes non-null).
 
-2. **`useStaggeredReveal.test.ts`** — Vitest fake timers
-   - `vi.useFakeTimers()`. `currentStep` starts at 0. After advancing `staggerMs × N`, equals `N`. After advancing past `staggerMs × totalSteps`, stops at `totalSteps`. `onComplete` fires once.
-   - `enabled: false` → `currentStep === totalSteps` on first render, `onComplete` fires synchronously.
-   - Unmount mid-stagger → no further updates (no warnings).
+2. **`staggerTick.test.ts`** — pure (no fake timers needed; pure arithmetic)
+   - `elapsedMs: 0, staggerMs: 250, totalSteps: 5` → 0 (initial state, no reveals applied yet).
+   - `elapsedMs: 250` → 1.
+   - `elapsedMs: 251` → 1 (still on step 1).
+   - `elapsedMs: 499` → 1.
+   - `elapsedMs: 500` → 2.
+   - `elapsedMs: 1250` → 5 (clamped at totalSteps).
+   - `elapsedMs: 9999` → 5 (still clamped).
+   - `elapsedMs: -100` → 0 (negative-elapsed safety).
+   - `totalSteps: 0` → always 0.
 
-3. **`sessionRevealedFlag.test.ts`** — jsdom
+3. **`sessionRevealedFlag.test.ts`** — node env, sessionStorage shimmed (mirror `emxHintsSeen.test.ts`)
    - `has(roomId)` initially false; after `set` → true; after `clear` → false.
-   - SSR (`window` undefined) → all methods no-op without throwing.
+   - Uses different roomId → `has` returns false (key isolation).
+   - Read/write swallow when sessionStorage throws (Safari private mode). Read returns false; write/clear no-op.
+   - SSR safety: with `window` undefined, all three methods no-op without throwing.
 
-4. **`OwnPointsCeremony.test.tsx`** — RTL
-   - 10-pick fixture (1, 2, 3, 4, 5, 6, 7, 8, 10, 12): renders nine lower picks, 12 absent. `Reveal your 12 points` button visible.
-   - Click reveal → 12 pick rendered. `onAllRevealed` fired.
-   - Click `Skip the build-up` → 12 pick rendered, `onAllRevealed` fired (same path).
-   - 5-pick fixture (no 12): all picks render immediately, no reveal button, `onAllRevealed` fired on mount.
-   - 0-pick fixture (`empty` case): existing empty-state copy renders, `onAllRevealed` fired on mount.
+## Manual smoke (components, repo posture)
 
-5. **`LeaderboardCeremony.test.tsx`** — RTL with mocked fetch
-   - Mocks `/api/results/{id}` returning a `done` payload with 4 contestants.
-   - Initial render: all 4 rows present at 0 pts.
-   - Fake-timer advance through stagger ticks → final ordering matches input leaderboard.
-   - After complete + 3 s pause: `router.push('/results/...')` called.
-   - `Stay here` click before redirect → no `router.push`; `See full results →` button visible.
-   - `prefers-reduced-motion: reduce` (mocked via `matchMedia`): rows render in final state on mount; pause compressed to 1 s.
-   - sessionStorage flag set on mount → no animation (test by checking that no row has class `animate-rank-shift` ever applied).
-   - sessionStorage flag set after first ceremony run.
-
-The two RTL test files use the existing test setup (`src/__tests__/setup.ts` if present, otherwise vitest's jsdom default). The `useRouter` mock follows the pattern already used elsewhere (`postRoomReady.test.ts` etc.).
+`OwnPointsCeremony.tsx`, `LeaderboardCeremony.tsx`, and `useStaggeredReveal.ts` are smoke-tested under `npm run dev` after each PR slice — same posture as 5c.1's `RevealCtaPanel`, `InstantOwnBreakdown`, `InstantAnnouncingView`. Smoke checklist included in the plan as the verification step at the end of each task slice.
 
 ## Files modified / added
 
@@ -303,13 +322,13 @@ The two RTL test files use the existing test setup (`src/__tests__/setup.ts` if 
 - ✏️ `src/app/room/[id]/page.tsx` — branch `done` render on announcementMode + flag.
 - ✏️ `src/locales/en.json` — 7 new keys.
 - ✏️ `src/locales/locales.test.ts` — bump expected key count.
-- ➕ `src/components/instant/OwnPointsCeremony.tsx` (+ test)
-- ➕ `src/components/instant/LeaderboardCeremony.tsx` (+ test)
-- ➕ `src/components/instant/useStaggeredReveal.ts` (+ test)
-- ➕ `src/components/instant/leaderboardSequence.ts` (+ test)
-- ➕ `src/components/instant/sessionRevealedFlag.ts` (+ test)
+- ➕ `src/components/instant/OwnPointsCeremony.tsx` (manual smoke)
+- ➕ `src/components/instant/LeaderboardCeremony.tsx` (manual smoke)
+- ➕ `src/components/instant/useStaggeredReveal.ts` (manual smoke; arithmetic in `staggerTick`)
+- ➕ `src/lib/instant/leaderboardSequence.ts` + `.test.ts`
+- ➕ `src/lib/instant/staggerTick.ts` + `.test.ts`
+- ➕ `src/lib/instant/sessionRevealedFlag.ts` + `.test.ts`
 - ❌ `src/components/room/InstantOwnBreakdown.tsx` — deleted (no other consumers)
-- ❌ `src/components/room/InstantOwnBreakdown` test if any (none today)
 
 ## Migration / rollout
 
