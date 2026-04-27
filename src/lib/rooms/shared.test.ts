@@ -21,6 +21,8 @@ describe("mapRoom", () => {
       delegate_user_id: null,
       now_performing_id: null,
       allow_now_performing: false,
+      voting_ends_at: null,
+      voting_ended_at: null,
       created_at: "2026-04-19T12:00:00Z",
     };
     expect(mapRoom(row)).toEqual({
@@ -37,6 +39,8 @@ describe("mapRoom", () => {
       currentAnnounceIdx: 0,
       nowPerformingId: null,
       allowNowPerforming: false,
+      votingEndsAt: null,
+      votingEndedAt: null,
       createdAt: "2026-04-19T12:00:00Z",
     });
   });
@@ -57,6 +61,8 @@ describe("mapRoom", () => {
       delegate_user_id: null,
       now_performing_id: "2025-ua",
       allow_now_performing: true,
+      voting_ends_at: null,
+      voting_ended_at: null,
       created_at: "2026-04-19T12:00:00Z",
     };
     const mapped = mapRoom(row);

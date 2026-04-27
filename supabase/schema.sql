@@ -26,8 +26,8 @@ CREATE TABLE rooms (
   event                 VARCHAR(6) NOT NULL CHECK (event IN ('semi1', 'semi2', 'final')),
   categories            JSONB NOT NULL,         -- [{name, weight, hint}]
   owner_user_id         UUID REFERENCES users(id),
-  status                VARCHAR(12) NOT NULL DEFAULT 'lobby'
-                          CHECK (status IN ('lobby','voting','scoring','announcing','done')),
+  status                VARCHAR(14) NOT NULL DEFAULT 'lobby'
+                          CHECK (status IN ('lobby','voting','voting_ending','scoring','announcing','done')),
   announcement_mode     VARCHAR(7) NOT NULL DEFAULT 'instant'
                           CHECK (announcement_mode IN ('live','instant')),
   announcement_order    UUID[],                 -- ordered array of userIds for live mode
@@ -36,11 +36,21 @@ CREATE TABLE rooms (
   delegate_user_id      UUID REFERENCES users(id), -- admin handoff (SPEC §10.2 step 7); null when announcer drives directly
   now_performing_id     VARCHAR(20),            -- contestant id currently performing
   allow_now_performing  BOOLEAN DEFAULT FALSE,
+  voting_ends_at        TIMESTAMPTZ,            -- §6.3.1: deadline for the 5-s undo window; set on voting → voting_ending; cleared on undo
+  voting_ended_at       TIMESTAMPTZ,            -- §6.3.1: audit timestamp written when voting_ending → scoring fires
   created_at            TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Existing-database migration (run via Supabase SQL Editor on rooms with existing data):
 --   ALTER TABLE rooms ADD COLUMN IF NOT EXISTS delegate_user_id UUID REFERENCES users(id);
+--
+-- Existing-database migration for the §6.3.1 undo window (run via Supabase SQL Editor):
+--   ALTER TABLE rooms ALTER COLUMN status TYPE VARCHAR(14);
+--   ALTER TABLE rooms DROP CONSTRAINT IF EXISTS rooms_status_check;
+--   ALTER TABLE rooms ADD CONSTRAINT rooms_status_check
+--     CHECK (status IN ('lobby','voting','voting_ending','scoring','announcing','done'));
+--   ALTER TABLE rooms ADD COLUMN IF NOT EXISTS voting_ends_at TIMESTAMPTZ;
+--   ALTER TABLE rooms ADD COLUMN IF NOT EXISTS voting_ended_at TIMESTAMPTZ;
 
 -- ─── ROOM MEMBERSHIPS ───────────────────────────────────────────────────────
 

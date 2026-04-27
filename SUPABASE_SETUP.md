@@ -85,6 +85,17 @@ For existing projects, run the per-migration SQL listed in the changelog below i
 
 ### Changelog
 
+- **2026-04-27 — R0 + R4 §6.3.1:** added `voting_ending` status to `rooms.status` CHECK (and bumped column to VARCHAR(14)), plus two nullable timestamp columns (`voting_ends_at` for the 5-s undo deadline, `voting_ended_at` for the audit trail). Apply with:
+
+  ```sql
+  ALTER TABLE rooms ALTER COLUMN status TYPE VARCHAR(14);
+  ALTER TABLE rooms DROP CONSTRAINT IF EXISTS rooms_status_check;
+  ALTER TABLE rooms ADD CONSTRAINT rooms_status_check
+    CHECK (status IN ('lobby','voting','voting_ending','scoring','announcing','done'));
+  ALTER TABLE rooms ADD COLUMN IF NOT EXISTS voting_ends_at TIMESTAMPTZ;
+  ALTER TABLE rooms ADD COLUMN IF NOT EXISTS voting_ended_at TIMESTAMPTZ;
+  ```
+
 - **2026-04-26 — Phase S0:** added `room_memberships.scores_locked_at TIMESTAMPTZ` (nullable, default NULL) for the Phase S3 calibration drawer's soft lock-in. Apply with:
 
   ```sql

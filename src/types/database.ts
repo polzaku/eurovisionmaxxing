@@ -48,6 +48,8 @@ export interface Database {
           delegate_user_id: string | null;
           now_performing_id: string | null;
           allow_now_performing: boolean;
+          voting_ends_at: string | null;
+          voting_ended_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -65,6 +67,8 @@ export interface Database {
           delegate_user_id?: string | null;
           now_performing_id?: string | null;
           allow_now_performing?: boolean;
+          voting_ends_at?: string | null;
+          voting_ended_at?: string | null;
         };
         Update: {
           pin?: string;
@@ -79,6 +83,8 @@ export interface Database {
           delegate_user_id?: string | null;
           now_performing_id?: string | null;
           allow_now_performing?: boolean;
+          voting_ends_at?: string | null;
+          voting_ended_at?: string | null;
         };
         Relationships: [];
       };
