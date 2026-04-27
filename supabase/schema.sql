@@ -49,6 +49,7 @@ CREATE TABLE room_memberships (
   user_id           UUID REFERENCES users(id),
   joined_at         TIMESTAMPTZ DEFAULT NOW(),
   is_ready          BOOLEAN DEFAULT FALSE,            -- for instant mode "ready to reveal"
+  ready_at          TIMESTAMPTZ,                      -- timestamp when is_ready transitioned to true; MIN across the room is the 60-s countdown anchor in §10.1
   scores_locked_at  TIMESTAMPTZ,                      -- soft lock-in for vote calibration (§8.10); NULL = unlocked / never locked. Cleared automatically on any vote write by this user.
   PRIMARY KEY (room_id, user_id)
 );
