@@ -7,7 +7,7 @@ import Link from "next/link";
 interface DoneCardProps {
   roomId: string;
   /**
-   * Seconds before the auto-redirect fires. Default 30.
+   * Seconds before the auto-redirect fires. Default 10.
    * Pass `null` to disable auto-redirect entirely (e.g. for tests / Storybook).
    */
   autoRedirectSeconds?: number | null;
@@ -23,8 +23,9 @@ const TICK_MS = 1000;
  * via `finishedLocal` state, ahead of the broadcast roundtrip).
  *
  * Auto-redirects to /results/{roomId} after `autoRedirectSeconds` seconds
- * (default 30). The user can tap the primary CTA to go now, or cancel the
- * countdown to stay on the room page.
+ * (default 10). A thin progress bar at the bottom of the primary CTA drains
+ * left-to-right as the countdown elapses; tapping the CTA goes now; tapping
+ * "Stay here" cancels the redirect entirely.
  */
 export default function DoneCard({
   roomId,
@@ -50,6 +51,10 @@ export default function DoneCard({
 
   const showCountdown =
     !cancelled && autoRedirectSeconds !== null && secondsRemaining > 0;
+  const fillPercent =
+    showCountdown && initialSeconds > 0
+      ? (secondsRemaining / initialSeconds) * 100
+      : 0;
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-4 py-8">
@@ -62,23 +67,37 @@ export default function DoneCard({
         </p>
         <Link
           href={`/results/${roomId}`}
-          className="block rounded-xl bg-primary px-6 py-4 text-lg font-semibold text-primary-foreground transition-all hover:scale-[1.02] hover:emx-glow-gold active:scale-[0.98]"
+          aria-label={
+            showCountdown
+              ? `See full results, auto-opens in ${secondsRemaining} seconds`
+              : "See full results"
+          }
+          className="relative block overflow-hidden rounded-xl bg-primary px-6 py-4 text-lg font-semibold text-primary-foreground transition-transform hover:scale-[1.02] hover:emx-glow-gold active:scale-[0.98]"
         >
-          See full results
+          <span className="relative">
+            See full results
+            {showCountdown ? (
+              <span className="ml-1 font-normal opacity-80 tabular-nums">
+                (in {secondsRemaining}s)
+              </span>
+            ) : null}
+          </span>
+          {showCountdown ? (
+            <span
+              aria-hidden="true"
+              className="absolute bottom-0 left-0 h-1 bg-primary-foreground/40 transition-all duration-1000 ease-linear"
+              style={{ width: `${fillPercent}%` }}
+            />
+          ) : null}
         </Link>
         {showCountdown ? (
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">
-              Showing the leaderboard in {secondsRemaining}s.
-            </p>
-            <button
-              type="button"
-              onClick={() => setCancelled(true)}
-              className="text-xs text-muted-foreground underline hover:text-foreground"
-            >
-              Stay here
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setCancelled(true)}
+            className="text-xs text-muted-foreground underline hover:text-foreground"
+          >
+            Stay here
+          </button>
         ) : null}
       </div>
     </main>
