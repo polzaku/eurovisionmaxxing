@@ -67,7 +67,10 @@ export default function InstantAnnouncingView({
   return (
     <main className="flex min-h-screen flex-col items-center px-4 py-6 sm:px-6 sm:py-10">
       <div className="w-full max-w-xl space-y-6">
-        <header className="space-y-1">
+        <header className="space-y-2">
+          <p className="text-sm text-foreground">
+            {t("instantAnnounce.lede")}
+          </p>
           <p className="text-xs font-medium text-muted-foreground">
             {t("instantAnnounce.admin.readyCount", {
               ready: readyCount,
@@ -101,12 +104,22 @@ export default function InstantAnnouncingView({
         )}
 
         {isAdmin && (
-          <RevealCtaPanel
-            readyCount={readyCount}
-            totalCount={totalCount}
-            firstReadyAt={firstReadyAt}
-            onReveal={onReveal}
-          />
+          <section className="space-y-3 border-t border-border pt-6">
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-foreground">
+                {t("instantAnnounce.admin.hostHeading")}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {t("instantAnnounce.admin.hostSubtitle")}
+              </p>
+            </div>
+            <RevealCtaPanel
+              readyCount={readyCount}
+              totalCount={totalCount}
+              firstReadyAt={firstReadyAt}
+              onReveal={onReveal}
+            />
+          </section>
         )}
       </div>
     </main>

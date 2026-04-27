@@ -48,50 +48,94 @@ export default function RevealCtaPanel({
     }
   };
 
-  let anywayLabel: string;
+  const revealAllSubline = cta.canRevealAll
+    ? t("instantAnnounce.admin.revealAllSublineReady", {
+        ready: readyCount,
+        total: totalCount,
+      })
+    : t("instantAnnounce.admin.revealAllSublineWaiting", {
+        ready: readyCount,
+        total: totalCount,
+      });
+
+  let revealAnywaySubline: string;
   if (cta.anywayLabel.kind === "halfReady") {
-    anywayLabel = t("instantAnnounce.admin.revealAnywayHalf", {
-      ready: cta.anywayLabel.readyCount,
-      total: cta.anywayLabel.totalCount,
-    });
+    revealAnywaySubline = t(
+      "instantAnnounce.admin.revealAnywaySublineHalf",
+      {
+        ready: cta.anywayLabel.readyCount,
+        total: cta.anywayLabel.totalCount,
+      },
+    );
   } else if (cta.anywayLabel.kind === "countdown") {
-    const total = cta.anywayLabel.secondsRemaining;
-    const minutes = Math.floor(total / 60);
-    const seconds = String(total % 60).padStart(2, "0");
-    anywayLabel = t("instantAnnounce.admin.revealAnywayCountdown", {
-      minutes,
-      seconds,
-    });
+    if (cta.anywayLabel.secondsRemaining === 0) {
+      // Countdown elapsed; show the half-ready-style "fine to reveal" subline
+      // — by-time-elapsed is just as valid a trigger.
+      revealAnywaySubline = t(
+        "instantAnnounce.admin.revealAnywaySublineHalf",
+        {
+          ready: readyCount,
+          total: totalCount,
+        },
+      );
+    } else {
+      const total = cta.anywayLabel.secondsRemaining;
+      const minutes = Math.floor(total / 60);
+      const seconds = String(total % 60).padStart(2, "0");
+      revealAnywaySubline = t(
+        "instantAnnounce.admin.revealAnywaySublineCountdown",
+        { minutes, seconds },
+      );
+    }
   } else {
-    anywayLabel = t("instantAnnounce.admin.revealAnyway");
+    revealAnywaySubline = t(
+      "instantAnnounce.admin.revealAnywaySublineDisabled",
+    );
   }
 
   return (
-    <section className="space-y-3 border-t border-border pt-4">
-      <Button
-        variant="primary"
-        disabled={!cta.canRevealAll || busy}
-        onClick={handleReveal}
-        className="w-full"
-      >
-        {t("instantAnnounce.admin.revealAll")}
-      </Button>
-      <Button
-        variant="ghost"
-        disabled={!cta.canRevealAnyway || busy}
-        onClick={handleReveal}
-        className="w-full"
-      >
-        {anywayLabel}
-      </Button>
-      <button
-        type="button"
-        onClick={() => setOverrideOpen(true)}
-        disabled={busy}
-        className="w-full text-sm text-destructive hover:underline"
-      >
-        {t("instantAnnounce.admin.override")}
-      </button>
+    <section className="space-y-4">
+      <div className="space-y-1">
+        <Button
+          variant="primary"
+          disabled={!cta.canRevealAll || busy}
+          onClick={handleReveal}
+          className="w-full"
+        >
+          {t("instantAnnounce.admin.revealAll")}
+        </Button>
+        <p className="text-xs text-muted-foreground px-1">
+          {revealAllSubline}
+        </p>
+      </div>
+
+      <div className="space-y-1">
+        <Button
+          variant="ghost"
+          disabled={!cta.canRevealAnyway || busy}
+          onClick={handleReveal}
+          className="w-full"
+        >
+          {t("instantAnnounce.admin.revealAnyway")}
+        </Button>
+        <p className="text-xs text-muted-foreground px-1">
+          {revealAnywaySubline}
+        </p>
+      </div>
+
+      <div className="space-y-1">
+        <button
+          type="button"
+          onClick={() => setOverrideOpen(true)}
+          disabled={busy}
+          className="w-full text-sm font-medium text-destructive hover:underline disabled:opacity-50"
+        >
+          {t("instantAnnounce.admin.override")}
+        </button>
+        <p className="text-xs text-muted-foreground px-1 text-center">
+          {t("instantAnnounce.admin.overrideSubline")}
+        </p>
+      </div>
 
       {overrideOpen && (
         <div

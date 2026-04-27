@@ -193,26 +193,34 @@
     }
   },
   "instantAnnounce": {
+    "lede": "Voting's done. Here are the points you gave — tap when you're ready to see the room's leaderboard.",
     "ownResults": {
-      "title": "Your points",
+      "title": "Your top picks",
+      "subtitle": "These are the Eurovision points you gave each country. The leaderboard is hidden until everyone's ready.",
       "empty": "You didn't score any contestants this round."
     },
     "ready": {
-      "button": "Ready to reveal",
+      "button": "I'm ready — show the leaderboard",
       "busy": "Marking ready…",
-      "waiting": "Waiting on {count} other"
+      "waiting": "You're ready. Waiting on {count} more — the leaderboard appears once everyone's ready."
     },
     "admin": {
       "readyCount": "{ready} / {total} ready",
-      "revealAll": "Reveal final results",
-      "revealAnyway": "Reveal anyway",
-      "revealAnywayCountdown": "Reveal anyway — unlocks in {minutes}:{seconds}",
-      "revealAnywayHalf": "Reveal anyway — {ready} / {total} ready",
-      "override": "Admin override — reveal now",
-      "overrideConfirmTitle": "Reveal the results right now?",
-      "overrideConfirmBody": "No one will be waited for.",
+      "hostHeading": "As host, you decide when to reveal.",
+      "hostSubtitle": "Pick one of the three below.",
+      "revealAll": "Reveal to everyone",
+      "revealAllSublineReady": "Everyone marked ready ({ready}/{total}). Tap to show the leaderboard.",
+      "revealAllSublineWaiting": "Available once everyone's ready ({ready}/{total}).",
+      "revealAnyway": "Reveal early",
+      "revealAnywaySublineHalf": "Half the room is ready ({ready}/{total}) — fine to reveal.",
+      "revealAnywaySublineCountdown": "Available in {minutes}:{seconds}.",
+      "revealAnywaySublineDisabled": "Unlocks once half are ready, or 60s after the first.",
+      "override": "Skip the wait — reveal now",
+      "overrideSubline": "Bypasses the wait. Use if folks aren't responsive.",
+      "overrideConfirmTitle": "Skip the wait?",
+      "overrideConfirmBody": "Everyone will see the group's leaderboard immediately, even if they haven't marked ready.",
       "overrideConfirmCancel": "Cancel",
-      "overrideConfirmGo": "Reveal"
+      "overrideConfirmGo": "Reveal now"
     }
   },
   "awards": {

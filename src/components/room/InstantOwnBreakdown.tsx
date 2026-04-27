@@ -36,9 +36,14 @@ export default function InstantOwnBreakdown({
 
   return (
     <section className="space-y-3">
-      <h3 className="text-sm font-semibold text-foreground">
-        {t("instantAnnounce.ownResults.title")}
-      </h3>
+      <div className="space-y-1">
+        <h3 className="text-sm font-semibold text-foreground">
+          {t("instantAnnounce.ownResults.title")}
+        </h3>
+        <p className="text-xs text-muted-foreground">
+          {t("instantAnnounce.ownResults.subtitle")}
+        </p>
+      </div>
       {sorted.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           {t("instantAnnounce.ownResults.empty")}
