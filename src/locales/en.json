@@ -192,6 +192,29 @@
       "semi2": "Eurovision {year} — Semi-final 2"
     }
   },
+  "instantAnnounce": {
+    "ownResults": {
+      "title": "Your points",
+      "empty": "You didn't score any contestants this round."
+    },
+    "ready": {
+      "button": "Ready to reveal",
+      "busy": "Marking ready…",
+      "waiting": "Waiting on {count} other"
+    },
+    "admin": {
+      "readyCount": "{ready} / {total} ready",
+      "revealAll": "Reveal final results",
+      "revealAnyway": "Reveal anyway",
+      "revealAnywayCountdown": "Reveal anyway — unlocks in {minutes}:{seconds}",
+      "revealAnywayHalf": "Reveal anyway — {ready} / {total} ready",
+      "override": "Admin override — reveal now",
+      "overrideConfirmTitle": "Reveal the results right now?",
+      "overrideConfirmBody": "No one will be waited for.",
+      "overrideConfirmCancel": "Cancel",
+      "overrideConfirmGo": "Reveal"
+    }
+  },
   "awards": {
     "jointCaption": "joint winners",
     "neighbourhoodCaption": "voted most alike",
