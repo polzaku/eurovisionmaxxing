@@ -176,3 +176,29 @@ export async function postAnnounceHandoff(
     (body) => body as { delegateUserId: string | null },
   );
 }
+
+export interface PostRoomReadySuccess {
+  readyAt: string;
+  readyCount: number;
+  totalCount: number;
+}
+
+/**
+ * Mark the current user as ready in instant mode. Broadcasts a member_ready
+ * event to all room subscribers.
+ */
+export async function postRoomReady(
+  roomId: string,
+  userId: string,
+  deps: Deps
+): Promise<ApiOk<PostRoomReadySuccess> | ApiFail> {
+  return runRequest<PostRoomReadySuccess>(
+    () =>
+      deps.fetch(`/api/rooms/${roomId}/ready`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ userId }),
+      }),
+    (body) => body as PostRoomReadySuccess,
+  );
+}
