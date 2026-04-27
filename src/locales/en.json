@@ -138,6 +138,23 @@
       "unscoredCount": "⚠️ {count} still unscored",
       "rescoreCta": "Rescore",
       "jumpToCta": "Score now"
+    },
+    "endVoting": {
+      "button": "End voting",
+      "modal": {
+        "title": "End voting?",
+        "body": "Tapping End voting starts a 5-second countdown. You can tap Undo during the countdown to cancel.",
+        "confirm": "End voting",
+        "cancel": "Cancel"
+      },
+      "countdown": {
+        "body": "Voting ends in {seconds}s",
+        "finalising": "Finalising…",
+        "undo": "Undo"
+      },
+      "guest": {
+        "body": "Voting ending in {seconds}s…"
+      }
     }
   },
   "errors": {

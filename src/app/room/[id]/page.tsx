@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { useRoomRealtime } from "@/hooks/useRoomRealtime";
@@ -24,6 +24,9 @@ import StatusStub from "@/components/room/StatusStub";
 import AnnouncingView from "@/components/room/AnnouncingView";
 import DoneCard from "@/components/room/DoneCard";
 import VotingView from "@/components/voting/VotingView";
+import EndVotingModal from "@/components/voting/EndVotingModal";
+import EndVotingCountdownToast from "@/components/voting/EndVotingCountdownToast";
+import EndingPill from "@/components/voting/EndingPill";
 import type { Contestant } from "@/types";
 import { useVoteAutosave } from "@/components/voting/useVoteAutosave";
 import { postVote } from "@/lib/voting/postVote";
@@ -51,6 +54,7 @@ interface RoomShape {
   announcementOrder?: string[] | null;
   announcingUserId?: string | null;
   currentAnnounceIdx?: number | null;
+  votingEndsAt?: string | null;
 }
 
 type Phase =
@@ -90,10 +94,11 @@ export default function RoomPage({ params }: { params: { id: string } }) {
   const [startVotingState, setStartVotingState] = useState<StartVotingState>({
     kind: "idle",
   });
-  const [endVotingState, setEndVotingState] = useState<{
-    kind: "idle" | "submitting";
-    error?: string;
-  }>({ kind: "idle" });
+  const [endVotingModalOpen, setEndVotingModalOpen] = useState(false);
+  const [endVotingBusy, setEndVotingBusy] = useState(false);
+  const [endVotingError, setEndVotingError] = useState<string | null>(null);
+  const [undoBusy, setUndoBusy] = useState(false);
+  const finalizeFiredRef = useRef(false);
   const [ownBreakdown, setOwnBreakdown] = useState<OwnBreakdownEntry[] | null>(
     null,
   );
@@ -171,6 +176,10 @@ export default function RoomPage({ params }: { params: { id: string } }) {
       void loadRoom();
       return;
     }
+    if (event.type === "voting_ending") {
+      void loadRoom();
+      return;
+    }
     if (event.type === "user_joined") {
       setPhase((prev) => {
         if (prev.kind !== "ready") return prev;
@@ -223,31 +232,54 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     });
   }, [phase, roomId]);
 
-  const handleEndVoting = useCallback(async () => {
+  const startEndVoting = useCallback(async () => {
     const session = getSession();
-    if (!session || phase.kind !== "ready") return;
-    if (
-      typeof window !== "undefined" &&
-      !window.confirm(
-        "End voting now? This locks scores and runs the scoring engine — there's no undo."
-      )
-    ) {
-      return;
-    }
-    setEndVotingState({ kind: "submitting" });
-    const result = await postRoomScore(roomId, session.userId, {
+    if (!session) return;
+    setEndVotingBusy(true);
+    setEndVotingError(null);
+    const result = await patchRoomStatus(roomId, "voting_ending", session.userId, {
       fetch: window.fetch.bind(window),
     });
+    setEndVotingBusy(false);
     if (result.ok) {
-      // The status_changed broadcast (announcing) will drive a refetch.
-      setEndVotingState({ kind: "idle" });
+      setEndVotingModalOpen(false);
+      // voting_ending broadcast triggers a refetch; toast renders from new room state.
       return;
     }
-    setEndVotingState({
-      kind: "idle",
-      error: mapRoomError(result.code),
+    setEndVotingError(mapRoomError(result.code));
+  }, [roomId]);
+
+  const undoEndVoting = useCallback(async () => {
+    const session = getSession();
+    if (!session) return;
+    setUndoBusy(true);
+    await patchRoomStatus(roomId, "voting", session.userId, {
+      fetch: window.fetch.bind(window),
     });
-  }, [phase, roomId]);
+    setUndoBusy(false);
+  }, [roomId]);
+
+  const finalizeVoting = useCallback(async () => {
+    if (finalizeFiredRef.current) return;
+    finalizeFiredRef.current = true;
+    const session = getSession();
+    if (!session) return;
+    await postRoomScore(roomId, session.userId, {
+      fetch: window.fetch.bind(window),
+    });
+  }, [roomId]);
+
+  // Stale-reload recovery (admin reloaded after the 5-s deadline elapsed).
+  useEffect(() => {
+    if (phase.kind !== "ready") return;
+    if (phase.room.status !== "voting_ending") return;
+    const session = getSession();
+    if (!session || session.userId !== phase.room.ownerUserId) return;
+    const deadline = phase.room.votingEndsAt;
+    if (!deadline) return;
+    if (new Date(deadline).getTime() > Date.now()) return;
+    void finalizeVoting();
+  }, [phase, finalizeVoting]);
 
   const handleCopyPin = useCallback(() => {
     if (phase.kind !== "ready") return;
@@ -409,7 +441,10 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     );
   }
 
-  if (phase.room.status === "voting") {
+  if (
+    phase.room.status === "voting" ||
+    phase.room.status === "voting_ending"
+  ) {
     const initialScores = seedScoresFromVotes(
       phase.votes,
       (phase.room.categories ?? []).map((c) => c.name),
@@ -426,35 +461,40 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     const adminDisplayName = phase.memberships.find(
       (m) => m.userId === phase.room.ownerUserId
     )?.displayName;
+    const isEnding = phase.room.status === "voting_ending";
+    const votingEndsAt = phase.room.votingEndsAt ?? null;
     return (
       <>
-        {isAdmin ? (
-          <div className="fixed top-3 right-3 z-30 flex flex-col items-end gap-1">
-            <button
-              type="button"
-              onClick={handleEndVoting}
-              disabled={endVotingState.kind === "submitting"}
-              className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {endVotingState.kind === "submitting"
-                ? "Ending…"
-                : "End voting"}
-            </button>
-            {endVotingState.error ? (
-              <p
-                role="alert"
-                className="max-w-[16rem] rounded-md bg-destructive/10 px-2 py-1 text-xs text-destructive"
-              >
-                {endVotingState.error}
-              </p>
-            ) : null}
-          </div>
+        {isEnding ? (
+          isAdmin ? (
+            <EndVotingCountdownToast
+              votingEndsAt={votingEndsAt}
+              onUndo={undoEndVoting}
+              onElapsed={() => void finalizeVoting()}
+              undoBusy={undoBusy}
+            />
+          ) : (
+            <EndingPill votingEndsAt={votingEndsAt} />
+          )
         ) : null}
+        <EndVotingModal
+          isOpen={endVotingModalOpen}
+          busy={endVotingBusy}
+          errorMessage={endVotingError}
+          onConfirm={startEndVoting}
+          onCancel={() => {
+            setEndVotingModalOpen(false);
+            setEndVotingError(null);
+          }}
+        />
         <VotingView
           contestants={phase.contestants}
           categories={phase.room.categories ?? []}
           isAdmin={isAdmin}
           adminDisplayName={adminDisplayName}
+          onEndVoting={
+            isAdmin && !isEnding ? () => setEndVotingModalOpen(true) : undefined
+          }
           onScoreChange={autosave.onScoreChange}
           onMissedChange={autosave.onMissedChange}
           onHotTakeChange={autosave.onHotTakeChange}

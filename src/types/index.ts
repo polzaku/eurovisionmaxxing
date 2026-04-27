@@ -26,7 +26,13 @@ export interface Contestant {
 
 // ─── Room ────────────────────────────────────────────────────────────────────
 
-export type RoomStatus = "lobby" | "voting" | "scoring" | "announcing" | "done";
+export type RoomStatus =
+  | "lobby"
+  | "voting"
+  | "voting_ending"
+  | "scoring"
+  | "announcing"
+  | "done";
 export type AnnouncementMode = "live" | "instant";
 
 export interface VotingCategory {
@@ -53,6 +59,8 @@ export interface Room {
   currentAnnounceIdx: number;
   nowPerformingId: string | null; // contestant id currently performing
   allowNowPerforming: boolean;
+  votingEndsAt: string | null;
+  votingEndedAt: string | null;
   createdAt: string;
 }
 
@@ -129,6 +137,7 @@ export interface RoomAward {
 
 export type RoomEvent =
   | { type: "status_changed"; status: RoomStatus }
+  | { type: "voting_ending"; votingEndsAt: string }
   | { type: "user_joined"; user: { id: string; displayName: string; avatarSeed: string } }
   | { type: "user_left"; userId: string }
   | { type: "now_performing"; contestantId: string }

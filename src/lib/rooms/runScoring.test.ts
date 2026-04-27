@@ -19,6 +19,7 @@ const defaultRoomRow = {
   event: "final",
   categories: ONE_CAT,
   announcement_mode: "instant",
+  voting_ends_at: null,
 };
 
 const THREE_CONTESTANTS: Contestant[] = [
@@ -409,6 +410,54 @@ describe("runScoring — room load & authorization", () => {
       expect(broadcastSpy).not.toHaveBeenCalled();
     },
   );
+
+  it("accepts voting_ending status when voting_ends_at has elapsed and writes voting_ended_at", async () => {
+    const FAKE_NOW = new Date("2026-04-27T10:00:10.000Z");
+    const elapsedDeadline = "2026-04-27T10:00:05.000Z";
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: { ...defaultRoomRow, status: "voting_ending", voting_ends_at: elapsedDeadline },
+        error: null,
+      },
+    });
+    const result = await runScoring(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock, { now: () => FAKE_NOW }),
+    );
+    expect(result.ok).toBe(true);
+    // The first room.update is voting_ending → scoring; assert voting_ended_at is set.
+    expect(mock.roomUpdatePatches[0]).toMatchObject({
+      status: "scoring",
+      voting_ended_at: FAKE_NOW.toISOString(),
+    });
+    // The status guard must allow voting_ending in the conditional `.in("status", ...)`.
+    expect(mock.roomUpdateGuards[0]).toEqual({
+      status: ["voting", "voting_ending", "scoring"],
+    });
+  });
+
+  it("rejects voting_ending status when voting_ends_at is still in the future (409 VOTING_ENDING_NOT_ELAPSED)", async () => {
+    const FAKE_NOW = new Date("2026-04-27T10:00:02.000Z");
+    const futureDeadline = "2026-04-27T10:00:05.000Z";
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: { ...defaultRoomRow, status: "voting_ending", voting_ends_at: futureDeadline },
+        error: null,
+      },
+    });
+    const broadcastSpy = vi.fn();
+    const result = await runScoring(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy, now: () => FAKE_NOW }),
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 409,
+      error: { code: "VOTING_ENDING_NOT_ELAPSED" },
+    });
+    expect(mock.roomUpdatePatches).toEqual([]);
+    expect(broadcastSpy).not.toHaveBeenCalled();
+  });
 });
 
 // ─── happy path ──────────────────────────────────────────────────────────────
@@ -428,7 +477,7 @@ describe("runScoring — happy path", () => {
 
     // Two status updates in order.
     expect(mock.roomUpdatePatches).toEqual([
-      { status: "scoring" },
+      { status: "scoring", voting_ended_at: expect.any(String) },
       { status: "announcing" },
     ]);
 
@@ -527,7 +576,7 @@ describe("runScoring — happy path", () => {
     );
     expect(result.ok).toBe(true);
     expect(mock.roomUpdatePatches).toEqual([
-      { status: "scoring" },
+      { status: "scoring", voting_ended_at: expect.any(String) },
       { status: "announcing" },
     ]);
   });
@@ -591,7 +640,7 @@ describe("runScoring — live-mode announcement order initialisation", () => {
     // Two room UPDATEs: scoring transition (status only), then announcing
     // (status + order + announcer + idx).
     expect(mock.roomUpdatePatches).toHaveLength(2);
-    expect(mock.roomUpdatePatches[0]).toEqual({ status: "scoring" });
+    expect(mock.roomUpdatePatches[0]).toEqual({ status: "scoring", voting_ended_at: expect.any(String) });
     expect(mock.roomUpdatePatches[1]).toEqual({
       status: "announcing",
       announcement_order: [U1, U2], // identity shuffle preserves member order
@@ -766,7 +815,7 @@ describe("runScoring — DB error paths", () => {
     });
     expect(mock.resultsUpsertCalls).toEqual([]);
     // Only the first room UPDATE happened, not the announcing one.
-    expect(mock.roomUpdatePatches).toEqual([{ status: "scoring" }]);
+    expect(mock.roomUpdatePatches).toEqual([{ status: "scoring", voting_ended_at: expect.any(String) }]);
   });
 
   it("returns 500 when results.upsert fails; does not transition to announcing", async () => {
@@ -782,7 +831,7 @@ describe("runScoring — DB error paths", () => {
       status: 500,
       error: { code: "INTERNAL_ERROR" },
     });
-    expect(mock.roomUpdatePatches).toEqual([{ status: "scoring" }]);
+    expect(mock.roomUpdatePatches).toEqual([{ status: "scoring", voting_ended_at: expect.any(String) }]);
   });
 
   it("returns 500 when scoring→announcing UPDATE fails (raced state)", async () => {

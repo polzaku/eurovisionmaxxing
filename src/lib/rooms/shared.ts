@@ -4,6 +4,7 @@ import type { Room } from "@/types";
 /** Discriminated union of realtime broadcast payloads on `room:{id}` channels (SPEC §15). */
 export type RoomEventPayload =
   | { type: "status_changed"; status: string }
+  | { type: "voting_ending"; votingEndsAt: string }
   | { type: "now_performing"; contestantId: string }
   | {
       type: "user_joined";
@@ -53,6 +54,8 @@ export function mapRoom(row: RoomRow): Room {
     currentAnnounceIdx: row.current_announce_idx,
     nowPerformingId: row.now_performing_id,
     allowNowPerforming: row.allow_now_performing,
+    votingEndsAt: row.voting_ends_at,
+    votingEndedAt: row.voting_ended_at,
     createdAt: row.created_at,
   };
 }

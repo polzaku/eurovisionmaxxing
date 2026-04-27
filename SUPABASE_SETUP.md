@@ -85,6 +85,45 @@ For existing projects, run the per-migration SQL listed in the changelog below i
 
 ### Changelog
 
+- **2026-04-27 — R0 + R4 §6.3.1:** added `voting_ending` status to `rooms.status` CHECK (and bumped column to VARCHAR(14)), plus two nullable timestamp columns (`voting_ends_at` for the 5-s undo deadline, `voting_ended_at` for the audit trail).
+
+  The `results` and `room_awards` RLS policies reference `rooms.status`, so PostgreSQL refuses the column-type change while they exist. Drop them, alter the column, then recreate them:
+
+  ```sql
+  -- Drop the two policies that depend on rooms.status
+  DROP POLICY IF EXISTS "Results viewable when room is announcing or done" ON results;
+  DROP POLICY IF EXISTS "Awards viewable when room is done" ON room_awards;
+
+  -- Apply the column changes
+  ALTER TABLE rooms ALTER COLUMN status TYPE VARCHAR(14);
+  ALTER TABLE rooms DROP CONSTRAINT IF EXISTS rooms_status_check;
+  ALTER TABLE rooms ADD CONSTRAINT rooms_status_check
+    CHECK (status IN ('lobby','voting','voting_ending','scoring','announcing','done'));
+  ALTER TABLE rooms ADD COLUMN IF NOT EXISTS voting_ends_at TIMESTAMPTZ;
+  ALTER TABLE rooms ADD COLUMN IF NOT EXISTS voting_ended_at TIMESTAMPTZ;
+
+  -- Recreate the policies (identical to schema.sql)
+  CREATE POLICY "Results viewable when room is announcing or done"
+    ON results FOR SELECT
+    USING (
+      EXISTS (
+        SELECT 1 FROM rooms
+        WHERE rooms.id = results.room_id
+        AND rooms.status IN ('announcing', 'done')
+      )
+    );
+
+  CREATE POLICY "Awards viewable when room is done"
+    ON room_awards FOR SELECT
+    USING (
+      EXISTS (
+        SELECT 1 FROM rooms
+        WHERE rooms.id = room_awards.room_id
+        AND rooms.status IN ('announcing', 'done')
+      )
+    );
+  ```
+
 - **2026-04-26 — Phase S0:** added `room_memberships.scores_locked_at TIMESTAMPTZ` (nullable, default NULL) for the Phase S3 calibration drawer's soft lock-in. Apply with:
 
   ```sql
