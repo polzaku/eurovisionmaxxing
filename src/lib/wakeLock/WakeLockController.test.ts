@@ -133,4 +133,105 @@ describe("WakeLockController", () => {
     expect(api.requestCalls).toBe(1);
     ctrl.dispose();
   });
+
+  it("releases sentinel on setActive(false)", async () => {
+    const ctrl = new WakeLockController({
+      navigator: { wakeLock: api },
+      document: doc as unknown as Document,
+    });
+    ctrl.setActive(true);
+    const s = api.resolveNext();
+    await flush();
+    expect(s.released).toBe(false);
+    ctrl.setActive(false);
+    expect(s.releaseCalls).toBe(1);
+    expect(s.released).toBe(true);
+    ctrl.dispose();
+  });
+
+  it("does not immediately re-request when sentinel auto-releases", async () => {
+    const ctrl = new WakeLockController({
+      navigator: { wakeLock: api },
+      document: doc as unknown as Document,
+    });
+    ctrl.setActive(true);
+    const s = api.resolveNext();
+    await flush();
+    s.fireRelease();
+    await flush();
+    expect(api.requestCalls).toBe(1);
+    ctrl.dispose();
+  });
+
+  it("re-acquires when visibility returns to visible", async () => {
+    const ctrl = new WakeLockController({
+      navigator: { wakeLock: api },
+      document: doc as unknown as Document,
+    });
+    ctrl.setActive(true);
+    const s1 = api.resolveNext();
+    await flush();
+    s1.fireRelease();
+    doc.fireVisibility("hidden");
+    doc.fireVisibility("visible");
+    await flush();
+    expect(api.requestCalls).toBe(2);
+    api.resolveNext();
+    ctrl.dispose();
+  });
+
+  it("defers acquisition until visible when started hidden", async () => {
+    const hiddenDoc = makeFakeDocument("hidden");
+    const ctrl = new WakeLockController({
+      navigator: { wakeLock: api },
+      document: hiddenDoc as unknown as Document,
+    });
+    ctrl.setActive(true);
+    expect(api.requestCalls).toBe(0);
+    hiddenDoc.fireVisibility("visible");
+    expect(api.requestCalls).toBe(1);
+    api.resolveNext();
+    ctrl.dispose();
+  });
+
+  it("releases sentinel that resolves after setActive(false)", async () => {
+    const ctrl = new WakeLockController({
+      navigator: { wakeLock: api },
+      document: doc as unknown as Document,
+    });
+    ctrl.setActive(true);
+    expect(api.requestCalls).toBe(1);
+    ctrl.setActive(false);
+    const s = api.resolveNext();
+    await flush();
+    expect(s.releaseCalls).toBe(1);
+    ctrl.dispose();
+  });
+
+  it("dispose() removes the visibility listener and stops further activity", async () => {
+    const ctrl = new WakeLockController({
+      navigator: { wakeLock: api },
+      document: doc as unknown as Document,
+    });
+    ctrl.setActive(true);
+    const s = api.resolveNext();
+    await flush();
+    expect(doc.listenerCount()).toBe(1);
+    ctrl.dispose();
+    expect(s.releaseCalls).toBe(1);
+    expect(doc.listenerCount()).toBe(0);
+    ctrl.setActive(true);
+    expect(api.requestCalls).toBe(1);
+  });
+
+  it("dispose() is idempotent", () => {
+    const ctrl = new WakeLockController({
+      navigator: { wakeLock: api },
+      document: doc as unknown as Document,
+    });
+    ctrl.setActive(true);
+    api.resolveNext();
+    ctrl.dispose();
+    expect(() => ctrl.dispose()).not.toThrow();
+  });
 });
