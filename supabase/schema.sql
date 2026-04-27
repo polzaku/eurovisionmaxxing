@@ -44,13 +44,10 @@ CREATE TABLE rooms (
 -- Existing-database migration (run via Supabase SQL Editor on rooms with existing data):
 --   ALTER TABLE rooms ADD COLUMN IF NOT EXISTS delegate_user_id UUID REFERENCES users(id);
 --
--- Existing-database migration for the §6.3.1 undo window (run via Supabase SQL Editor):
---   ALTER TABLE rooms ALTER COLUMN status TYPE VARCHAR(14);
---   ALTER TABLE rooms DROP CONSTRAINT IF EXISTS rooms_status_check;
---   ALTER TABLE rooms ADD CONSTRAINT rooms_status_check
---     CHECK (status IN ('lobby','voting','voting_ending','scoring','announcing','done'));
---   ALTER TABLE rooms ADD COLUMN IF NOT EXISTS voting_ends_at TIMESTAMPTZ;
---   ALTER TABLE rooms ADD COLUMN IF NOT EXISTS voting_ended_at TIMESTAMPTZ;
+-- Existing-database migration for the §6.3.1 undo window (run via Supabase SQL Editor).
+-- The two RLS policies on results + room_awards reference rooms.status, so they
+-- must be dropped before the column type change and recreated after. See
+-- SUPABASE_SETUP.md changelog for the full block.
 
 -- ─── ROOM MEMBERSHIPS ───────────────────────────────────────────────────────
 
