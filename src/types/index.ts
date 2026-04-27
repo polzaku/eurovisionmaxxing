@@ -73,6 +73,7 @@ export interface RoomMembership {
   userId: string;
   joinedAt: string;
   isReady: boolean;
+  readyAt: string | null;  // ISO timestamp; null when not yet ready
 }
 
 // ─── Votes ───────────────────────────────────────────────────────────────────
@@ -134,7 +135,14 @@ export type RoomEvent =
   | { type: "voting_progress"; userId: string; contestantId: string; scoredCount: number }
   | { type: "announce_next"; contestantId: string; points: number; announcingUserId: string }
   | { type: "announce_turn"; userId: string }
-  | { type: "score_update"; contestantId: string; newTotal: number; newRank: number };
+  | { type: "score_update"; contestantId: string; newTotal: number; newRank: number }
+  | {
+      type: "member_ready";
+      userId: string;
+      readyAt: string;
+      readyCount: number;
+      totalCount: number;
+    };
 
 // ─── Voting Templates ────────────────────────────────────────────────────────
 
