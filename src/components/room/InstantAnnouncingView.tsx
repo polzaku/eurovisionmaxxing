@@ -4,8 +4,9 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { Contestant } from "@/types";
 import Button from "@/components/ui/Button";
-import { type OwnBreakdownEntry } from "@/components/room/InstantOwnBreakdown";
-import OwnPointsCeremony from "@/components/instant/OwnPointsCeremony";
+import OwnPointsCeremony, {
+  type OwnBreakdownEntry,
+} from "@/components/instant/OwnPointsCeremony";
 import RevealCtaPanel from "@/components/room/RevealCtaPanel";
 
 export interface InstantAnnouncingMember {

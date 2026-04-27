@@ -3,8 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { Contestant } from "@/types";
-import type { OwnBreakdownEntry } from "@/components/room/InstantOwnBreakdown";
 import Button from "@/components/ui/Button";
+
+export interface OwnBreakdownEntry {
+  contestantId: string;
+  pointsAwarded: number;
+  hotTake: string | null;
+}
 
 export interface OwnPointsCeremonyProps {
   entries: OwnBreakdownEntry[];

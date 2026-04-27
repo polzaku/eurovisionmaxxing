@@ -14,7 +14,7 @@ import {
   type FetchRoomData,
 } from "@/lib/room/api";
 import InstantAnnouncingView from "@/components/room/InstantAnnouncingView";
-import type { OwnBreakdownEntry } from "@/components/room/InstantOwnBreakdown";
+import type { OwnBreakdownEntry } from "@/components/instant/OwnPointsCeremony";
 import { mapRoomError } from "@/lib/room/errors";
 import LobbyView, {
   type LobbyMember,
