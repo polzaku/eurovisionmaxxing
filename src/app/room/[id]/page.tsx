@@ -325,16 +325,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     return () => {
       cancelled = true;
     };
-  }, [
-    phase.kind,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    phase.kind === "ready" ? phase.room.status : undefined,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    phase.kind === "ready" ? phase.room.announcementMode : undefined,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    phase.kind === "ready" ? phase.room.id : undefined,
-    ownBreakdown,
-  ]);
+  }, [phase, ownBreakdown]);
 
   const memoizedPostVote = useCallback(
     (payload: Parameters<typeof postVote>[0]) =>
