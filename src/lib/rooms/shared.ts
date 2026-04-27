@@ -26,6 +26,13 @@ export type RoomEventPayload =
       contestantId: string;
       newTotal: number;
       newRank: number;
+    }
+  | {
+      type: "member_ready";
+      userId: string;
+      readyAt: string;
+      readyCount: number;
+      totalCount: number;
     };
 
 type RoomRow = Database["public"]["Tables"]["rooms"]["Row"];
