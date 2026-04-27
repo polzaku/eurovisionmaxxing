@@ -23,6 +23,8 @@ export interface RunScoringDeps {
    * in place — caller doesn't care).
    */
   shuffle?: <T>(arr: T[]) => T[];
+  /** Injected for tests; defaults to `() => new Date()`. */
+  now?: () => Date;
 }
 
 export interface RunScoringSuccess {
@@ -62,6 +64,7 @@ type RoomSelectRow = {
   event: string;
   categories: VotingCategory[];
   announcement_mode: string;
+  voting_ends_at: string | null;
 };
 
 function defaultShuffle<T>(arr: T[]): T[] {
@@ -117,11 +120,13 @@ export async function runScoring(
   const roomId = input.roomId;
   const userId = input.userId;
 
+  const now = deps.now ? deps.now() : new Date();
+
   // 1. Load the room.
   const roomQuery = await deps.supabase
     .from("rooms")
     .select(
-      "id, status, owner_user_id, year, event, categories, announcement_mode",
+      "id, status, owner_user_id, year, event, categories, announcement_mode, voting_ends_at",
     )
     .eq("id", roomId)
     .maybeSingle();
@@ -140,8 +145,13 @@ export async function runScoring(
     );
   }
 
-  // 3. Status guard.
-  if (room.status !== "voting" && room.status !== "scoring") {
+  // 3. Status guard. Accepts voting (legacy direct path), voting_ending (after
+  //    the §6.3.1 5-s undo window has elapsed), or scoring (idempotent retry).
+  if (
+    room.status !== "voting" &&
+    room.status !== "voting_ending" &&
+    room.status !== "scoring"
+  ) {
     return fail(
       "ROOM_NOT_VOTING",
       "Scoring can only be triggered while the room is voting.",
@@ -149,12 +159,26 @@ export async function runScoring(
     );
   }
 
-  // 4. Transition voting→scoring (conditional, idempotent under retry).
+  // 3a. For voting_ending, the deadline must have elapsed (server-authoritative).
+  if (room.status === "voting_ending") {
+    if (
+      !room.voting_ends_at ||
+      Date.parse(room.voting_ends_at) > now.getTime()
+    ) {
+      return fail(
+        "VOTING_ENDING_NOT_ELAPSED",
+        "Cannot finalize before the countdown completes.",
+        409,
+      );
+    }
+  }
+
+  // 4. Transition (voting | voting_ending) → scoring (conditional, idempotent under retry).
   const toScoring = await deps.supabase
     .from("rooms")
-    .update({ status: "scoring" })
+    .update({ status: "scoring", voting_ended_at: now.toISOString() })
     .eq("id", roomId)
-    .in("status", ["voting", "scoring"])
+    .in("status", ["voting", "voting_ending", "scoring"])
     .select("id")
     .maybeSingle();
 
