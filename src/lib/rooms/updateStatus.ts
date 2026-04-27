@@ -128,7 +128,8 @@ export async function updateRoomStatus(
   }
 
   // Build the patch + broadcast.
-  let patch: Record<string, unknown>;
+  type RoomUpdate = Database["public"]["Tables"]["rooms"]["Update"];
+  let patch: RoomUpdate;
   let broadcast: RoomEventPayload;
   if (row.status === "voting" && status === "voting_ending") {
     const votingEndsAt = new Date(now.getTime() + VOTING_ENDING_WINDOW_MS).toISOString();
