@@ -1,16 +1,56 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 interface DoneCardProps {
   roomId: string;
+  /**
+   * Seconds before the auto-redirect fires. Default 30.
+   * Pass `null` to disable auto-redirect entirely (e.g. for tests / Storybook).
+   */
+  autoRedirectSeconds?: number | null;
 }
+
+const DEFAULT_REDIRECT_SECONDS = 30;
+const TICK_MS = 1000;
 
 /**
  * Reusable "Show's over → See full results" card. Shared between the
  * room page (rendered when `room.status === 'done'`) and the announcer
  * who just tapped the final reveal (rendered immediately by AnnouncingView
  * via `finishedLocal` state, ahead of the broadcast roundtrip).
+ *
+ * Auto-redirects to /results/{roomId} after `autoRedirectSeconds` seconds
+ * (default 30). The user can tap the primary CTA to go now, or cancel the
+ * countdown to stay on the room page.
  */
-export default function DoneCard({ roomId }: DoneCardProps) {
+export default function DoneCard({
+  roomId,
+  autoRedirectSeconds = DEFAULT_REDIRECT_SECONDS,
+}: DoneCardProps) {
+  const router = useRouter();
+  const initialSeconds = autoRedirectSeconds ?? 0;
+  const [secondsRemaining, setSecondsRemaining] = useState(initialSeconds);
+  const [cancelled, setCancelled] = useState(autoRedirectSeconds === null);
+
+  useEffect(() => {
+    if (cancelled || autoRedirectSeconds === null) return;
+    if (secondsRemaining <= 0) {
+      router.push(`/results/${roomId}`);
+      return;
+    }
+    const id = setTimeout(
+      () => setSecondsRemaining((s) => s - 1),
+      TICK_MS,
+    );
+    return () => clearTimeout(id);
+  }, [secondsRemaining, cancelled, autoRedirectSeconds, router, roomId]);
+
+  const showCountdown =
+    !cancelled && autoRedirectSeconds !== null && secondsRemaining > 0;
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-4 py-8">
       <div className="max-w-md w-full space-y-6 motion-safe:animate-fade-in text-center">
@@ -26,6 +66,20 @@ export default function DoneCard({ roomId }: DoneCardProps) {
         >
           See full results
         </Link>
+        {showCountdown ? (
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">
+              Showing the leaderboard in {secondsRemaining}s.
+            </p>
+            <button
+              type="button"
+              onClick={() => setCancelled(true)}
+              className="text-xs text-muted-foreground underline hover:text-foreground"
+            >
+              Stay here
+            </button>
+          </div>
+        ) : null}
       </div>
     </main>
   );
