@@ -53,6 +53,8 @@ export interface VotingViewProps {
   userId?: string;
   /** Display name of the room owner — shown in the end-of-voting "waiting for X" copy on the last contestant. */
   adminDisplayName?: string;
+  /** Admin-only "End voting" button in header chrome. Callback opens the §6.3.1 confirmation modal. */
+  onEndVoting?: () => void;
   offlineBannerVisible?: boolean;
   drainNotice?: DrainNoticePayload | null;
   onDismissDrainNotice?: () => void;
@@ -81,6 +83,7 @@ export default function VotingView({
   roomId,
   userId,
   adminDisplayName,
+  onEndVoting,
   offlineBannerVisible,
   drainNotice,
   onDismissDrainNotice,
@@ -333,6 +336,16 @@ export default function VotingView({
             </p>
           </div>
           <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            {onEndVoting ? (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={onEndVoting}
+                aria-label="End voting"
+              >
+                End voting
+              </Button>
+            ) : null}
             <button
               type="button"
               onClick={() => setScaleSheetOpen(true)}
