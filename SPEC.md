@@ -332,7 +332,7 @@ On failure, the job posts a notification to the repo's GitHub Issues (label `api
 ## 6. Room management
 
 ### 6.1 Room creation flow
-Admin goes through a 3-step wizard:
+Admin goes through a **2-step wizard**, then lands directly in the lobby (`/room/{id}`). The previous "Step 3 — Room ready" page (PIN + QR + share affordances) was removed on 2026-05-02 because it duplicated the lobby and added a useless extra tap before the admin reached the page everyone else would join from. **The lobby itself surfaces the PIN, QR code, and share affordances** — see "Lobby chrome" below.
 
 **Step 1: Event selection**
 - Year (default: current year)
@@ -353,12 +353,18 @@ Admin goes through a 3-step wizard:
 - **Room bets (optional, off by default)** — toggle *"Add a betting sidegame"*. When enabled, the admin picks **exactly 3 bets** from the catalog in §22.1, or taps **"Surprise me"** for 3 random picks. Bets lock at the `lobby → voting` transition. Separate leaderboard from the main Eurovision-points game. Full mechanic in §22.
 - **"Now performing" broadcast** (internal name: `allow_now_performing`) — when enabled, the admin can tap the currently-performing country. Guests see an opt-in *"Jump to [Country]"* pill at the top of their voting view (not a forced snap). The `/present` screen always follows the broadcast. Off by default. Info icon copy: *"Shows guests a pill to jump; it never auto-snaps them while they're scoring."* See §6.5.
 
-**Step 3: Room ready**
-- Display room PIN (6 alphanumeric chars, uppercase, excluding O/0/I/1 for readability)
-- QR code pointing to room URL, rendered at **minimum 256×256 CSS px** (reliable scanning across a room). Fills to natural container above that.
-- Shareable link: `eurovisionmaxxing.com/room/{roomId}`
-- "Copy link" button, "Copy PIN" button. On tap, each shows a transient *"Copied!"* toast or inline label for ~2 seconds.
-- "Start lobby" button → transitions room to `lobby` status and navigates admin to room view.
+**On wizard submit:** the room is created (`POST /api/rooms`) and the admin is **redirected immediately to `/room/{roomId}`** — the lobby. No interstitial "Room ready" page.
+
+**Lobby chrome (admin view, `rooms.status = 'lobby'`):**
+The lobby is the canonical share surface. The chrome the old Step 3 carried lives here, visible to the owner (and co-admins per §6.7):
+
+- Room PIN (6 alphanumeric chars, uppercase, excluding O/0/I/1 for readability) rendered prominently.
+- QR code pointing to the room URL, **minimum 256×256 CSS px** (reliable scanning across a room). Fills to natural container above that.
+- Shareable link: `eurovisionmaxxing.com/room/{roomId}`.
+- **"Copy link"** and **"Copy PIN"** buttons. On tap, each shows a transient *"Copied!"* toast or inline label for ~2 seconds.
+- **"Start voting"** button — transitions `lobby → voting` and broadcasts `status_changed`.
+
+Guest view of the lobby shows the participant roster + the PIN (so they can read it aloud) but not the start-voting CTA.
 
 **Editing after creation (admin-only, in-lobby):**
 While `rooms.status = 'lobby'`, the admin can re-open a limited wizard from the lobby view to change **categories** (add, remove, rename, edit weight/hint, **drag-reorder** via the same grip-handle UX as §7.2), **announcement mode**, the **now-performing toggle**, and the **room bets** (swap/replace/toggle off — see §22.2). Year and event are **not** editable post-creation (contestant data and PIN don't change; for contestant-list updates after an allocation-draw update, use §5.1d). All edits lock permanently once status transitions to `voting`. The lobby view surfaces the entry point as an "Edit room" control, visible only to the owner (and co-admins, §6.7). The lobby-edit surface uses the **same compact + ⓘ template-card and announcement-mode UX** as Step 2 above — no second design.
@@ -750,20 +756,56 @@ This pattern was chosen over a dedicated `calibrating` lifecycle state because (
 
 When a guest reaches the last contestant in the running order, the screen needs to tell them where they are in the flow — currently the experience just runs out without any signal that they've finished.
 
-**Render** the affordance as a card *below* the contestant card (or replacing the prev-button slot in the footer when on the final contestant), driven entirely from the user's own vote state on the client:
+#### 8.11.1 Trigger gating (revised 2026-05-02)
+
+Showing the warning the moment a user *lands* on the last contestant — before they've even tapped a score — felt premature. Users complained that the "you missed N" / "all scored" copy appeared before they had any context, blowing past the actual scoring task. The affordance now gates on three OR'd conditions, evaluated whenever the user is viewing the last contestant:
+
+- **(a) Self-finished trigger** — the current user has fully scored or marked missed every category on the last contestant (i.e. their own vote on it is "complete"). This is the most common path — the user finishes the last card and sees the affordance as the natural "what now?".
+- **(b) Room-momentum trigger** — **more than half** of the eligible voters in the room have fully voted on the last contestant. Surfaces the affordance to a user who hasn't finished their own vote yet, gently nudging them to wrap up because the room is converging.
+- **(c) Room-finished trigger** — every eligible voter has fully voted on every contestant. Shown to anyone still on the last card after the room is materially done; lets the host know they can end voting and keeps stragglers from dawdling.
+
+If none of (a)/(b)/(c) hold, **the affordance is suppressed entirely** — the user sees the regular last contestant card with no extra chrome. As soon as any condition flips true, the appropriate variant (below) renders without an animation transition.
+
+`(b)` and `(c)` require knowing room-wide vote completion per contestant. This consumes the `voting_progress` broadcast (already specified at the data layer in §8.8 for "N/M scored" chips) — when (b)/(c) UI lands, the broadcast must include enough state to derive "did user X finish contestant Y" for every (X, Y). Lightest payload: extend `voting_progress` with `{ contestantId, completedUserIds: string[] }`. Falling back to a single periodic refetch is acceptable if broadcast extension is deferred. (a) is purely client-local and ships independently.
+
+#### 8.11.2 Render variants
+
+**Render** the affordance as a card *below* the contestant card (or replacing the prev-button slot in the footer when on the final contestant). Variant is chosen by role × user state:
+
+**Guest variants** (driven by user's own vote state, gated per §8.11.1):
 
 - **All N contestants scored, no `missed=true` rows:** *"✅ All N scored — waiting for {admin} to end voting."* Shown as a green-tinted card with the admin's avatar + name. No CTA.
 - **Some contestants `missed=true`, none unscored:** *"⚠️ You marked M as missed — they'll be filled with your average. Tap to rescore any."* Lists each `missed=true` contestant with flag + country and a **Rescore** quick-jump that opens the contestant card.
 - **K contestants completely unscored:** *"⚠️ K still unscored — [Albania] [Belgium]…"* with quick-jump links per unscored contestant. Banner persists until all are scored or marked missed.
+- **Room-momentum-only (current user not finished, ≥50% of room is)** — different copy that nudges the laggard rather than congratulates them: *"⏳ Most of the room has finished — you have K still to score."* With the same quick-jump list to unscored contestants. Distinct from the K-unscored variant above (which fires from condition (a) — the user finished but is missing earlier picks); this fires from condition (b).
 
-The affordance is **purely client-side** — no broadcast, no server state. It uses the existing `seedScoresFromVotes` / `seedMissedFromVotes` data that the voting view already has. Distinct from §8.10's `lock-scores` flow: that's the admin-facing "I'm done" data signal; this is the user-facing "what now?" UI signal at the last contestant. Both are needed.
+**Host variant (admin-only, replaces guest copy):**
+
+When the viewer is the room owner (or co-admin per §6.7) and the gating triggers, the affordance switches to a host-facing card that surfaces the actionable next step instead of a "wait for admin" wait state:
+
+- **All-room-finished (condition (c)):** *"🎉 Everyone's done — ready to end voting?"* with a primary **End voting** CTA inline (same target as the existing header chrome End-voting button per §6.3.1).
+- **Most-but-not-all-finished (condition (b), <100% complete):** *"⏳ {readyCount} of {totalCount} have finished — give the rest a moment, then end voting."* Same End-voting CTA, but secondary-styled to discourage premature taps.
+- **Self-finished only (condition (a), host's own vote done, room not converged):** *"✅ Your vote is in — {readyCount} of {totalCount} done so far."* No End-voting CTA at this stage (cuts the room off too early); the existing header chrome End-voting button stays available for force-end.
+
+The host always sees their own (a) / (b) / (c) state — never the guest "waiting for admin" copy.
+
+#### 8.11.3 Implementation notes
+
+The affordance is **client-side rendered**. (a)-driven variants use existing local data (`seedScoresFromVotes` / `seedMissedFromVotes`). (b)/(c)-driven variants need room-wide completion state — see §8.11.1. Distinct from §8.10's `lock-scores` flow: that's the admin-facing "I'm done" data signal; this is the user-facing "what now?" UI signal at the last contestant. Both are needed.
 
 **Locale keys** (English) under `voting.endOfVoting.*`:
 - `allScored` — *"✅ All {count} scored — waiting for {admin} to end voting."*
 - `missedSome` — *"⚠️ You marked {count} as missed — they'll be filled with your average."*
 - `unscoredCount` — *"⚠️ {count} still unscored"*
+- `roomMomentum` — *"⏳ Most of the room has finished — you have {count} still to score."*
 - `rescoreCta` — *"Rescore"*
 - `jumpToCta` — *"Score now"*
+
+Host variants under `voting.endOfVoting.host.*`:
+- `allDone` — *"🎉 Everyone's done — ready to end voting?"*
+- `mostDone` — *"⏳ {ready} of {total} have finished — give the rest a moment, then end voting."*
+- `selfDoneOnly` — *"✅ Your vote is in — {ready} of {total} done so far."*
+- `endVotingCta` — *"End voting"* (reuses §6.3.1 modal flow)
 
 ---
 
@@ -829,7 +871,7 @@ Sort descending → final leaderboard. All results written to `results` table.
    - Their Eurovision points list (who they gave 1 through 12), revealed 1 → 12 one at a time as the user taps.
    - Their hot takes displayed per country.
    - The **group leaderboard is locked** on this screen until either all users are ready or the admin overrides — users can see only their own picks, preserving the reveal moment.
-2. "Ready to reveal" button — admin sees count of users who are ready (e.g. *"4 / 6 ready"*).
+2. **"I'm done"** button (revised 2026-05-02) — copy must **not** include the word *"reveal"* and must **not** suggest that tapping the button will show anything. Tapping a button labelled *"I'm ready — show the leaderboard"* (the previous copy) created the wrong mental model: users expected the leaderboard to appear immediately and were confused when nothing happened. The new framing is honest — the user is signalling readiness to the host, not triggering a reveal. Suggested copy: *"I'm done — let the host know"* (button face) with a secondary line *"The host reveals when everyone's set."* under it. Admin sees a count of users who are ready (e.g. *"4 / 6 ready"*) — see step 3 for the admin's reveal CTAs.
 3. Admin reveal triggers (three CTAs that materialise progressively on the admin's surface):
    - **"Reveal final results"** (primary) — enabled once **all** users mark ready.
    - **"Reveal anyway"** (secondary) — enabled earlier, when **either** ≥½ the room has marked ready **or** 60 s has elapsed since the first-ready event, whichever comes first.
@@ -1590,22 +1632,21 @@ Two GitHub Actions workflows:
 
 Both workflows use Node 20 and the same lockfile-locked install. No caching beyond the default `actions/setup-node` npm cache.
 
-### 17a.5 Testing posture
+### 17a.5 Testing standards
 
-Two coexisting environments under one `vitest` harness:
+The repo has three layers of automated test, each with a clear scope:
 
-- **Pure-helper tests** — `*.test.ts` files, default `node` environment (fast, no DOM). Drive every business-logic helper in `src/lib/**` (scoring, voting state, awards, timer math).
-- **Component / integration tests** — `*.test.tsx` files with `// @vitest-environment jsdom` on line 1. Drive React components via `@testing-library/react` + `@testing-library/user-event` with `@testing-library/jest-dom` matchers. Cover render assertions, click → callback wiring, fake-timer flows, and `<details>`/state transitions.
+| Layer | Where | Env | Use for |
+|---|---|---|---|
+| **Pure unit** | `src/lib/**/*.test.ts`, `src/components/**/*.test.ts` | vitest **node** (default) | Pure functions, orchestrators, reducers, anything with deterministic input/output. <50 ms each. |
+| **Component (RTL + jsdom)** | `*.test.tsx` co-located with the component | vitest **jsdom** via `// @vitest-environment jsdom` per-file pragma | Render correctness, user interactions (`@testing-library/user-event`), callback signals, branch coverage of state machines that drive a component. Mock `next-intl` and `next/navigation` per-file; matchers from `@testing-library/jest-dom` and the RTL `cleanup` afterEach are wired in `vitest.setup.ts`. |
+| **End-to-end (Playwright)** | *(deferred — slot reserved)* | Real browser | Multi-window realtime flows (instant-mode reveal across guest + admin), real `prefers-reduced-motion`, real Supabase round-trips, FLIP / animation visuals. Tracked under Phase 0 backlog; until it ships, those checks live in the manual smoke checklist for each PR. |
 
-**Convention going forward:** every new component slice MUST include `*.test.tsx` coverage of the click handlers and state transitions that would otherwise be on a smoke checklist. Pure helpers stay tested via `*.test.ts`.
+**Component tests are required for any new or substantially-modified `*.tsx`** introduced after 2026-05-02. Cover at minimum: initial render, the interactions the component exposes, the callbacks it fires, and any obvious degenerate paths. Skip is only acceptable for pure-presentation components (no state, no callbacks, no branching) — and that exception should be rare. Anything jsdom can't reach (real layout / FLIP, real `matchMedia`, real Supabase, multi-window realtime) belongs in the Playwright slot or the manual smoke list, not in the component-test layer pretending it's covered.
 
-**Out of scope for this layer:**
+**Reference implementations:** `src/components/instant/OwnPointsCeremony.test.tsx` (canonical mock shape for `next-intl` + `next/navigation`, basic interaction patterns) and `src/components/instant/LeaderboardCeremony.test.tsx` (fake-timer + `requestAnimationFrame` + `matchMedia` polyfill + `globalThis.fetch` mock). Author conventions also documented in `src/__tests__/README.md`.
 
-- Real network / Supabase calls — manual smoke for now; future Playwright slice.
-- Pixel-accurate layout / animations — jsdom is not a real browser. FLIP, `prefers-reduced-motion`, font-metric–dependent layout → manual smoke.
-- Cross-window realtime flows (e.g. instant-mode admin reveal across two browsers) — Playwright slice (Phase 7-adjacent).
-
-Conventions documented in `src/__tests__/README.md`.
+**Smoke checklist discipline.** The manual smoke checklist on a PR description should shrink as component tests cover more behaviour. Anything that *could* be asserted under jsdom but is left to manual smoke is a smoke-debt to flag in review.
 
 ---
 
