@@ -136,8 +136,15 @@
       "allScoredFallback": "✅ All {count} scored — waiting for the host to end voting.",
       "missedSome": "⚠️ You marked {count} as missed — they'll be filled with your average. Tap to rescore any.",
       "unscoredCount": "⚠️ {count} still unscored",
+      "roomMomentum": "⏳ Most of the room has finished — you have {count} still to score.",
       "rescoreCta": "Rescore",
-      "jumpToCta": "Score now"
+      "jumpToCta": "Score now",
+      "host": {
+        "allDone": "🎉 Everyone's done — ready to end voting?",
+        "mostDone": "⏳ {ready} of {total} have finished — give the rest a moment, then end voting.",
+        "selfDoneOnly": "✅ Your vote is in — {ready} of {total} done so far.",
+        "endVotingCta": "End voting"
+      }
     },
     "endVoting": {
       "button": "End voting",
