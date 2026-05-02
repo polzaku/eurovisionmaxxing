@@ -1590,6 +1590,23 @@ Two GitHub Actions workflows:
 
 Both workflows use Node 20 and the same lockfile-locked install. No caching beyond the default `actions/setup-node` npm cache.
 
+### 17a.5 Testing posture
+
+Two coexisting environments under one `vitest` harness:
+
+- **Pure-helper tests** — `*.test.ts` files, default `node` environment (fast, no DOM). Drive every business-logic helper in `src/lib/**` (scoring, voting state, awards, timer math).
+- **Component / integration tests** — `*.test.tsx` files with `// @vitest-environment jsdom` on line 1. Drive React components via `@testing-library/react` + `@testing-library/user-event` with `@testing-library/jest-dom` matchers. Cover render assertions, click → callback wiring, fake-timer flows, and `<details>`/state transitions.
+
+**Convention going forward:** every new component slice MUST include `*.test.tsx` coverage of the click handlers and state transitions that would otherwise be on a smoke checklist. Pure helpers stay tested via `*.test.ts`.
+
+**Out of scope for this layer:**
+
+- Real network / Supabase calls — manual smoke for now; future Playwright slice.
+- Pixel-accurate layout / animations — jsdom is not a real browser. FLIP, `prefers-reduced-motion`, font-metric–dependent layout → manual smoke.
+- Cross-window realtime flows (e.g. instant-mode admin reveal across two browsers) — Playwright slice (Phase 7-adjacent).
+
+Conventions documented in `src/__tests__/README.md`.
+
 ---
 
 ## 18. Deferred to V2
