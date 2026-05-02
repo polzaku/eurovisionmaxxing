@@ -13,19 +13,28 @@ vi.mock("next-intl", () => ({
 // OwnPointsCeremony has its own dedicated test file. Mock it to (a) avoid
 // pulling its translation/UI logic into this test and (b) auto-fire
 // onAllRevealed on mount so we can assert on the Ready CTA without needing
-// to drive Piece A's tap-to-reveal flow.
+// to drive Piece A's tap-to-reveal flow. Named PascalCase so the
+// react-hooks/rules-of-hooks lint accepts the useEffect call.
+function MockOwnPointsCeremony({
+  onAllRevealed,
+}: {
+  onAllRevealed: () => void;
+}) {
+  useEffect(() => {
+    onAllRevealed();
+  }, [onAllRevealed]);
+  return <div data-testid="own-points-ceremony" />;
+}
 vi.mock("@/components/instant/OwnPointsCeremony", () => ({
-  default: ({ onAllRevealed }: { onAllRevealed: () => void }) => {
-    useEffect(() => {
-      onAllRevealed();
-    }, [onAllRevealed]);
-    return <div data-testid="own-points-ceremony" />;
-  },
+  default: MockOwnPointsCeremony,
 }));
 
 // RevealCtaPanel is admin-only and out of scope for this test. Stub it.
+function MockRevealCtaPanel() {
+  return <div data-testid="reveal-cta-panel" />;
+}
 vi.mock("@/components/room/RevealCtaPanel", () => ({
-  default: () => <div data-testid="reveal-cta-panel" />,
+  default: MockRevealCtaPanel,
 }));
 
 import InstantAnnouncingView, {
