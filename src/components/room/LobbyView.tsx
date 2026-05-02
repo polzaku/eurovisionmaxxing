@@ -88,7 +88,7 @@ export default function LobbyView({
         {isAdmin && (
           <>
             <section className="flex flex-col items-center gap-2">
-              <QrCode url={shareUrl} size={224} alt="Scan to join this room" />
+              <QrCode url={shareUrl} size={256} alt="Scan to join this room" />
               <p className="text-xs text-muted-foreground">Scan to join</p>
             </section>
 
