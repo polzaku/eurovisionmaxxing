@@ -152,11 +152,14 @@
 
 /*
  * Reduced-motion gate (SPEC §3.3, Phase U cross-cutting).
- * Introduced with ScoreRow — future animations (rank-shift, shimmer,
- * fade-in) should be added to this block as they land.
+ * Each animation falls back to its end state — element remains visible
+ * and in its final position with no movement.
  */
 @media (prefers-reduced-motion: reduce) {
-  .animate-score-pop {
+  .animate-score-pop,
+  .animate-fade-in,
+  .animate-rank-shift,
+  .animate-shimmer {
     animation: none;
   }
 }
