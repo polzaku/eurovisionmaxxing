@@ -12,10 +12,8 @@ import {
 import { mapCreateError } from "@/lib/create/errors";
 import EventSelection from "@/components/create/EventSelection";
 import VotingConfig from "@/components/create/VotingConfig";
-import RoomReady from "@/components/create/RoomReady";
-import type { Room } from "@/types";
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2;
 type Event = "semi1" | "semi2" | "final";
 type TemplateId = "classic" | "spectacle" | "bangerTest";
 type Mode = "live" | "instant";
@@ -58,9 +56,6 @@ export default function CreateRoomPage() {
   const [announcementMode, setAnnouncementMode] = useState<Mode>("instant");
   const [allowNowPerforming, setAllowNowPerforming] = useState<boolean>(false);
   const [submitState, setSubmitState] = useState<SubmitState>({ kind: "idle" });
-
-  // Step 3 state
-  const [room, setRoom] = useState<Room | null>(null);
 
   // Debounced contestants preview fetch on year/event change.
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -120,9 +115,9 @@ export default function CreateRoomPage() {
       { fetch: window.fetch.bind(window) }
     );
     if (result.ok) {
-      setRoom(result.room);
-      setSubmitState({ kind: "idle" });
-      setStep(3);
+      // T1 (SPEC §6.1): no Step 3 page — go straight to the lobby, which
+      // surfaces PIN, QR, share link, and Start-voting for the admin.
+      router.push(`/room/${result.room.id}`);
       return;
     }
     setSubmitState({
@@ -146,7 +141,7 @@ export default function CreateRoomPage() {
             Create a Room
           </h1>
           <p className="text-xs uppercase tracking-widest text-muted-foreground">
-            Step {step} of 3
+            Step {step} of 2
           </p>
         </header>
 
@@ -184,14 +179,6 @@ export default function CreateRoomPage() {
             }}
             onBack={() => setStep(1)}
             onSubmit={() => void handleSubmit()}
-          />
-        )}
-
-        {step === 3 && room && (
-          <RoomReady
-            room={room}
-            onBack={() => setStep(2)}
-            onStartLobby={() => router.push(`/room/${room.id}`)}
           />
         )}
       </div>

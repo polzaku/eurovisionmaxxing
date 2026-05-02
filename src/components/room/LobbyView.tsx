@@ -63,6 +63,19 @@ export default function LobbyView({
   return (
     <main className="flex min-h-screen flex-col items-center px-6 py-12">
       <div className="max-w-md w-full space-y-8 animate-fade-in">
+        {isAdmin && (
+          <section className="text-center space-y-1">
+            <p className="text-xs uppercase tracking-widest text-primary">
+              Host lobby
+            </p>
+            <h1 className="text-2xl font-bold">You&rsquo;re the host</h1>
+            <p className="text-sm text-muted-foreground">
+              Share the PIN or QR with your guests, then start voting once
+              everyone&rsquo;s in.
+            </p>
+          </section>
+        )}
+
         <section className="text-center space-y-2">
           <p className="text-xs uppercase tracking-widest text-muted-foreground">
             Room PIN
@@ -88,7 +101,7 @@ export default function LobbyView({
         {isAdmin && (
           <>
             <section className="flex flex-col items-center gap-2">
-              <QrCode url={shareUrl} size={224} alt="Scan to join this room" />
+              <QrCode url={shareUrl} size={256} alt="Scan to join this room" />
               <p className="text-xs text-muted-foreground">Scan to join</p>
             </section>
 
@@ -156,6 +169,10 @@ export default function LobbyView({
                   ? "Starting…"
                   : "Start voting"}
               </Button>
+              <p className="text-center text-xs text-muted-foreground">
+                Starts voting for everyone in the room — wait until your guests
+                are here.
+              </p>
               {startVotingState.kind === "error" && (
                 <p role="alert" className="text-sm text-destructive text-center">
                   {startVotingState.message}
