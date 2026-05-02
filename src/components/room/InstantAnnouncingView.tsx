@@ -94,16 +94,21 @@ export default function InstantAnnouncingView({
             })}
           </p>
         ) : (
-          <Button
-            variant="primary"
-            disabled={busy || !allRevealed}
-            onClick={handleReady}
-            className="w-full"
-          >
-            {busy
-              ? t("instantAnnounce.ready.busy")
-              : t("instantAnnounce.ready.button")}
-          </Button>
+          <div className="space-y-2">
+            <Button
+              variant="primary"
+              disabled={busy || !allRevealed}
+              onClick={handleReady}
+              className="w-full"
+            >
+              {busy
+                ? t("instantAnnounce.ready.busy")
+                : t("instantAnnounce.ready.button")}
+            </Button>
+            <p className="text-xs text-muted-foreground text-center">
+              {t("instantAnnounce.ready.subtitle")}
+            </p>
+          </div>
         )}
 
         {isAdmin && (
