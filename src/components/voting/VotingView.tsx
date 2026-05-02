@@ -13,7 +13,7 @@ import MissedToast from "@/components/voting/MissedToast";
 import HotTakeField from "@/components/voting/HotTakeField";
 import JumpToDrawer from "@/components/voting/JumpToDrawer";
 import EndOfVotingCard from "@/components/voting/EndOfVotingCard";
-import { endOfVotingState } from "@/lib/voting/endOfVotingState";
+import { endOfVotingCardVariant } from "@/lib/voting/endOfVotingCardVariant";
 import { nextIdxFromSwipe } from "@/lib/voting/nextIdxFromSwipe";
 import { useMissedUndo } from "@/hooks/useMissedUndo";
 import { useWakeLock } from "@/hooks/useWakeLock";
@@ -73,6 +73,7 @@ function getPersistentStorage() {
 export default function VotingView({
   contestants,
   categories,
+  isAdmin,
   onScoreChange,
   saveStatus,
   initialScores,
@@ -261,15 +262,30 @@ export default function VotingView({
     [scoresByContestant, missedByContestant, categories]
   );
 
-  const endState = useMemo(
+  const onLastContestant = idx === sortedContestants.length - 1;
+  const endVariant = useMemo(
     () =>
-      endOfVotingState({
+      endOfVotingCardVariant({
         contestants: sortedContestants,
         categoryNames: categories.map((c) => c.name),
         scoresByContestant,
         missedByContestant,
+        onLastContestant,
+        viewerRole: isAdmin ? "admin" : "guest",
+        // Room-wide completion (b)/(c) wiring lands in a follow-up slice
+        // when the voting_progress broadcast extension or a periodic
+        // refetch is available — see SPEC §8.11.1. Until then only (a) can
+        // fire and the card stays guest-shaped for guests.
+        roomCompletion: undefined,
       }),
-    [sortedContestants, categories, scoresByContestant, missedByContestant]
+    [
+      sortedContestants,
+      categories,
+      scoresByContestant,
+      missedByContestant,
+      onLastContestant,
+      isAdmin,
+    ]
   );
 
   if (categories.length === 0) {
@@ -407,14 +423,15 @@ export default function VotingView({
           onChange={(next) => setHotTake(contestant.id, next)}
         />
 
-        {idx === totalContestants - 1 && (
+        {onLastContestant && (
           <EndOfVotingCard
-            state={endState}
+            variant={endVariant}
             adminDisplayName={adminDisplayName}
             onJumpTo={(id) => {
               const target = sortedContestants.findIndex((c) => c.id === id);
               if (target >= 0) setIdx(target);
             }}
+            onEndVoting={onEndVoting}
           />
         )}
 
