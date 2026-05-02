@@ -85,6 +85,13 @@ For existing projects, run the per-migration SQL listed in the changelog below i
 
 ### Changelog
 
+- **2026-05-03 — R4 §10.2.1:** added `rooms.announce_skipped_user_ids UUID[] NOT NULL DEFAULT '{}'` so the admin can mark absent announcers as skipped during a live reveal. Apply with:
+
+  ```sql
+  ALTER TABLE rooms
+    ADD COLUMN IF NOT EXISTS announce_skipped_user_ids UUID[] NOT NULL DEFAULT '{}';
+  ```
+
 - **2026-04-27 — R0 + R4 §6.3.1:** added `voting_ending` status to `rooms.status` CHECK (and bumped column to VARCHAR(14)), plus two nullable timestamp columns (`voting_ends_at` for the 5-s undo deadline, `voting_ended_at` for the audit trail).
 
   The `results` and `room_awards` RLS policies reference `rooms.status`, so PostgreSQL refuses the column-type change while they exist. Drop them, alter the column, then recreate them:

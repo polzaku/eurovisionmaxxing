@@ -23,6 +23,11 @@ export type RoomEventPayload =
       announcingUserId: string;
     }
   | {
+      type: "announce_skip";
+      userId: string;
+      displayName: string;
+    }
+  | {
       type: "score_update";
       contestantId: string;
       newTotal: number;

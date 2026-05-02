@@ -143,6 +143,7 @@ export type RoomEvent =
   | { type: "now_performing"; contestantId: string }
   | { type: "voting_progress"; userId: string; contestantId: string; scoredCount: number }
   | { type: "announce_next"; contestantId: string; points: number; announcingUserId: string }
+  | { type: "announce_skip"; userId: string; displayName: string }
   | { type: "announce_turn"; userId: string }
   | { type: "score_update"; contestantId: string; newTotal: number; newRank: number }
   | {

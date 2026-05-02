@@ -34,6 +34,7 @@ CREATE TABLE rooms (
   announcing_user_id    UUID REFERENCES users(id),
   current_announce_idx  SMALLINT DEFAULT 0,     -- which point value is being announced
   delegate_user_id      UUID REFERENCES users(id), -- admin handoff (SPEC §10.2 step 7); null when announcer drives directly
+  announce_skipped_user_ids UUID[] NOT NULL DEFAULT '{}', -- §10.2.1: announcers the admin has manually skipped (absent at their turn)
   now_performing_id     VARCHAR(20),            -- contestant id currently performing
   allow_now_performing  BOOLEAN DEFAULT FALSE,
   voting_ends_at        TIMESTAMPTZ,            -- §6.3.1: deadline for the 5-s undo window; set on voting → voting_ending; cleared on undo
@@ -43,6 +44,7 @@ CREATE TABLE rooms (
 
 -- Existing-database migration (run via Supabase SQL Editor on rooms with existing data):
 --   ALTER TABLE rooms ADD COLUMN IF NOT EXISTS delegate_user_id UUID REFERENCES users(id);
+--   ALTER TABLE rooms ADD COLUMN IF NOT EXISTS announce_skipped_user_ids UUID[] NOT NULL DEFAULT '{}';
 --
 -- Existing-database migration for the §6.3.1 undo window (run via Supabase SQL Editor).
 -- The two RLS policies on results + room_awards reference rooms.status, so they
