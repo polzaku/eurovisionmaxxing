@@ -190,6 +190,68 @@ Apply to all environments (Production, Preview, Development). After adding, trig
 
 ---
 
+## Contestant data refresh runbook (SPEC §5.1c)
+
+The hardcoded fallback at `data/contestants/{year}/{event}.json` is load-bearing whenever the EurovisionAPI lags behind a public announcement (allocation draw, withdrawal, late-season correction). This runbook is what an on-call operator follows when one of those events fires.
+
+### Owners
+
+- **Primary:** Valeriia Kulynych (repo maintainer).
+- **On-call backup:** _TBD — name a second person here before the first show of the season._ Required by SPEC §5.1c so the show isn't single-point-of-failure on the maintainer's availability.
+
+### When to run it
+
+- **Allocation draw** for each semi-final. Typically ~2 weeks before the semi airs. EurovisionAPI may return an empty list, an alphabetical list, or no `runningOrder` until then; the canonical broadcast order is published the moment the draw concludes.
+- **Contestant withdrawal** announcements. Can happen any time between the draw and the show.
+- **Opening show day** for each event — final verification within 24 h of broadcast.
+
+### The 5-minute process
+
+1. Run the fetch script (lands as part of Phase R6):
+
+   ```bash
+   npm run fetch-contestants -- --year=2026 --event=semi1   # or semi2 | final
+   ```
+
+   It hits EurovisionAPI with the §5.1 cascade and writes the normalised JSON to `data/contestants/{year}/{event}.json`.
+
+2. If the API returns empty or invalid data, the script exits non-zero. Fall back to manual transcription from the [eurovision.tv](https://eurovision.tv) official announcement — paste into the JSON using the four-field shape from SPEC §5.2 (`country`, `artist`, `song`, `runningOrder`).
+
+3. Diff-check before committing:
+
+   ```bash
+   git diff data/contestants/
+   ```
+
+   Expected: running-order shuffles, new artist additions, spelling fixes. **Unexpected deletions require manual review** — the EurovisionAPI has historically returned partial lists during outages, and silently committing one would wipe contestants from existing rooms on next deploy.
+
+4. Commit with a structured subject line:
+
+   ```
+   Update {year}/{event} running order — {source}
+   ```
+
+   where `{source}` is `api` or `manual-{yyyy-mm-dd}` (the date you transcribed from eurovision.tv).
+
+5. Push to `main`. Vercel auto-deploys; no further action.
+
+### Verifying the deploy
+
+After Vercel reports a successful deploy (typically 60–90 s after push):
+
+```bash
+curl -s "https://eurovisionmaxxing.com/api/contestants?year=2026&event=semi1" | jq '. | length'
+```
+
+Should return the expected contestant count. Spot-check a couple of `runningOrder` values against the eurovision.tv announcement.
+
+### What this does **not** do
+
+- Does **not** disturb existing rooms. Running orders refresh on the server, but rooms only re-load contestants when an admin taps **Refresh contestants** in lobby (SPEC §5.1d) — voting and announcement state are untouched.
+- Does **not** require a database change. Contestants are static JSON, not stored in Supabase.
+
+---
+
 ## Troubleshooting
 
 **"relation does not exist" errors:** You haven't run the schema SQL yet. Go to Step 3.
