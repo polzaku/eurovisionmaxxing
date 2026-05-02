@@ -35,6 +35,11 @@ import type { VoteView } from "@/lib/rooms/get";
 import { seedScoresFromVotes } from "@/lib/voting/seedScoresFromVotes";
 import { seedMissedFromVotes } from "@/lib/voting/seedMissedFromVotes";
 import { seedHotTakesFromVotes } from "@/lib/voting/seedHotTakesFromVotes";
+import LateJoinerCard from "@/components/voting/LateJoinerCard";
+import {
+  markLobbySeen,
+  useLateJoinerVisibility,
+} from "@/hooks/useLateJoinerVisibility";
 
 interface MembershipShape {
   userId: string;
@@ -111,6 +116,22 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     if (getSession()) return;
     router.replace(`/onboard?next=/room/${encodeURIComponent(roomId)}`);
   }, [roomId, router]);
+
+  // SPEC §6.3.2 late-joiner detection (must be hoisted above conditional
+  // returns so hook order stays stable across renders).
+  const sessionUserId =
+    typeof window !== "undefined" ? getSession()?.userId : undefined;
+  const phaseStatus = phase.kind === "ready" ? phase.room.status : "";
+  const lateJoiner = useLateJoinerVisibility(roomId, sessionUserId, phaseStatus);
+
+  // While the room is in lobby for this user, mark a localStorage flag
+  // so a later transition into voting doesn't surface the "you joined
+  // mid-show" card to someone who was actually there from the start.
+  useEffect(() => {
+    if (phaseStatus !== "lobby") return;
+    if (!sessionUserId) return;
+    markLobbySeen(roomId, sessionUserId);
+  }, [phaseStatus, roomId, sessionUserId]);
 
   const loadRoom = useCallback(async () => {
     const session = getSession();
@@ -488,6 +509,13 @@ export default function RoomPage({ params }: { params: { id: string } }) {
             setEndVotingError(null);
           }}
         />
+        {lateJoiner.visibility === "show" && (
+          <div className="px-6 pt-4">
+            <div className="max-w-md mx-auto">
+              <LateJoinerCard onDismiss={lateJoiner.dismiss} />
+            </div>
+          </div>
+        )}
         <VotingView
           contestants={phase.contestants}
           categories={phase.room.categories ?? []}
