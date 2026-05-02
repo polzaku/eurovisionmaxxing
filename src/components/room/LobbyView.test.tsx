@@ -155,6 +155,29 @@ describe("<LobbyView>", () => {
     expect(alert).toHaveTextContent("PIN regeneration failed");
   });
 
+  it("shows a host-only header + start-button helper so admins don't accidentally start voting", () => {
+    renderLobby({ isAdmin: true });
+    expect(screen.getByRole("heading", { name: /you.?re the host/i })).toBeInTheDocument();
+    expect(screen.getByText(/host lobby/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/share the pin or qr with your guests/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/starts voting for everyone in the room/i),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the host-only header and helper from non-admin guests", () => {
+    renderLobby({ isAdmin: false });
+    expect(
+      screen.queryByRole("heading", { name: /you.?re the host/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/host lobby/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/starts voting for everyone in the room/i),
+    ).not.toBeInTheDocument();
+  });
+
   it("flags the owner with a star marker in the participant roster", () => {
     renderLobby({ ownerUserId: ALICE.userId });
     const aliceRow = screen.getByText(/alice/i);
