@@ -214,7 +214,10 @@
     "ownResults": {
       "title": "Your top picks",
       "subtitle": "These are the Eurovision points you gave each country. The leaderboard is hidden until everyone's ready.",
-      "empty": "You didn't score any contestants this round."
+      "empty": "You didn't score any contestants this round.",
+      "revealTwelveButton": "Reveal your 12 points",
+      "revealTwelveSkip": "Skip the build-up",
+      "twelveLabel": "Your 12 points"
     },
     "ready": {
       "button": "I'm ready — show the leaderboard",
@@ -238,6 +241,12 @@
       "overrideConfirmBody": "Everyone will see the group's leaderboard immediately, even if they haven't marked ready.",
       "overrideConfirmCancel": "Cancel",
       "overrideConfirmGo": "Reveal now"
+    },
+    "ceremony": {
+      "subtitle": "The room's final leaderboard",
+      "redirectingIn": "Opening full results in {seconds}s…",
+      "stayHere": "Stay here",
+      "seeFullResults": "See full results →"
     }
   },
   "awards": {
