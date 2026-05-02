@@ -220,9 +220,10 @@
       "twelveLabel": "Your 12 points"
     },
     "ready": {
-      "button": "I'm ready — show the leaderboard",
+      "button": "I'm done — let the host know",
+      "subtitle": "The host reveals when everyone's set.",
       "busy": "Marking ready…",
-      "waiting": "You're ready. Waiting on {count} more — the leaderboard appears once everyone's ready."
+      "waiting": "You're ready. Waiting on {count} more — the host reveals when everyone's set."
     },
     "admin": {
       "readyCount": "{ready} / {total} ready",
