@@ -1,5 +1,6 @@
 import Avatar from "@/components/ui/Avatar";
 import type { Contestant, RoomAward } from "@/types";
+import { explainerForAward } from "@/lib/awards/awardExplainers";
 
 interface MemberView {
   userId: string;
@@ -127,17 +128,20 @@ function ContestantAwardCard({
   contestant: Contestant | undefined;
 }) {
   return (
-    <div className="rounded-xl border-2 border-border bg-card px-4 py-3 flex items-center gap-3">
-      <span className="text-3xl" aria-hidden>
-        {contestant?.flagEmoji ?? "🏆"}
-      </span>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold">{award.awardName}</p>
-        <p className="text-xs text-muted-foreground truncate">
-          {contestant?.country ?? award.winnerContestantId ?? ""}
-          {award.statLabel ? ` · ${award.statLabel}` : ""}
-        </p>
+    <div className="rounded-xl border-2 border-border bg-card px-4 py-3 space-y-2">
+      <div className="flex items-center gap-3">
+        <span className="text-3xl" aria-hidden>
+          {contestant?.flagEmoji ?? "🏆"}
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold">{award.awardName}</p>
+          <p className="text-xs text-muted-foreground truncate">
+            {contestant?.country ?? award.winnerContestantId ?? ""}
+            {award.statLabel ? ` · ${award.statLabel}` : ""}
+          </p>
+        </div>
       </div>
+      <AwardExplainer awardKey={award.awardKey} />
     </div>
   );
 }
@@ -154,24 +158,46 @@ function UserAwardCard({
   captionForKey: string | null;
 }) {
   return (
-    <div className="rounded-xl border-2 border-border bg-card px-4 py-3 flex items-center gap-3">
-      <div className="flex -space-x-2">
-        {winner ? (
-          <Avatar seed={winner.avatarSeed} size={36} className="ring-2 ring-card" />
-        ) : null}
-        {partner ? (
-          <Avatar seed={partner.avatarSeed} size={36} className="ring-2 ring-card" />
-        ) : null}
+    <div className="rounded-xl border-2 border-border bg-card px-4 py-3 space-y-2">
+      <div className="flex items-center gap-3">
+        <div className="flex -space-x-2">
+          {winner ? (
+            <Avatar seed={winner.avatarSeed} size={36} className="ring-2 ring-card" />
+          ) : null}
+          {partner ? (
+            <Avatar seed={partner.avatarSeed} size={36} className="ring-2 ring-card" />
+          ) : null}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold">{award.awardName}</p>
+          <p className="text-xs text-muted-foreground truncate">
+            {winner?.displayName ?? "—"}
+            {partner ? ` & ${partner.displayName}` : ""}
+            {captionForKey ? ` · ${captionForKey}` : ""}
+            {award.statLabel ? ` · ${award.statLabel}` : ""}
+          </p>
+        </div>
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold">{award.awardName}</p>
-        <p className="text-xs text-muted-foreground truncate">
-          {winner?.displayName ?? "—"}
-          {partner ? ` & ${partner.displayName}` : ""}
-          {captionForKey ? ` · ${captionForKey}` : ""}
-          {award.statLabel ? ` · ${award.statLabel}` : ""}
-        </p>
-      </div>
+      <AwardExplainer awardKey={award.awardKey} />
     </div>
+  );
+}
+
+function AwardExplainer({ awardKey }: { awardKey: string }) {
+  const explainer = explainerForAward(awardKey);
+  if (!explainer) return null;
+  return (
+    <details className="group">
+      <summary
+        className="text-xs text-muted-foreground hover:text-foreground cursor-pointer list-none flex items-center gap-1 select-none"
+        data-testid="award-explainer-toggle"
+      >
+        <span aria-hidden>ⓘ</span>
+        <span>What does this mean?</span>
+      </summary>
+      <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+        {explainer}
+      </p>
+    </details>
   );
 }

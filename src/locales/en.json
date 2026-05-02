@@ -252,6 +252,17 @@
   "awards": {
     "jointCaption": "joint winners",
     "neighbourhoodCaption": "voted most alike",
+    "explainerToggle": "What does this mean?",
+    "explainers": {
+      "harshest_critic": "Lowest average score given across all the contestants you voted on.",
+      "biggest_stan": "Highest average score given across all the contestants you voted on.",
+      "hive_mind_master": "Your ranking lined up most closely with how the room voted overall.",
+      "most_contrarian": "Your ranking was the furthest from the room's overall ranking.",
+      "neighbourhood_voters": "You and one other person voted most alike — your scores moved up and down together more than anyone else's.",
+      "the_dark_horse": "The contestant the room disagreed most about — some loved them, some hated them.",
+      "fashion_stan": "You gave the single highest score in the outfit / costume category.",
+      "the_enabler": "You gave your 12 points to the room's overall winner."
+    },
     "personality": {
       "biggest_stan": { "name": "Biggest stan", "stat": "avg {value}/10" },
       "harshest_critic": { "name": "Harshest critic", "stat": "avg {value}/10" },
