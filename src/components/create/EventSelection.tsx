@@ -25,6 +25,13 @@ interface EventSelectionProps {
   extraYears?: number[];
   onChange: (patch: { year?: number; event?: Event }) => void;
   onNext: () => void;
+  /**
+   * Optional escape hatch when both EurovisionAPI + hardcoded fallback fail
+   * (SPEC §5.1 step 4 → §6.1 Step 1 → A13). Only rendered alongside the
+   * error state so users who can't proceed have an unambiguous way out
+   * besides changing the year/event dropdowns.
+   */
+  onBack?: () => void;
 }
 
 const EVENT_LABELS: Record<Event, string> = {
@@ -42,6 +49,7 @@ export default function EventSelection({
   extraYears,
   onChange,
   onNext,
+  onBack,
 }: EventSelectionProps) {
   const years: number[] = [];
   for (const ey of extraYears ?? []) years.push(ey);
@@ -119,7 +127,14 @@ export default function EventSelection({
         )}
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex justify-between gap-3">
+        {contestants.kind === "error" && onBack ? (
+          <Button variant="ghost" onClick={onBack}>
+            Back
+          </Button>
+        ) : (
+          <span aria-hidden />
+        )}
         <Button onClick={onNext} disabled={!canProceed}>
           Next
         </Button>

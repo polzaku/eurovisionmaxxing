@@ -160,6 +160,7 @@ export default function CreateRoomPage() {
               if (patch.event !== undefined) setEvent(patch.event);
             }}
             onNext={() => setStep(2)}
+            onBack={() => router.push("/")}
           />
         )}
 
