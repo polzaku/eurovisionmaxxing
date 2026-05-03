@@ -5,6 +5,9 @@ import Avatar from "@/components/ui/Avatar";
 import Button from "@/components/ui/Button";
 import QrCode from "@/components/ui/QrCode";
 import CategoriesPreview from "@/components/room/CategoriesPreview";
+import RefreshContestantsButton, {
+  type RefreshDiff,
+} from "@/components/room/RefreshContestantsButton";
 
 export interface LobbyMember {
   userId: string;
@@ -33,6 +36,12 @@ interface LobbyViewProps {
   onStartVoting: () => void;
   onCopyPin: () => void;
   onCopyLink: () => void;
+  /**
+   * Optional admin-only contestant refresh. When provided, renders the
+   * SPEC §5.1d "Refresh contestants" button + status line. Called by the
+   * room page wrapping `refreshContestantsApi` + `contestantDiff`.
+   */
+  onRefreshContestants?: () => Promise<RefreshDiff | null>;
 }
 
 function useCopiedFlag(): [boolean, () => void] {
@@ -56,6 +65,7 @@ export default function LobbyView({
   onStartVoting,
   onCopyPin,
   onCopyLink,
+  onRefreshContestants,
 }: LobbyViewProps) {
   const [pinCopied, markPinCopied] = useCopiedFlag();
   const [linkCopied, markLinkCopied] = useCopiedFlag();
@@ -134,6 +144,12 @@ export default function LobbyView({
         )}
 
         <CategoriesPreview categories={categories} />
+
+        {isAdmin && onRefreshContestants ? (
+          <section className="space-y-1">
+            <RefreshContestantsButton onRefresh={onRefreshContestants} />
+          </section>
+        ) : null}
 
         <section className="space-y-3">
           <h2 className="text-sm uppercase tracking-wider text-muted-foreground">
