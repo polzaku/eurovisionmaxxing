@@ -7,6 +7,11 @@ vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }));
 
+let mockPathname = "/";
+vi.mock("next/navigation", () => ({
+  usePathname: () => mockPathname,
+}));
+
 import ThemeToggle from "./ThemeToggle";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
 
@@ -32,6 +37,7 @@ describe("ThemeToggle", () => {
       },
     });
     delete document.documentElement.dataset.theme;
+    mockPathname = "/"; // reset to a non-/present path for default cases
   });
 
   afterEach(() => {
@@ -130,5 +136,24 @@ describe("ThemeToggle", () => {
       "data-theme-state",
       "system",
     );
+  });
+
+  it("returns null on /room/{id}/present (force-dark route per §10.3)", async () => {
+    mockPathname = "/room/abc-123/present";
+    const { container } = render(<ThemeToggle />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(container.textContent ?? "").toBe("");
+    expect(screen.queryByTestId("theme-toggle")).not.toBeInTheDocument();
+  });
+
+  it("renders normally on regular /room/{id} (non-present)", async () => {
+    mockPathname = "/room/abc-123";
+    render(<ThemeToggle />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByTestId("theme-toggle")).toBeInTheDocument();
   });
 });

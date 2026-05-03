@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   applyTheme,
@@ -24,6 +25,7 @@ const ICON: Record<Theme, string> = {
  */
 export default function ThemeToggle() {
   const t = useTranslations();
+  const pathname = usePathname();
   const [theme, setTheme] = useState<Theme>("system");
   const [hydrated, setHydrated] = useState(false);
 
@@ -34,6 +36,14 @@ export default function ThemeToggle() {
     setTheme(readStoredTheme());
     setHydrated(true);
   }, []);
+
+  // SPEC §3.4 / §10.3 — suppress the toggle on /room/{id}/present so
+  // the TV surface stays force-dark regardless of admin preference.
+  // The pathname check is conservative: any path containing /present
+  // is treated as the TV surface.
+  if (pathname?.endsWith("/present") || pathname?.includes("/present/")) {
+    return null;
+  }
 
   const handleClick = () => {
     const next = nextTheme(theme);

@@ -227,6 +227,22 @@ export default function LobbyView({
                 </button>
               </div>
             </section>
+
+            <section className="space-y-1">
+              <a
+                href={`${shareUrl}/present`}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="lobby-present-link"
+                className="block w-full rounded-lg border-2 border-border bg-card px-4 py-3 text-center text-sm font-medium hover:border-accent hover:bg-card/80 transition-colors"
+              >
+                <span aria-hidden className="mr-2">📺</span>
+                Open present view on TV
+              </a>
+              <p className="text-xs text-muted-foreground text-center">
+                Mirror this tab to your TV, or AirPlay it.
+              </p>
+            </section>
           </>
         )}
 

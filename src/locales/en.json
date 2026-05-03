@@ -237,6 +237,32 @@
   "room": {
     "catchingUp": "Catching up…"
   },
+  "present": {
+    "lobby": {
+      "eyebrow": "Room PIN",
+      "callToJoin": "Open eurovisionmaxxing.com and enter the PIN to join.",
+      "memberCount": "{count, plural, =0 {Waiting for guests…} =1 {1 person here} other {# people here}}"
+    },
+    "voting": {
+      "eyebrow": "Voting in progress",
+      "title": "Score the songs on your phone."
+    },
+    "votingEnding": {
+      "title": "Voting ends in a moment…"
+    },
+    "announcing": {
+      "title": "Live leaderboard",
+      "announcer": "{name} is announcing"
+    },
+    "done": {
+      "title": "Final results"
+    },
+    "fullscreen": {
+      "enter": "Enter fullscreen",
+      "aria": "Fullscreen prompt",
+      "dismissAria": "Dismiss fullscreen prompt"
+    }
+  },
   "lobby": {
     "refreshContestants": {
       "button": "Refresh contestants",
