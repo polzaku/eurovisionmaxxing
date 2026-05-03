@@ -13,6 +13,8 @@ import {
   postRoomOwnPoints,
   refreshContestantsApi,
   patchAnnouncementMode,
+  patchRoomCategories,
+  type VotingCategoryShape,
   type FetchRoomData,
 } from "@/lib/room/api";
 import { contestantDiff } from "@/lib/rooms/contestantDiff";
@@ -382,6 +384,38 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     [phase],
   );
 
+  const handleChangeCategories = useCallback(
+    async (categories: VotingCategoryShape[]) => {
+      if (phase.kind !== "ready") return;
+      const session = getSession();
+      if (!session) return;
+      const result = await patchRoomCategories(
+        phase.room.id,
+        categories,
+        session.userId,
+        { fetch: window.fetch.bind(window) },
+      );
+      if (!result.ok) return;
+      // Optimistic update — broadcast triggers a refetch shortly after.
+      setPhase((p) =>
+        p.kind === "ready"
+          ? {
+              ...p,
+              room: {
+                ...p.room,
+                categories: categories.map((c) => ({
+                  name: c.name,
+                  weight: c.weight ?? 1,
+                  hint: c.hint,
+                })),
+              },
+            }
+          : p,
+      );
+    },
+    [phase],
+  );
+
   const handleMarkReady = useCallback(async () => {
     if (!phase || phase.kind !== "ready") return;
     const session = getSession();
@@ -534,6 +568,9 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         }
         onChangeAnnouncementMode={
           isAdmin ? handleChangeAnnouncementMode : undefined
+        }
+        onChangeCategories={
+          isAdmin ? handleChangeCategories : undefined
         }
       />
     );

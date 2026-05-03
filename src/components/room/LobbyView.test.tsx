@@ -69,6 +69,10 @@ interface RenderOpts {
   } | null>;
   announcementMode?: "live" | "instant";
   onChangeAnnouncementMode?: (mode: "live" | "instant") => Promise<void>;
+  categoriesOverride?: { name: string; hint?: string }[];
+  onChangeCategories?: (
+    categories: { name: string; weight: number; hint?: string }[],
+  ) => Promise<void>;
 }
 
 function renderLobby(opts: RenderOpts = {}) {
@@ -80,7 +84,7 @@ function renderLobby(opts: RenderOpts = {}) {
       pin="ABC123"
       ownerUserId={opts.ownerUserId ?? ALICE.userId}
       memberships={opts.memberships ?? [ALICE, BOB]}
-      categories={CATEGORIES}
+      categories={opts.categoriesOverride ?? CATEGORIES}
       isAdmin={opts.isAdmin ?? true}
       startVotingState={opts.startVotingState ?? { kind: "idle" }}
       shareUrl="https://eurovisionmaxxing.com/room/r-1"
@@ -90,6 +94,7 @@ function renderLobby(opts: RenderOpts = {}) {
       onRefreshContestants={opts.onRefreshContestants}
       announcementMode={opts.announcementMode}
       onChangeAnnouncementMode={opts.onChangeAnnouncementMode}
+      onChangeCategories={opts.onChangeCategories}
     />
   );
   return { ...render(ui), onStartVoting, onCopyPin, onCopyLink };
@@ -302,5 +307,89 @@ describe("<LobbyView>", () => {
     });
     await user.click(screen.getByRole("button", { name: "Instant" }));
     expect(onChange).toHaveBeenCalledWith("instant");
+  });
+
+  it("renders the template picker when admin + onChangeCategories provided (A2 categories)", () => {
+    renderLobby({
+      isAdmin: true,
+      onChangeCategories: vi.fn().mockResolvedValue(undefined),
+    });
+    expect(screen.getByTestId("lobby-template-picker")).toBeInTheDocument();
+    // 3 predefined templates rendered
+    expect(screen.getByRole("button", { name: /The Classic/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /The Spectacle/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /The Banger Test/i })).toBeInTheDocument();
+  });
+
+  it("hides the template picker when isAdmin is false", () => {
+    renderLobby({
+      isAdmin: false,
+      onChangeCategories: vi.fn(),
+    });
+    expect(screen.queryByTestId("lobby-template-picker")).toBeNull();
+  });
+
+  it("hides the template picker when onChangeCategories is omitted", () => {
+    renderLobby({ isAdmin: true });
+    expect(screen.queryByTestId("lobby-template-picker")).toBeNull();
+  });
+
+  it("highlights + disables the matching template button (Classic by name set)", () => {
+    const classicCats = [
+      { name: "Vocals" },
+      { name: "Music" },
+      { name: "Outfit" },
+      { name: "Stage performance" },
+      { name: "Vibes" },
+    ];
+    renderLobby({
+      isAdmin: true,
+      categoriesOverride: classicCats,
+      onChangeCategories: vi.fn().mockResolvedValue(undefined),
+    });
+    expect(
+      screen.getByRole("button", { name: /The Classic/i }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByRole("button", { name: /The Classic/i }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /The Spectacle/i }),
+    ).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("renders the 'Custom categories' note when current set matches no template", () => {
+    renderLobby({
+      isAdmin: true,
+      categoriesOverride: [{ name: "WeirdCustom1" }, { name: "WeirdCustom2" }],
+      onChangeCategories: vi.fn().mockResolvedValue(undefined),
+    });
+    expect(
+      screen.getByText(/Custom categories/i),
+    ).toBeInTheDocument();
+  });
+
+  it("calls onChangeCategories with the new template's categories when tapped", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn().mockResolvedValue(undefined);
+    // Start with Classic — tap Spectacle
+    const classicCats = [
+      { name: "Vocals" },
+      { name: "Music" },
+      { name: "Outfit" },
+      { name: "Stage performance" },
+      { name: "Vibes" },
+    ];
+    renderLobby({
+      isAdmin: true,
+      categoriesOverride: classicCats,
+      onChangeCategories: onChange,
+    });
+    await user.click(screen.getByRole("button", { name: /The Spectacle/i }));
+    expect(onChange).toHaveBeenCalledTimes(1);
+    const arg = onChange.mock.calls[0][0] as { name: string }[];
+    const names = new Set(arg.map((c) => c.name));
+    expect(names).toContain("Drama");
+    expect(names).toContain("Costume commitment");
   });
 });
