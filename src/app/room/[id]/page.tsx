@@ -12,6 +12,7 @@ import {
   postRoomReady,
   postRoomOwnPoints,
   refreshContestantsApi,
+  patchAnnouncementMode,
   type FetchRoomData,
 } from "@/lib/room/api";
 import { contestantDiff } from "@/lib/rooms/contestantDiff";
@@ -357,6 +358,29 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     return contestantDiff(prev, next);
   }, [phase]);
 
+  const handleChangeAnnouncementMode = useCallback(
+    async (mode: "live" | "instant") => {
+      if (phase.kind !== "ready") return;
+      const session = getSession();
+      if (!session) return;
+      const result = await patchAnnouncementMode(
+        phase.room.id,
+        mode,
+        session.userId,
+        { fetch: window.fetch.bind(window) },
+      );
+      if (!result.ok) return;
+      // status_changed broadcast triggers a refetch — meanwhile update
+      // local phase optimistically so the UI doesn't lag.
+      setPhase((p) =>
+        p.kind === "ready"
+          ? { ...p, room: { ...p.room, announcementMode: mode } }
+          : p,
+      );
+    },
+    [phase],
+  );
+
   const handleMarkReady = useCallback(async () => {
     if (!phase || phase.kind !== "ready") return;
     const session = getSession();
@@ -501,6 +525,15 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         onCopyPin={handleCopyPin}
         onCopyLink={handleCopyLink}
         onRefreshContestants={isAdmin ? handleRefreshContestants : undefined}
+        announcementMode={
+          phase.room.announcementMode === "live" ||
+          phase.room.announcementMode === "instant"
+            ? phase.room.announcementMode
+            : undefined
+        }
+        onChangeAnnouncementMode={
+          isAdmin ? handleChangeAnnouncementMode : undefined
+        }
       />
     );
   }

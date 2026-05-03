@@ -291,3 +291,22 @@ export async function refreshContestantsApi(
     (body) => body as RefreshContestantsSuccess,
   );
 }
+
+/**
+ * SPEC §6.1 / TODO A2 — owner-only switch of `announcement_mode` between
+ * 'live' and 'instant' while the room is still in the lobby.
+ */
+export async function patchAnnouncementMode(
+  roomId: string,
+  mode: "live" | "instant",
+  userId: string,
+  deps: Deps,
+): Promise<ApiOk<never> | ApiFail> {
+  return runRequest(() =>
+    deps.fetch(`/api/rooms/${roomId}/announcement-mode`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ mode, userId }),
+    }),
+  );
+}
