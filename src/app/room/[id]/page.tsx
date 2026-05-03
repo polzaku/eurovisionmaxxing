@@ -22,8 +22,7 @@ import LobbyView, {
 } from "@/components/room/LobbyView";
 import StatusStub from "@/components/room/StatusStub";
 import AnnouncingView from "@/components/room/AnnouncingView";
-import DoneCard from "@/components/room/DoneCard";
-import LeaderboardCeremony from "@/components/instant/LeaderboardCeremony";
+import DoneCeremony from "@/components/room/DoneCeremony";
 import VotingView from "@/components/voting/VotingView";
 import EndVotingModal from "@/components/voting/EndVotingModal";
 import EndVotingCountdownToast from "@/components/voting/EndVotingCountdownToast";
@@ -585,10 +584,13 @@ export default function RoomPage({ params }: { params: { id: string } }) {
   }
 
   if (phase.room.status === "done") {
-    if (phase.room.announcementMode === "instant") {
-      return <LeaderboardCeremony roomId={phase.room.id} />;
-    }
-    return <DoneCard roomId={phase.room.id} />;
+    return (
+      <DoneCeremony
+        roomId={phase.room.id}
+        isAdmin={isAdmin}
+        categories={phase.room.categories ?? []}
+      />
+    );
   }
 
   return <StatusStub status={phase.room.status} />;
