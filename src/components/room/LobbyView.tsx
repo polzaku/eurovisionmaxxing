@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Avatar from "@/components/ui/Avatar";
 import Button from "@/components/ui/Button";
 import QrCode from "@/components/ui/QrCode";
@@ -8,6 +8,19 @@ import CategoriesPreview from "@/components/room/CategoriesPreview";
 import RefreshContestantsButton, {
   type RefreshDiff,
 } from "@/components/room/RefreshContestantsButton";
+import { VOTING_TEMPLATES } from "@/lib/templates";
+
+const PREDEFINED_TEMPLATES = VOTING_TEMPLATES.filter((t) => t.id !== "custom");
+
+function categoryNameSet(cats: { name: string }[]): Set<string> {
+  return new Set(cats.map((c) => c.name.toLowerCase()));
+}
+
+function setsEqual(a: Set<string>, b: Set<string>): boolean {
+  if (a.size !== b.size) return false;
+  for (const v of a) if (!b.has(v)) return false;
+  return true;
+}
 
 export interface LobbyMember {
   userId: string;
@@ -46,10 +59,20 @@ interface LobbyViewProps {
    * SPEC §6.1 / A2 — owner-only inline switch of announcement_mode while
    * the room is still in the lobby. When provided alongside `announcementMode`
    * + `isAdmin`, renders a two-button toggle (Live / Instant). Year + event
-   * remain immutable; categories edits deferred to V1.1.
+   * remain immutable.
    */
   announcementMode?: "live" | "instant";
   onChangeAnnouncementMode?: (mode: "live" | "instant") => Promise<void>;
+  /**
+   * SPEC §6.1 / A2 — owner-only template picker for swapping the room's
+   * categories array while still in the lobby. When provided, renders a
+   * row of predefined template buttons (Classic / Spectacle / Banger Test).
+   * Currently-selected template is detected via name-set comparison and
+   * is rendered disabled + highlighted. Custom builder UI is V1.1.
+   */
+  onChangeCategories?: (
+    categories: { name: string; weight: number; hint?: string }[],
+  ) => Promise<void>;
 }
 
 function useCopiedFlag(): [boolean, () => void] {
@@ -76,10 +99,48 @@ export default function LobbyView({
   onRefreshContestants,
   announcementMode,
   onChangeAnnouncementMode,
+  onChangeCategories,
 }: LobbyViewProps) {
   const [pinCopied, markPinCopied] = useCopiedFlag();
   const [linkCopied, markLinkCopied] = useCopiedFlag();
   const [modeBusy, setModeBusy] = useState(false);
+  const [templateBusy, setTemplateBusy] = useState(false);
+
+  const currentNameSet = useMemo(
+    () => categoryNameSet(categories),
+    [categories],
+  );
+
+  const selectedTemplateId = useMemo(() => {
+    for (const tpl of PREDEFINED_TEMPLATES) {
+      if (setsEqual(categoryNameSet(tpl.categories), currentNameSet)) {
+        return tpl.id;
+      }
+    }
+    return null;
+  }, [currentNameSet]);
+
+  const handleTemplateChange = async (templateId: string) => {
+    if (templateBusy) return;
+    if (!onChangeCategories) return;
+    if (templateId === selectedTemplateId) return;
+    const tpl = PREDEFINED_TEMPLATES.find((t) => t.id === templateId);
+    if (!tpl) return;
+    setTemplateBusy(true);
+    try {
+      await onChangeCategories(
+        tpl.categories.map((c) => ({
+          name: c.name,
+          weight: c.weight,
+          ...(c.hint ? { hint: c.hint } : {}),
+        })),
+      );
+    } finally {
+      setTemplateBusy(false);
+    }
+  };
+
+  const showTemplatePicker = isAdmin && !!onChangeCategories;
 
   const handleModeChange = async (next: "live" | "instant") => {
     if (modeBusy) return;
@@ -174,6 +235,46 @@ export default function LobbyView({
         {isAdmin && onRefreshContestants ? (
           <section className="space-y-1">
             <RefreshContestantsButton onRefresh={onRefreshContestants} />
+          </section>
+        ) : null}
+
+        {showTemplatePicker ? (
+          <section
+            className="space-y-2"
+            data-testid="lobby-template-picker"
+          >
+            <p className="text-xs uppercase tracking-widest text-muted-foreground">
+              Voting template
+            </p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {PREDEFINED_TEMPLATES.map((tpl) => {
+                const selected = tpl.id === selectedTemplateId;
+                return (
+                  <button
+                    key={tpl.id}
+                    type="button"
+                    aria-pressed={selected}
+                    disabled={templateBusy || selected}
+                    onClick={() => void handleTemplateChange(tpl.id)}
+                    className={`rounded-lg border-2 px-3 py-2 text-left text-sm transition-all ${
+                      selected
+                        ? "border-primary bg-primary/10 cursor-default"
+                        : "border-border hover:border-accent disabled:opacity-50"
+                    }`}
+                  >
+                    <span className="block font-medium">{tpl.name}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {tpl.categories.length} categories
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {selectedTemplateId === null
+                ? "Custom categories — pick a template to swap, or keep the current set."
+                : "Switch any time before voting starts."}
+            </p>
           </section>
         ) : null}
 

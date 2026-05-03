@@ -310,3 +310,28 @@ export async function patchAnnouncementMode(
     }),
   );
 }
+
+/**
+ * SPEC §6.1 / TODO A2 — owner-only swap of the room's categories array
+ * (template change or custom) while still in the lobby.
+ */
+export interface VotingCategoryShape {
+  name: string;
+  weight?: number;
+  hint?: string;
+}
+
+export async function patchRoomCategories(
+  roomId: string,
+  categories: VotingCategoryShape[],
+  userId: string,
+  deps: Deps,
+): Promise<ApiOk<never> | ApiFail> {
+  return runRequest(() =>
+    deps.fetch(`/api/rooms/${roomId}/categories`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ categories, userId }),
+    }),
+  );
+}
