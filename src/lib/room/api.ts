@@ -157,6 +157,35 @@ export async function postAnnounceNext(
 }
 
 /**
+ * Owner-only skip of the current announcer (SPEC §10.2.1). Used when the
+ * announcer is absent at their turn — admin keeps the show moving by
+ * skipping past them. Their points are silently marked as announced so
+ * the live leaderboard reflects them.
+ */
+export interface AnnounceSkipSuccess {
+  skippedUserId: string;
+  skippedDisplayName: string;
+  nextAnnouncingUserId: string | null;
+  finished: boolean;
+}
+
+export async function postAnnounceSkip(
+  roomId: string,
+  userId: string,
+  deps: Deps,
+): Promise<ApiOk<AnnounceSkipSuccess> | ApiFail> {
+  return runRequest<AnnounceSkipSuccess>(
+    () =>
+      deps.fetch(`/api/rooms/${roomId}/announce/skip`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ userId }),
+      }),
+    (body) => body as AnnounceSkipSuccess,
+  );
+}
+
+/**
  * Owner-only handoff: take over (`takeControl: true`) or release back to
  * the original announcer (`takeControl: false`). SPEC §10.2 step 7.
  */

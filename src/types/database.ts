@@ -46,6 +46,7 @@ export interface Database {
           announcing_user_id: string | null;
           current_announce_idx: number;
           delegate_user_id: string | null;
+          announce_skipped_user_ids: string[];
           now_performing_id: string | null;
           allow_now_performing: boolean;
           voting_ends_at: string | null;
@@ -65,6 +66,7 @@ export interface Database {
           announcing_user_id?: string | null;
           current_announce_idx?: number;
           delegate_user_id?: string | null;
+          announce_skipped_user_ids?: string[];
           now_performing_id?: string | null;
           allow_now_performing?: boolean;
           voting_ends_at?: string | null;
@@ -81,6 +83,7 @@ export interface Database {
           announcing_user_id?: string | null;
           current_announce_idx?: number;
           delegate_user_id?: string | null;
+          announce_skipped_user_ids?: string[];
           now_performing_id?: string | null;
           allow_now_performing?: boolean;
           voting_ends_at?: string | null;

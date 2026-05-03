@@ -7,6 +7,7 @@ import { useRoomRealtime } from "@/hooks/useRoomRealtime";
 import {
   postAnnounceNext,
   postAnnounceHandoff,
+  postAnnounceSkip,
 } from "@/lib/room/api";
 import { mapRoomError } from "@/lib/room/errors";
 import type { Contestant } from "@/types";
@@ -100,6 +101,10 @@ export default function AnnouncingView({
     kind: "idle" | "submitting";
     error?: string;
   }>({ kind: "idle" });
+  const [skipState, setSkipState] = useState<{
+    kind: "idle" | "submitting";
+    error?: string;
+  }>({ kind: "idle" });
   const [justRevealed, setJustRevealed] = useState<JustRevealedFlash | null>(
     null,
   );
@@ -184,6 +189,21 @@ export default function AnnouncingView({
       error: mapRoomError(result.code),
     });
   }, [currentUserId, isActiveDriver, refetch, roomId]);
+
+  const handleSkipAnnouncer = useCallback(async () => {
+    if (!isOwner) return;
+    setSkipState({ kind: "submitting" });
+    const result = await postAnnounceSkip(roomId, currentUserId, {
+      fetch: window.fetch.bind(window),
+    });
+    if (result.ok) {
+      setSkipState({ kind: "idle" });
+      if (result.data?.finished) setFinishedLocal(true);
+      void refetch();
+      return;
+    }
+    setSkipState({ kind: "idle", error: mapRoomError(result.code) });
+  }, [currentUserId, isOwner, refetch, roomId]);
 
   const handleTakeControl = useCallback(
     async (takeControl: boolean) => {
@@ -357,29 +377,52 @@ export default function AnnouncingView({
           </div>
         ) : null}
 
-        {/* Owner watching — Take control button. No spoilers. */}
+        {/* Owner watching — Take control + Skip turn. No spoilers. */}
         {isOwner && !isActiveDriver && !adminHasTakenControl && announcement ? (
           <div className="rounded-2xl border-2 border-border bg-card px-5 py-4 space-y-2">
             <p className="text-sm font-semibold">
               {announcerName} is announcing
             </p>
             <p className="text-xs text-muted-foreground">
-              If they&rsquo;re away or stuck, you can take over their reveals.
-              You can hand back any time.
+              If they&rsquo;re away or stuck, you can take over their reveals
+              (you can hand back any time) or skip past them entirely. Skipped
+              points still appear on the leaderboard.
             </p>
             <button
               type="button"
               onClick={() => handleTakeControl(true)}
-              disabled={handoffState.kind === "submitting"}
+              disabled={
+                handoffState.kind === "submitting" ||
+                skipState.kind === "submitting"
+              }
               className="w-full rounded-lg border-2 border-accent bg-accent/5 px-3 py-2 text-sm font-medium transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60"
             >
               {handoffState.kind === "submitting"
                 ? "Taking over…"
                 : `Announce for ${announcerName}`}
             </button>
+            <button
+              type="button"
+              onClick={handleSkipAnnouncer}
+              disabled={
+                skipState.kind === "submitting" ||
+                handoffState.kind === "submitting"
+              }
+              aria-label={`Skip ${announcerName}'s turn — they're not here`}
+              className="w-full rounded-lg border-2 border-muted-foreground/30 bg-muted/30 px-3 py-2 text-sm font-medium transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60"
+            >
+              {skipState.kind === "submitting"
+                ? "Skipping…"
+                : `Skip ${announcerName} — they're not here`}
+            </button>
             {handoffState.error ? (
               <p role="alert" className="text-xs text-destructive">
                 {handoffState.error}
+              </p>
+            ) : null}
+            {skipState.error ? (
+              <p role="alert" className="text-xs text-destructive">
+                {skipState.error}
               </p>
             ) : null}
           </div>
