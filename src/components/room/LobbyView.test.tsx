@@ -3,6 +3,12 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+// Locale mock — RefreshContestantsButton uses useTranslations.
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string, params?: Record<string, unknown>) =>
+    params ? `${key}:${JSON.stringify(params)}` : key,
+}));
+
 // QrCode generates a data URL asynchronously via the `qrcode` package.
 // Stub it out to keep tests deterministic + fast — we only care that the
 // alt text + size flow through.
@@ -56,6 +62,11 @@ interface RenderOpts {
   startVotingState?: StartVotingState;
   memberships?: LobbyMember[];
   ownerUserId?: string;
+  onRefreshContestants?: () => Promise<{
+    added: string[];
+    removed: string[];
+    reordered: string[];
+  } | null>;
 }
 
 function renderLobby(opts: RenderOpts = {}) {
@@ -74,6 +85,7 @@ function renderLobby(opts: RenderOpts = {}) {
       onStartVoting={onStartVoting}
       onCopyPin={onCopyPin}
       onCopyLink={onCopyLink}
+      onRefreshContestants={opts.onRefreshContestants}
     />
   );
   return { ...render(ui), onStartVoting, onCopyPin, onCopyLink };
@@ -184,5 +196,34 @@ describe("<LobbyView>", () => {
     expect(aliceRow).toHaveTextContent("★");
     const bobRow = screen.getByText(/bob/i);
     expect(bobRow).not.toHaveTextContent("★");
+  });
+
+  it("renders the Refresh contestants button when admin + onRefreshContestants is provided", () => {
+    const onRefreshContestants = vi
+      .fn()
+      .mockResolvedValue({ added: [], removed: [], reordered: [] });
+    renderLobby({ isAdmin: true, onRefreshContestants });
+    expect(
+      screen.getByRole("button", { name: /lobby.refreshContestants.button/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the Refresh contestants button when isAdmin is false", () => {
+    const onRefreshContestants = vi.fn();
+    renderLobby({ isAdmin: false, onRefreshContestants });
+    expect(
+      screen.queryByRole("button", {
+        name: /lobby.refreshContestants.button/,
+      }),
+    ).toBeNull();
+  });
+
+  it("hides the Refresh contestants button when the prop isn't supplied", () => {
+    renderLobby({ isAdmin: true });
+    expect(
+      screen.queryByRole("button", {
+        name: /lobby.refreshContestants.button/,
+      }),
+    ).toBeNull();
   });
 });

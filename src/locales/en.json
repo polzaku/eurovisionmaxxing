@@ -216,6 +216,15 @@
       "semi2": "Eurovision {year} — Semi-final 2"
     }
   },
+  "lobby": {
+    "refreshContestants": {
+      "button": "Refresh contestants",
+      "busy": "Refreshing…",
+      "upToDate": "Already up to date — nothing changed.",
+      "summary": "{added, plural, =0 {} =1 {1 added · } other {# added · }}{removed, plural, =0 {} =1 {1 dropped · } other {# dropped · }}{reordered, plural, =0 {} =1 {1 reordered} other {# reordered}}",
+      "error": "Couldn't refresh — try again."
+    }
+  },
   "instantAnnounce": {
     "lede": "Voting's done. Here are the points you gave — tap when you're ready to see the room's leaderboard.",
     "ownResults": {

@@ -11,8 +11,10 @@ import {
   postRoomScore,
   postRoomReady,
   postRoomOwnPoints,
+  refreshContestantsApi,
   type FetchRoomData,
 } from "@/lib/room/api";
+import { contestantDiff } from "@/lib/rooms/contestantDiff";
 import InstantAnnouncingView from "@/components/room/InstantAnnouncingView";
 import type { OwnBreakdownEntry } from "@/components/instant/OwnPointsCeremony";
 import { mapRoomError } from "@/lib/room/errors";
@@ -201,6 +203,10 @@ export default function RoomPage({ params }: { params: { id: string } }) {
       void loadRoom();
       return;
     }
+    if (event.type === "contestants_refreshed") {
+      void loadRoom();
+      return;
+    }
     if (event.type === "user_joined") {
       setPhase((prev) => {
         if (prev.kind !== "ready") return prev;
@@ -313,6 +319,24 @@ export default function RoomPage({ params }: { params: { id: string } }) {
       process.env.NEXT_PUBLIC_APP_URL ??
       (typeof window !== "undefined" ? window.location.origin : "");
     void navigator.clipboard?.writeText(`${base}/room/${phase.room.id}`);
+  }, [phase]);
+
+  const handleRefreshContestants = useCallback(async () => {
+    if (phase.kind !== "ready") return null;
+    const session = getSession();
+    if (!session) return null;
+    const prev = phase.contestants;
+    const result = await refreshContestantsApi(
+      phase.room.id,
+      session.userId,
+      { fetch: window.fetch.bind(window) },
+    );
+    if (!result.ok || !result.data) return null;
+    const next = result.data.contestants as Contestant[];
+    setPhase((p) =>
+      p.kind === "ready" ? { ...p, contestants: next } : p,
+    );
+    return contestantDiff(prev, next);
   }, [phase]);
 
   const handleMarkReady = useCallback(async () => {
@@ -458,6 +482,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         onStartVoting={handleStartVoting}
         onCopyPin={handleCopyPin}
         onCopyLink={handleCopyLink}
+        onRefreshContestants={isAdmin ? handleRefreshContestants : undefined}
       />
     );
   }

@@ -255,3 +255,39 @@ export async function postRoomOwnPoints(
     (body) => body as PostRoomOwnPointsSuccess,
   );
 }
+
+/**
+ * SPEC §5.1d — admin-only contestant refresh from the lobby. Re-fetches
+ * the §5.1 cascade with cache bypass server-side, broadcasts
+ * `contestants_refreshed`, and returns the fresh list so the caller can
+ * update local state immediately.
+ */
+export interface RefreshContestantsSuccess {
+  contestants: Array<{
+    id: string;
+    year: number;
+    event: string;
+    countryCode: string;
+    country: string;
+    artist: string;
+    song: string;
+    flagEmoji: string;
+    runningOrder: number;
+  }>;
+}
+
+export async function refreshContestantsApi(
+  roomId: string,
+  userId: string,
+  deps: Deps,
+): Promise<ApiOk<RefreshContestantsSuccess> | ApiFail> {
+  return runRequest<RefreshContestantsSuccess>(
+    () =>
+      deps.fetch(`/api/rooms/${roomId}/refresh-contestants`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ userId }),
+      }),
+    (body) => body as RefreshContestantsSuccess,
+  );
+}
