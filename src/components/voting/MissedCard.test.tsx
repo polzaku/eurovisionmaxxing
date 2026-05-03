@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 
 import MissedCard from "./MissedCard";
 
@@ -103,5 +103,194 @@ describe("MissedCard", () => {
       />,
     );
     expect(container.querySelector("[data-testid='missed-card']")).toBeTruthy();
+  });
+});
+
+describe("MissedCard — §8.4 / V8 projected-update animation", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("does NOT show the updated label on first mount", () => {
+    render(
+      <MissedCard
+        projected={PROJECTED}
+        categories={CATEGORIES}
+        onRescore={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByTestId("missed-updated-label"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does NOT show the updated label when re-rendered with the same projection", () => {
+    const { rerender } = render(
+      <MissedCard
+        projected={PROJECTED}
+        categories={CATEGORIES}
+        onRescore={vi.fn()}
+      />,
+    );
+    rerender(
+      <MissedCard
+        projected={PROJECTED}
+        categories={CATEGORIES}
+        onRescore={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByTestId("missed-updated-label"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the 'updated from your recent votes' label when overall projection shifts", () => {
+    const { rerender } = render(
+      <MissedCard
+        projected={PROJECTED}
+        categories={CATEGORIES}
+        onRescore={vi.fn()}
+      />,
+    );
+    rerender(
+      <MissedCard
+        projected={{ ...PROJECTED, overall: 6.6 }}
+        categories={CATEGORIES}
+        onRescore={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByTestId("missed-updated-label"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/updated from your recent votes/)).toBeInTheDocument();
+  });
+
+  it("auto-clears the updated label after ~2 seconds", () => {
+    const { rerender } = render(
+      <MissedCard
+        projected={PROJECTED}
+        categories={CATEGORIES}
+        onRescore={vi.fn()}
+      />,
+    );
+    rerender(
+      <MissedCard
+        projected={{ ...PROJECTED, overall: 6.6 }}
+        categories={CATEGORIES}
+        onRescore={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId("missed-updated-label")).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(2_100);
+    });
+    expect(
+      screen.queryByTestId("missed-updated-label"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("applies animate-score-pop to the overall cell when overall projection shifts", () => {
+    const { rerender, container } = render(
+      <MissedCard
+        projected={PROJECTED}
+        categories={CATEGORIES}
+        onRescore={vi.fn()}
+      />,
+    );
+    rerender(
+      <MissedCard
+        projected={{ ...PROJECTED, overall: 6.6 }}
+        categories={CATEGORIES}
+        onRescore={vi.fn()}
+      />,
+    );
+    const overall = container.querySelector("p.text-5xl");
+    expect(overall?.className).toContain("animate-score-pop");
+  });
+
+  it("applies animate-score-pop only to per-category cells whose value shifted", () => {
+    const next = {
+      overall: 6.4,
+      perCategory: { ...PROJECTED.perCategory, Vocals: 8.0 }, // only Vocals changes
+    };
+    const { rerender } = render(
+      <MissedCard
+        projected={PROJECTED}
+        categories={CATEGORIES}
+        onRescore={vi.fn()}
+      />,
+    );
+    rerender(
+      <MissedCard
+        projected={next}
+        categories={CATEGORIES}
+        onRescore={vi.fn()}
+      />,
+    );
+    const vocalsValue = screen.getByText(/^~8$/);
+    expect(vocalsValue.className).toContain("animate-score-pop");
+    const outfitValue = screen.getByText(/^~5\.5$/);
+    expect(outfitValue.className).not.toContain("animate-score-pop");
+  });
+
+  it("removes animate-score-pop class once the label clears (2s later)", () => {
+    const { rerender, container } = render(
+      <MissedCard
+        projected={PROJECTED}
+        categories={CATEGORIES}
+        onRescore={vi.fn()}
+      />,
+    );
+    rerender(
+      <MissedCard
+        projected={{ ...PROJECTED, overall: 6.6 }}
+        categories={CATEGORIES}
+        onRescore={vi.fn()}
+      />,
+    );
+    expect(container.querySelector("p.text-5xl")?.className).toContain(
+      "animate-score-pop",
+    );
+    act(() => {
+      vi.advanceTimersByTime(2_100);
+    });
+    expect(container.querySelector("p.text-5xl")?.className).not.toContain(
+      "animate-score-pop",
+    );
+  });
+
+  it("re-fires animation + label when projection changes a second time", () => {
+    const { rerender } = render(
+      <MissedCard
+        projected={PROJECTED}
+        categories={CATEGORIES}
+        onRescore={vi.fn()}
+      />,
+    );
+    rerender(
+      <MissedCard
+        projected={{ ...PROJECTED, overall: 6.6 }}
+        categories={CATEGORIES}
+        onRescore={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId("missed-updated-label")).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(2_100);
+    });
+    expect(
+      screen.queryByTestId("missed-updated-label"),
+    ).not.toBeInTheDocument();
+    rerender(
+      <MissedCard
+        projected={{ ...PROJECTED, overall: 7.0 }}
+        categories={CATEGORIES}
+        onRescore={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId("missed-updated-label")).toBeInTheDocument();
   });
 });
