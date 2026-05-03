@@ -65,7 +65,11 @@ export function useLateJoinerVisibility(
     } catch {
       // ignore — defaults are safe (card may render once)
     }
-  }, [roomId, userId]);
+    // `status` is in the deps so the hook re-reads after a `lobby`→`voting`
+    // transition and picks up the `emx_lobby_seen_*` flag the lobby render
+    // wrote — otherwise users present in the lobby would still see the
+    // late-joiner card the moment voting begins.
+  }, [roomId, userId, status]);
 
   const dismiss = useCallback(() => {
     setDismissed(true);
