@@ -230,6 +230,10 @@
       "dark": "Theme: Dark (tap for System)"
     }
   },
+  "scoring": {
+    "title": "Tallying results…",
+    "subtitle": "Hold tight — we're crunching the numbers."
+  },
   "lobby": {
     "refreshContestants": {
       "button": "Refresh contestants",

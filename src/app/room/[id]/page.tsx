@@ -30,6 +30,7 @@ import LobbyView, {
   type StartVotingState,
 } from "@/components/room/LobbyView";
 import StatusStub from "@/components/room/StatusStub";
+import ScoringScreen from "@/components/room/ScoringScreen";
 import AnnouncingView from "@/components/room/AnnouncingView";
 import DoneCeremony from "@/components/room/DoneCeremony";
 import VotingView from "@/components/voting/VotingView";
@@ -674,6 +675,10 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         categories={phase.room.categories ?? []}
       />
     );
+  }
+
+  if (phase.room.status === "scoring") {
+    return <ScoringScreen />;
   }
 
   return <StatusStub status={phase.room.status} />;
