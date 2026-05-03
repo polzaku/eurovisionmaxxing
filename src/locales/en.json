@@ -80,6 +80,10 @@
     "originality":       { "name": "Originality",       "hint": "Has Eurovision heard this before?" }
   },
   "voting": {
+    "scoredChip": {
+      "partial": "scored",
+      "all": "all scored"
+    },
     "missed": {
       "button": "I missed this",
       "buttonAria": "Mark this contestant as missed",

@@ -6,6 +6,7 @@ import {
   summarizeContestantStatus,
   type ContestantStatus,
 } from "@/lib/voting/contestantStatus";
+import ScoredByChip from "@/components/voting/ScoredByChip";
 
 export interface JumpToDrawerProps {
   isOpen: boolean;
@@ -16,6 +17,10 @@ export interface JumpToDrawerProps {
   categoryNames: readonly string[];
   onSelect: (contestantId: string) => void;
   onClose: () => void;
+  /** SPEC §8.8 — fully-scored counts per contestantId. */
+  scoredByCounts?: Record<string, number>;
+  /** Total room members. When undefined or 0, the chip is suppressed. */
+  roomMemberTotal?: number;
 }
 
 const STATUS_LABEL: Record<ContestantStatus, string> = {
@@ -39,6 +44,8 @@ export default function JumpToDrawer({
   categoryNames,
   onSelect,
   onClose,
+  scoredByCounts,
+  roomMemberTotal,
 }: JumpToDrawerProps) {
   const currentRowRef = useRef<HTMLLIElement>(null);
 
@@ -118,6 +125,13 @@ export default function JumpToDrawer({
                   >
                     {STATUS_LABEL[status]}
                   </span>
+                  {roomMemberTotal && roomMemberTotal > 0 ? (
+                    <ScoredByChip
+                      count={scoredByCounts?.[c.id] ?? 0}
+                      total={roomMemberTotal}
+                      size="sm"
+                    />
+                  ) : null}
                 </button>
               </li>
             );
