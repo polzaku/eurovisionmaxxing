@@ -33,6 +33,7 @@ import LobbyView, {
 } from "@/components/room/LobbyView";
 import StatusStub from "@/components/room/StatusStub";
 import ScoringScreen from "@/components/room/ScoringScreen";
+import CatchingUpPill from "@/components/room/CatchingUpPill";
 import AnnouncingView from "@/components/room/AnnouncingView";
 import DoneCeremony from "@/components/room/DoneCeremony";
 import VotingView from "@/components/voting/VotingView";
@@ -125,6 +126,12 @@ export default function RoomPage({ params }: { params: { id: string } }) {
   const [votingProgress, setVotingProgress] = useState<VotingProgressState>(
     () => initialVotingProgressState(),
   );
+  // SPEC §10.2 / TODO L10 — when the user lands on a room that's already
+  // in `announcing`, show a brief "Catching up…" pill so they understand
+  // they're joining mid-reveal. Tracked via a ref to fire only on first
+  // ready transition, not on every refetch.
+  const initialStatusSeenRef = useRef<string | null>(null);
+  const [showCatchingUp, setShowCatchingUp] = useState(false);
 
   const roomId = params.id;
 
@@ -317,6 +324,18 @@ export default function RoomPage({ params }: { params: { id: string } }) {
       fetch: window.fetch.bind(window),
     });
   }, [roomId]);
+
+  // SPEC §10.2 / L10 — first-ready detection: if the user lands on the
+  // room while it's already announcing, flash the Catching-up pill once.
+  // Subsequent status_changed broadcasts don't trigger it.
+  useEffect(() => {
+    if (phase.kind !== "ready") return;
+    if (initialStatusSeenRef.current !== null) return;
+    initialStatusSeenRef.current = phase.room.status;
+    if (phase.room.status === "announcing") {
+      setShowCatchingUp(true);
+    }
+  }, [phase]);
 
   // Stale-reload recovery (admin reloaded after the 5-s deadline elapsed).
   useEffect(() => {
@@ -675,32 +694,38 @@ export default function RoomPage({ params }: { params: { id: string } }) {
       }));
 
       return (
-        <InstantAnnouncingView
-          room={{
-            id: phase.room.id,
-            ownerUserId: phase.room.ownerUserId,
-          }}
-          contestants={phase.contestants}
-          memberships={members}
-          currentUserId={session.userId}
-          ownBreakdown={ownBreakdown ?? []}
-          onMarkReady={handleMarkReady}
-          onReveal={handleReveal}
-        />
+        <>
+          <CatchingUpPill active={showCatchingUp} />
+          <InstantAnnouncingView
+            room={{
+              id: phase.room.id,
+              ownerUserId: phase.room.ownerUserId,
+            }}
+            contestants={phase.contestants}
+            memberships={members}
+            currentUserId={session.userId}
+            ownBreakdown={ownBreakdown ?? []}
+            onMarkReady={handleMarkReady}
+            onReveal={handleReveal}
+          />
+        </>
       );
     }
 
     return (
-      <AnnouncingView
-        room={{
-          id: phase.room.id,
-          status: phase.room.status,
-          ownerUserId: phase.room.ownerUserId,
-        }}
-        contestants={phase.contestants}
-        currentUserId={session.userId}
-        onAnnouncementEnded={() => void loadRoom()}
-      />
+      <>
+        <CatchingUpPill active={showCatchingUp} />
+        <AnnouncingView
+          room={{
+            id: phase.room.id,
+            status: phase.room.status,
+            ownerUserId: phase.room.ownerUserId,
+          }}
+          contestants={phase.contestants}
+          currentUserId={session.userId}
+          onAnnouncementEnded={() => void loadRoom()}
+        />
+      </>
     );
   }
 

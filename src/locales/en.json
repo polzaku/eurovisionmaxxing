@@ -234,6 +234,9 @@
     "title": "Tallying results…",
     "subtitle": "Hold tight — we're crunching the numbers."
   },
+  "room": {
+    "catchingUp": "Catching up…"
+  },
   "lobby": {
     "refreshContestants": {
       "button": "Refresh contestants",
