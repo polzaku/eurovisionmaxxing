@@ -4,6 +4,7 @@ import type { Room, VotingCategory } from "@/types";
 import type { ApiErrorCode } from "@/lib/api-errors";
 import { mapRoom } from "@/lib/rooms/shared";
 import { isTestFixtureYear } from "@/lib/contestants";
+import { validateCategories } from "@/lib/rooms/validateCategories";
 
 export interface CreateRoomInput {
   year: unknown;
@@ -39,9 +40,6 @@ export type CreateRoomResult = CreateRoomSuccess | CreateRoomFailure;
 const EVENT_VALUES = ["semi1", "semi2", "final"] as const;
 const MODE_VALUES = ["live", "instant"] as const;
 const MIN_YEAR = 2000;
-const MAX_CATEGORIES = 8;
-const CATEGORY_NAME_REGEX = /^[A-Za-z0-9 \-]{2,24}$/;
-const HINT_MAX_LEN = 80;
 
 type RoomRow = Database["public"]["Tables"]["rooms"]["Row"];
 
@@ -139,108 +137,19 @@ function validateInput(
     };
   }
 
-  if (!Array.isArray(input.categories)) {
+  const catResult = validateCategories(input.categories);
+  if (!catResult.ok) {
     return {
       ok: false,
       failure: fail(
-        "INVALID_CATEGORIES",
-        "categories must be an array.",
-        400,
-        "categories"
+        catResult.code,
+        catResult.message,
+        catResult.status,
+        catResult.field,
       ),
     };
   }
-  if (input.categories.length < 1 || input.categories.length > MAX_CATEGORIES) {
-    return {
-      ok: false,
-      failure: fail(
-        "INVALID_CATEGORIES",
-        `categories must contain between 1 and ${MAX_CATEGORIES} items.`,
-        400,
-        "categories"
-      ),
-    };
-  }
-
-  const normalized: VotingCategory[] = [];
-  const seenNames = new Set<string>();
-  for (const raw of input.categories) {
-    if (typeof raw !== "object" || raw === null) {
-      return {
-        ok: false,
-        failure: fail(
-          "INVALID_CATEGORY",
-          "each category must be an object.",
-          400,
-          "categories"
-        ),
-      };
-    }
-    const r = raw as { name?: unknown; weight?: unknown; hint?: unknown };
-    if (typeof r.name !== "string" || !CATEGORY_NAME_REGEX.test(r.name.trim())) {
-      return {
-        ok: false,
-        failure: fail(
-          "INVALID_CATEGORY",
-          "category name must be 2–24 characters (letters, numbers, spaces, hyphens).",
-          400,
-          "categories"
-        ),
-      };
-    }
-    let weight: number = 1;
-    if (r.weight !== undefined && r.weight !== null) {
-      if (
-        typeof r.weight !== "number" ||
-        !Number.isInteger(r.weight) ||
-        r.weight < 1 ||
-        r.weight > 5
-      ) {
-        return {
-          ok: false,
-          failure: fail(
-            "INVALID_CATEGORY",
-            "category weight must be an integer between 1 and 5.",
-            400,
-            "categories"
-          ),
-        };
-      }
-      weight = r.weight;
-    }
-    let hint: string | undefined;
-    if (r.hint !== undefined && r.hint !== null) {
-      if (typeof r.hint !== "string" || r.hint.length > HINT_MAX_LEN) {
-        return {
-          ok: false,
-          failure: fail(
-            "INVALID_CATEGORY",
-            `category hint must be a string of at most ${HINT_MAX_LEN} characters.`,
-            400,
-            "categories"
-          ),
-        };
-      }
-      hint = r.hint;
-    }
-    const nameTrimmed = r.name.trim();
-    const nameKey = nameTrimmed.toLowerCase();
-    if (seenNames.has(nameKey)) {
-      return {
-        ok: false,
-        failure: fail(
-          "INVALID_CATEGORIES",
-          "category names must be unique (case-insensitive).",
-          400,
-          "categories"
-        ),
-      };
-    }
-    seenNames.add(nameKey);
-    const entry: VotingCategory = { name: nameTrimmed, weight };
-    if (hint !== undefined) entry.hint = hint;
-    normalized.push(entry);
-  }
+  const normalized = catResult.normalized;
 
   return {
     ok: true,
