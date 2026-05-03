@@ -15,6 +15,12 @@ import {
   type FetchRoomData,
 } from "@/lib/room/api";
 import { contestantDiff } from "@/lib/rooms/contestantDiff";
+import {
+  initialVotingProgressState,
+  nextVotingProgress,
+  countsFromState,
+  type VotingProgressState,
+} from "@/lib/voting/votingProgressReducer";
 import InstantAnnouncingView from "@/components/room/InstantAnnouncingView";
 import type { OwnBreakdownEntry } from "@/components/instant/OwnPointsCeremony";
 import { mapRoomError } from "@/lib/room/errors";
@@ -108,6 +114,12 @@ export default function RoomPage({ params }: { params: { id: string } }) {
   const finalizeFiredRef = useRef(false);
   const [ownBreakdown, setOwnBreakdown] = useState<OwnBreakdownEntry[] | null>(
     null,
+  );
+  // SPEC §8.8 voting-progress chip state — accumulates from realtime
+  // broadcasts. Empty on load (no aggregate endpoint per spec); populates
+  // as guests vote.
+  const [votingProgress, setVotingProgress] = useState<VotingProgressState>(
+    () => initialVotingProgressState(),
   );
 
   const roomId = params.id;
@@ -205,6 +217,12 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     }
     if (event.type === "contestants_refreshed") {
       void loadRoom();
+      return;
+    }
+    if (event.type === "voting_progress") {
+      const categoriesCount =
+        phase.kind === "ready" ? (phase.room.categories ?? []).length : 0;
+      setVotingProgress((s) => nextVotingProgress(s, event, categoriesCount));
       return;
     }
     if (event.type === "user_joined") {
@@ -509,6 +527,11 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     )?.displayName;
     const isEnding = phase.room.status === "voting_ending";
     const votingEndsAt = phase.room.votingEndsAt ?? null;
+    const scoredByCounts: Record<string, number> = {};
+    for (const c of phase.contestants) {
+      scoredByCounts[c.id] = countsFromState(votingProgress, c.id);
+    }
+    const roomMemberTotal = phase.memberships.length;
     return (
       <>
         {isEnding ? (
@@ -561,6 +584,8 @@ export default function RoomPage({ params }: { params: { id: string } }) {
           drainNotice={autosave.drainNotice}
           onDismissDrainNotice={autosave.dismissDrainNotice}
           queueOverflow={autosave.queueOverflow}
+          scoredByCounts={scoredByCounts}
+          roomMemberTotal={roomMemberTotal}
         />
       </>
     );

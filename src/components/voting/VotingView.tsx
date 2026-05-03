@@ -19,6 +19,7 @@ import { useMissedUndo } from "@/hooks/useMissedUndo";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { scoredCount } from "@/components/voting/scoredCount";
 import SaveChip, { type DisplaySaveStatus } from "@/components/voting/SaveChip";
+import ScoredByChip from "@/components/voting/ScoredByChip";
 import OfflineBanner from "@/components/voting/OfflineBanner";
 import DrainNotice from "@/components/voting/DrainNotice";
 import QueueOverflowBanner from "@/components/voting/QueueOverflowBanner";
@@ -59,6 +60,14 @@ export interface VotingViewProps {
   drainNotice?: DrainNoticePayload | null;
   onDismissDrainNotice?: () => void;
   queueOverflow?: boolean;
+  /**
+   * SPEC §8.8 — per-contestant fully-scored counts hydrated from the
+   * voting_progress broadcast via `votingProgressReducer`. Map keyed by
+   * contestantId. Missing entries render as 0.
+   */
+  scoredByCounts?: Record<string, number>;
+  /** Total room members for §8.8 chip denominator. */
+  roomMemberTotal?: number;
 }
 
 function getPersistentStorage() {
@@ -89,6 +98,8 @@ export default function VotingView({
   drainNotice,
   onDismissDrainNotice,
   queueOverflow,
+  scoredByCounts,
+  roomMemberTotal,
 }: VotingViewProps) {
   const sortedContestants = useMemo(
     () => [...contestants].sort((a, b) => a.runningOrder - b.runningOrder),
@@ -371,6 +382,12 @@ export default function VotingView({
               i
             </button>
             {saveStatus !== undefined && <SaveChip status={saveStatus} />}
+            {roomMemberTotal && roomMemberTotal > 0 ? (
+              <ScoredByChip
+                count={scoredByCounts?.[contestant.id] ?? 0}
+                total={roomMemberTotal}
+              />
+            ) : null}
             <span className="text-sm font-mono text-muted-foreground tabular-nums">
               {contestant.runningOrder}/{totalContestants}
             </span>
@@ -488,6 +505,8 @@ export default function VotingView({
           scoresByContestant={scoresByContestant}
           missedByContestant={missedByContestant}
           categoryNames={categoryNames}
+          scoredByCounts={scoredByCounts}
+          roomMemberTotal={roomMemberTotal}
           onSelect={(id) => {
             const target = sortedContestants.findIndex((c) => c.id === id);
             if (target >= 0) {
