@@ -338,3 +338,61 @@ describe("LeaderboardCeremony — prefers-reduced-motion", () => {
     expect(pushMock).toHaveBeenCalledWith(`/results/${encodeURIComponent(ROOM_ID)}`);
   });
 });
+
+describe("LeaderboardCeremony — onAfterSettle prop (chained ceremony hook)", () => {
+  it("fires onAfterSettle once after settle and never auto-redirects", async () => {
+    mockFetch();
+    vi.useFakeTimers({
+      toFake: [
+        "requestAnimationFrame",
+        "cancelAnimationFrame",
+        "setTimeout",
+        "clearTimeout",
+        "Date",
+        "performance",
+      ],
+    });
+    const onAfterSettle = vi.fn();
+    render(
+      <LeaderboardCeremony roomId={ROOM_ID} onAfterSettle={onAfterSettle} />,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    // Drain the stagger.
+    await act(async () => {
+      vi.advanceTimersByTime(STAGGER_MS * 5);
+    });
+    // Drain the post-settle pause.
+    await act(async () => {
+      vi.advanceTimersByTime(POST_SETTLE_PAUSE_MS + 100);
+    });
+
+    expect(onAfterSettle).toHaveBeenCalledTimes(1);
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it("fires onAfterSettle immediately when the replay flag is already set", async () => {
+    markRevealed(ROOM_ID);
+    mockFetch();
+    const onAfterSettle = vi.fn();
+    render(
+      <LeaderboardCeremony roomId={ROOM_ID} onAfterSettle={onAfterSettle} />,
+    );
+
+    await resolvePending();
+
+    expect(onAfterSettle).toHaveBeenCalledTimes(1);
+    expect(pushMock).not.toHaveBeenCalled();
+    // Stay-here / See-full-results UI is suppressed when the parent owns
+    // post-settle UX.
+    expect(
+      screen.queryByText("instantAnnounce.ceremony.stayHere"),
+    ).toBeNull();
+    expect(
+      screen.queryByText("instantAnnounce.ceremony.seeFullResults"),
+    ).toBeNull();
+  });
+});

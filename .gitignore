@@ -43,3 +43,8 @@ TODO.md
 
 # claude-managed worktrees (local only)
 .claude/worktrees/
+
+# playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/

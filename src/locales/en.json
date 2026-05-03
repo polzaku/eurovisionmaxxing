@@ -261,6 +261,19 @@
     "jointCaption": "joint winners",
     "neighbourhoodCaption": "voted most alike",
     "explainerToggle": "What does this mean?",
+    "ceremony": {
+      "title": "And the awards go to…",
+      "nextAward": "Next award",
+      "nextAwardAria": "Next award ({current} of {total})",
+      "advanceHint": "Tap anywhere to reveal the next award"
+    },
+    "endOfShow": {
+      "copyLink": "Copy share link",
+      "copyLinkConfirm": "Link copied!",
+      "copySummary": "Copy text summary",
+      "copySummaryConfirm": "Summary copied!",
+      "createAnother": "Create another room"
+    },
     "explainers": {
       "harshest_critic": "Lowest average score given across all the contestants you voted on.",
       "biggest_stan": "Highest average score given across all the contestants you voted on.",
