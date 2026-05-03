@@ -67,6 +67,8 @@ interface RenderOpts {
     removed: string[];
     reordered: string[];
   } | null>;
+  announcementMode?: "live" | "instant";
+  onChangeAnnouncementMode?: (mode: "live" | "instant") => Promise<void>;
 }
 
 function renderLobby(opts: RenderOpts = {}) {
@@ -86,6 +88,8 @@ function renderLobby(opts: RenderOpts = {}) {
       onCopyPin={onCopyPin}
       onCopyLink={onCopyLink}
       onRefreshContestants={opts.onRefreshContestants}
+      announcementMode={opts.announcementMode}
+      onChangeAnnouncementMode={opts.onChangeAnnouncementMode}
     />
   );
   return { ...render(ui), onStartVoting, onCopyPin, onCopyLink };
@@ -225,5 +229,78 @@ describe("<LobbyView>", () => {
         name: /lobby.refreshContestants.button/,
       }),
     ).toBeNull();
+  });
+
+  it("renders the announcement-mode toggle when admin + props provided (A2)", () => {
+    renderLobby({
+      isAdmin: true,
+      announcementMode: "live",
+      onChangeAnnouncementMode: vi.fn().mockResolvedValue(undefined),
+    });
+    expect(
+      screen.getByTestId("lobby-announcement-mode-toggle"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Live" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Instant" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+  });
+
+  it("hides the mode toggle when isAdmin is false", () => {
+    renderLobby({
+      isAdmin: false,
+      announcementMode: "live",
+      onChangeAnnouncementMode: vi.fn(),
+    });
+    expect(
+      screen.queryByTestId("lobby-announcement-mode-toggle"),
+    ).toBeNull();
+  });
+
+  it("hides the mode toggle when announcementMode prop is omitted", () => {
+    renderLobby({
+      isAdmin: true,
+      onChangeAnnouncementMode: vi.fn(),
+    });
+    expect(
+      screen.queryByTestId("lobby-announcement-mode-toggle"),
+    ).toBeNull();
+  });
+
+  it("hides the mode toggle when onChangeAnnouncementMode is omitted", () => {
+    renderLobby({
+      isAdmin: true,
+      announcementMode: "live",
+    });
+    expect(
+      screen.queryByTestId("lobby-announcement-mode-toggle"),
+    ).toBeNull();
+  });
+
+  it("disables the currently-selected mode button (no-op if tapped)", () => {
+    const onChange = vi.fn().mockResolvedValue(undefined);
+    renderLobby({
+      isAdmin: true,
+      announcementMode: "instant",
+      onChangeAnnouncementMode: onChange,
+    });
+    const instantBtn = screen.getByRole("button", { name: "Instant" });
+    expect(instantBtn).toBeDisabled();
+  });
+
+  it("calls onChangeAnnouncementMode with the new mode when the other button is clicked", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn().mockResolvedValue(undefined);
+    renderLobby({
+      isAdmin: true,
+      announcementMode: "live",
+      onChangeAnnouncementMode: onChange,
+    });
+    await user.click(screen.getByRole("button", { name: "Instant" }));
+    expect(onChange).toHaveBeenCalledWith("instant");
   });
 });

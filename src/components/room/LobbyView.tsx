@@ -42,6 +42,14 @@ interface LobbyViewProps {
    * room page wrapping `refreshContestantsApi` + `contestantDiff`.
    */
   onRefreshContestants?: () => Promise<RefreshDiff | null>;
+  /**
+   * SPEC §6.1 / A2 — owner-only inline switch of announcement_mode while
+   * the room is still in the lobby. When provided alongside `announcementMode`
+   * + `isAdmin`, renders a two-button toggle (Live / Instant). Year + event
+   * remain immutable; categories edits deferred to V1.1.
+   */
+  announcementMode?: "live" | "instant";
+  onChangeAnnouncementMode?: (mode: "live" | "instant") => Promise<void>;
 }
 
 function useCopiedFlag(): [boolean, () => void] {
@@ -66,9 +74,27 @@ export default function LobbyView({
   onCopyPin,
   onCopyLink,
   onRefreshContestants,
+  announcementMode,
+  onChangeAnnouncementMode,
 }: LobbyViewProps) {
   const [pinCopied, markPinCopied] = useCopiedFlag();
   const [linkCopied, markLinkCopied] = useCopiedFlag();
+  const [modeBusy, setModeBusy] = useState(false);
+
+  const handleModeChange = async (next: "live" | "instant") => {
+    if (modeBusy) return;
+    if (!onChangeAnnouncementMode) return;
+    if (next === announcementMode) return;
+    setModeBusy(true);
+    try {
+      await onChangeAnnouncementMode(next);
+    } finally {
+      setModeBusy(false);
+    }
+  };
+
+  const showModeToggle =
+    isAdmin && !!announcementMode && !!onChangeAnnouncementMode;
 
   return (
     <main className="flex min-h-screen flex-col items-center px-6 py-12">
@@ -148,6 +174,42 @@ export default function LobbyView({
         {isAdmin && onRefreshContestants ? (
           <section className="space-y-1">
             <RefreshContestantsButton onRefresh={onRefreshContestants} />
+          </section>
+        ) : null}
+
+        {showModeToggle ? (
+          <section
+            className="space-y-2"
+            data-testid="lobby-announcement-mode-toggle"
+          >
+            <p className="text-xs uppercase tracking-widest text-muted-foreground">
+              Announcement mode
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {(["live", "instant"] as const).map((m) => {
+                const selected = m === announcementMode;
+                const label = m === "live" ? "Live" : "Instant";
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    aria-pressed={selected}
+                    disabled={modeBusy || selected}
+                    onClick={() => void handleModeChange(m)}
+                    className={`rounded-lg border-2 px-4 py-2 text-sm font-medium transition-all ${
+                      selected
+                        ? "border-primary bg-primary/10 text-primary cursor-default"
+                        : "border-border hover:border-accent disabled:opacity-50"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Switch any time before voting starts. Year and event are locked.
+            </p>
           </section>
         ) : null}
 
