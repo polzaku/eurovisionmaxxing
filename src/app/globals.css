@@ -53,6 +53,56 @@
   }
 }
 
+/*
+ * SPEC §3.4 manual theme override. When the user picks Light or Dark via
+ * the <ThemeToggle>, document.documentElement.dataset.theme is set, and
+ * these blocks override the @media query above. Source order matters —
+ * these come AFTER the @media so equal-specificity rules win on order.
+ *
+ * "system" (or no attribute) → fall through to the @media default.
+ */
+:root[data-theme="light"] {
+  --background: #f8f8fc;
+  --foreground: #0a0a14;
+  --card: #ffffff;
+  --card-foreground: #0a0a14;
+  --primary: #d4a017;
+  --primary-foreground: #0a0a14;
+  --secondary: #1a1a3e;
+  --secondary-foreground: #f8f8fc;
+  --muted: #e8e8f0;
+  --muted-foreground: #6b6b80;
+  --accent: #e91e8c;
+  --accent-foreground: #ffffff;
+  --destructive: #dc2626;
+  --border: #d0d0e0;
+  --ring: #d4a017;
+  --gold: #d4a017;
+  --hot-pink: #e91e8c;
+  --navy: #0a0a2e;
+}
+
+:root[data-theme="dark"] {
+  --background: #0a0a14;
+  --foreground: #e8e8f0;
+  --card: #12122a;
+  --card-foreground: #e8e8f0;
+  --primary: #f0c040;
+  --primary-foreground: #0a0a14;
+  --secondary: #1e1e4a;
+  --secondary-foreground: #e8e8f0;
+  --muted: #1a1a30;
+  --muted-foreground: #8888a0;
+  --accent: #ff3eaa;
+  --accent-foreground: #0a0a14;
+  --destructive: #ef4444;
+  --border: #2a2a50;
+  --ring: #f0c040;
+  --gold: #f0c040;
+  --hot-pink: #ff3eaa;
+  --navy: #0a0a2e;
+}
+
 @layer base {
   * {
     border-color: var(--border);
