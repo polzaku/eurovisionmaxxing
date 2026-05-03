@@ -25,25 +25,29 @@ export default function AwardsCeremony({
   const [index, setIndex] = useState(0);
   const firedRef = useRef(false);
 
+  // index moves from 0 to sequence.length. When it reaches sequence.length
+  // (i.e. the user has advanced past the final card), we fire onAllRevealed
+  // exactly once. Side-effects on parent state are kept out of the setIndex
+  // updater per React's "no setState-in-render" rule (firing during the
+  // updater fn ran into a "Cannot update component during render" warning
+  // when DoneCeremony was the parent).
   useEffect(() => {
-    if (sequence.length === 0 && !firedRef.current) {
+    if (firedRef.current) return;
+    if (sequence.length === 0) {
+      firedRef.current = true;
+      onAllRevealed();
+      return;
+    }
+    if (index >= sequence.length) {
       firedRef.current = true;
       onAllRevealed();
     }
-  }, [sequence.length, onAllRevealed]);
+  }, [index, sequence.length, onAllRevealed]);
 
   const advance = useCallback(() => {
     if (firedRef.current) return;
-    setIndex((i) => {
-      const next = i + 1;
-      if (next >= sequence.length) {
-        firedRef.current = true;
-        onAllRevealed();
-        return i;
-      }
-      return next;
-    });
-  }, [sequence.length, onAllRevealed]);
+    setIndex((i) => Math.min(i + 1, sequence.length));
+  }, [sequence.length]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
