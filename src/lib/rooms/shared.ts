@@ -39,7 +39,8 @@ export type RoomEventPayload =
       readyAt: string;
       readyCount: number;
       totalCount: number;
-    };
+    }
+  | { type: "contestants_refreshed" };
 
 type RoomRow = Database["public"]["Tables"]["rooms"]["Row"];
 

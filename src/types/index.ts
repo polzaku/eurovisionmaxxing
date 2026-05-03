@@ -152,7 +152,8 @@ export type RoomEvent =
       readyAt: string;
       readyCount: number;
       totalCount: number;
-    };
+    }
+  | { type: "contestants_refreshed" };
 
 // ─── Voting Templates ────────────────────────────────────────────────────────
 

@@ -87,6 +87,11 @@ function mapApiToContestant(
   };
 }
 
+export interface FetchContestantsOptions {
+  /** Skip Next's fetch cache. Used by SPEC §5.1d admin refresh. */
+  bypassCache?: boolean;
+}
+
 /**
  * Fetch contestant data with the cascade:
  * 1. Try EurovisionAPI
@@ -95,7 +100,8 @@ function mapApiToContestant(
  */
 export async function fetchContestants(
   year: number,
-  event: EventType
+  event: EventType,
+  options: FetchContestantsOptions = {}
 ): Promise<Contestant[]> {
   // Test-fixture path (dev-only): skip the upstream API and read directly
   // from data/contestants/9999/{event}.json. The guard short-circuits prod.
@@ -118,7 +124,12 @@ export async function fetchContestants(
   // Step 1: Try API
   try {
     const url = `${EUROVISION_API_BASE}/contests/${year}/events/${eventMap[event]}/contestants`;
-    const res = await fetch(url, { next: { revalidate: 3600 } });
+    const res = await fetch(
+      url,
+      options.bypassCache
+        ? { cache: "no-store" }
+        : { next: { revalidate: 3600 } },
+    );
 
     if (res.ok) {
       const data = await res.json();
