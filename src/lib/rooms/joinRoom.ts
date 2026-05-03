@@ -28,7 +28,10 @@ export type JoinRoomResult = JoinRoomSuccess | JoinRoomFailure;
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// SPEC §6.3.2 — voting_ending is the 5-s undo window after the admin
+// triggers "End voting"; new joins are closed once that countdown fires.
 const UNJOINABLE_STATUSES: ReadonlySet<string> = new Set([
+  "voting_ending",
   "scoring",
   "announcing",
   "done",

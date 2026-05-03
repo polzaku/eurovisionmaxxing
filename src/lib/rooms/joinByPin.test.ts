@@ -260,7 +260,7 @@ describe("joinByPin — room not found", () => {
 });
 
 describe("joinByPin — status guard", () => {
-  it.each(["scoring", "announcing", "done"] as const)(
+  it.each(["voting_ending", "scoring", "announcing", "done"] as const)(
     "rejects status=%s with 409 ROOM_NOT_JOINABLE",
     async (status) => {
       const mock = makeSupabaseMock({

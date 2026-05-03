@@ -6,7 +6,12 @@ import { PIN_CHARSET } from "@/types";
 
 const PIN_REGEX = new RegExp(`^[${PIN_CHARSET}]{6,7}$`);
 
+// SPEC §6.3.2 — voting_ending is the 5-s undo window after the admin
+// triggers "End voting"; new joins are closed once that countdown fires
+// (a fresh joiner would have seconds to score everything they missed
+// before the room transitions to scoring, so the UX is to reject).
 const UNJOINABLE_STATUSES: ReadonlySet<string> = new Set([
+  "voting_ending",
   "scoring",
   "announcing",
   "done",
