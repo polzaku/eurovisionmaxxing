@@ -220,6 +220,16 @@
       "semi2": "Eurovision {year} — Semi-final 2"
     }
   },
+  "theme": {
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark",
+    "toggleAria": {
+      "system": "Theme: System (tap for Light)",
+      "light": "Theme: Light (tap for Dark)",
+      "dark": "Theme: Dark (tap for System)"
+    }
+  },
   "lobby": {
     "refreshContestants": {
       "button": "Refresh contestants",
