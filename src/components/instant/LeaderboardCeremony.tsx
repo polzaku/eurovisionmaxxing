@@ -25,6 +25,14 @@ const POST_SETTLE_PAUSE_MS_REDUCED = 1000;
 
 interface LeaderboardCeremonyProps {
   roomId: string;
+  /**
+   * When provided, the parent owns post-settle UX: this component suppresses
+   * the auto-redirect-to-results timer and the Stay-here / See-full-results
+   * footer, and instead fires `onAfterSettle` once when the ceremony settles
+   * (or immediately if the sessionStorage replay-skip flag is already set).
+   * Used by `<DoneCeremony>` to chain into the awards reveal (Phase 6.2).
+   */
+  onAfterSettle?: () => void;
 }
 
 interface FetchedData {
@@ -32,7 +40,7 @@ interface FetchedData {
   contestants: Contestant[];
 }
 
-export default function LeaderboardCeremony({ roomId }: LeaderboardCeremonyProps) {
+export default function LeaderboardCeremony({ roomId, onAfterSettle }: LeaderboardCeremonyProps) {
   const router = useRouter();
   const t = useTranslations();
 
@@ -89,10 +97,18 @@ export default function LeaderboardCeremony({ roomId }: LeaderboardCeremonyProps
   // Once the ceremony is "complete" (settled or skipped), set the flag and
   // start the post-settle redirect timer.
   const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const settleFiredRef = useRef(false);
   useEffect(() => {
     if (!data) return;
     if (!isComplete) return;
     markRevealed(roomId);
+
+    // Replay-skip + onAfterSettle: parent wants control immediately.
+    if (skipReplay && onAfterSettle && !settleFiredRef.current) {
+      settleFiredRef.current = true;
+      onAfterSettle();
+      return;
+    }
 
     if (skipReplay || stayedHere) return;
 
@@ -100,12 +116,18 @@ export default function LeaderboardCeremony({ roomId }: LeaderboardCeremonyProps
       ? POST_SETTLE_PAUSE_MS_REDUCED
       : POST_SETTLE_PAUSE_MS;
     redirectTimerRef.current = setTimeout(() => {
-      router.push(`/results/${encodeURIComponent(roomId)}`);
+      if (onAfterSettle) {
+        if (settleFiredRef.current) return;
+        settleFiredRef.current = true;
+        onAfterSettle();
+      } else {
+        router.push(`/results/${encodeURIComponent(roomId)}`);
+      }
     }, pause);
     return () => {
       if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
     };
-  }, [data, isComplete, skipReplay, stayedHere, prefersReducedMotion, roomId, router]);
+  }, [data, isComplete, skipReplay, stayedHere, prefersReducedMotion, roomId, router, onAfterSettle]);
 
   const handleStayHere = useCallback(() => {
     if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
@@ -208,7 +230,7 @@ export default function LeaderboardCeremony({ roomId }: LeaderboardCeremonyProps
           })}
         </ol>
 
-        {(isComplete || skipReplay) && !stayedHere ? (
+        {(isComplete || skipReplay) && !stayedHere && !onAfterSettle ? (
           <RedirectFooter
             roomId={roomId}
             pauseMs={
@@ -229,7 +251,7 @@ export default function LeaderboardCeremony({ roomId }: LeaderboardCeremonyProps
           />
         ) : null}
 
-        {stayedHere ? (
+        {stayedHere && !onAfterSettle ? (
           <a
             href={`/results/${encodeURIComponent(roomId)}`}
             className="block w-full text-center rounded-xl bg-primary px-6 py-4 text-base font-semibold text-primary-foreground transition-transform hover:scale-[1.02] active:scale-[0.98]"
