@@ -388,18 +388,23 @@ export default function VotingView({
                 total={roomMemberTotal}
               />
             ) : null}
-            <span className="text-sm font-mono text-muted-foreground tabular-nums">
-              {contestant.runningOrder}/{totalContestants}
-            </span>
-            <progress
-              className="w-24 h-1.5 overflow-hidden rounded-full [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:bg-primary [&::-moz-progress-bar]:bg-primary"
-              max={totalContestants}
-              value={fullyScoredCount}
-              aria-label={`${fullyScoredCount} of ${totalContestants} contestants fully scored`}
-            />
-            <span className="text-xs text-muted-foreground">
-              {fullyScoredCount} scored
-            </span>
+            <div
+              data-testid="progress-cluster"
+              className="flex flex-col items-end leading-tight"
+            >
+              <span className="text-sm font-mono text-muted-foreground tabular-nums">
+                {contestant.runningOrder}/{totalContestants}
+              </span>
+              <progress
+                className="w-24 h-1.5 overflow-hidden rounded-full [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:bg-primary [&::-moz-progress-bar]:bg-primary"
+                max={totalContestants}
+                value={fullyScoredCount}
+                aria-label={`${fullyScoredCount} of ${totalContestants} contestants fully scored`}
+              />
+              <span className="text-xs text-muted-foreground">
+                {fullyScoredCount} scored
+              </span>
+            </div>
           </div>
         </header>
 
