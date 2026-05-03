@@ -75,7 +75,7 @@ export default function AwardsCeremony({
         onClick={advance}
         className="absolute inset-0 z-0 cursor-pointer bg-transparent"
       />
-      <div className="relative z-10 w-full max-w-md">
+      <div className="pointer-events-none relative z-10 w-full max-w-md">
         <AwardCeremonyCard key={card.award.awardKey} card={card} />
       </div>
       <button
