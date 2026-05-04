@@ -26,16 +26,17 @@ describe("EndOfShowCtas", () => {
     pushMock.mockReset();
   });
 
-  it("guest sees only Copy link + Copy summary", () => {
-    render(
-      <EndOfShowCtas
-        isAdmin={false}
-        shareUrl="https://x.test/results/r1"
-        textSummary="hello"
-        year={2026}
-        event="final"
-      />,
-    );
+  const baseProps = {
+    isAdmin: false,
+    roomId: "r-abc-123",
+    shareUrl: "https://x.test/results/r1",
+    textSummary: "hello",
+    year: 2026,
+    event: "final",
+  };
+
+  it("guest sees Copy link + Copy summary + View full results (no Create another)", () => {
+    render(<EndOfShowCtas {...baseProps} isAdmin={false} />);
     expect(
       screen.getByRole("button", { name: /awards.endOfShow.copyLink/ }),
     ).toBeInTheDocument();
@@ -43,37 +44,54 @@ describe("EndOfShowCtas", () => {
       screen.getByRole("button", { name: /awards.endOfShow.copySummary/ }),
     ).toBeInTheDocument();
     expect(
+      screen.getByRole("button", {
+        name: /awards.endOfShow.viewFullResults/,
+      }),
+    ).toBeInTheDocument();
+    expect(
       screen.queryByRole("button", { name: /awards.endOfShow.createAnother/ }),
     ).toBeNull();
   });
 
   it("admin also sees Create another room", () => {
-    render(
-      <EndOfShowCtas
-        isAdmin={true}
-        shareUrl="https://x.test/results/r1"
-        textSummary="hello"
-        year={2026}
-        event="final"
-      />,
-    );
+    render(<EndOfShowCtas {...baseProps} isAdmin={true} />);
     expect(
       screen.getByRole("button", { name: /awards.endOfShow.createAnother/ }),
     ).toBeInTheDocument();
+    // View full results stays visible for admin too — it's everyone-shown.
+    expect(
+      screen.getByRole("button", {
+        name: /awards.endOfShow.viewFullResults/,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("View full results routes to /results/{roomId} (URL-encoded)", () => {
+    render(<EndOfShowCtas {...baseProps} roomId="r-abc-123" />);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /awards.endOfShow.viewFullResults/,
+      }),
+    );
+    expect(pushMock).toHaveBeenCalledWith("/results/r-abc-123");
+  });
+
+  it("View full results URL-encodes a roomId with special characters", () => {
+    render(<EndOfShowCtas {...baseProps} roomId="weird id/with slash" />);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /awards.endOfShow.viewFullResults/,
+      }),
+    );
+    expect(pushMock).toHaveBeenCalledWith(
+      "/results/weird%20id%2Fwith%20slash",
+    );
   });
 
   it("Copy link writes share URL and shows confirmation that auto-clears after ~2s", async () => {
     vi.useFakeTimers();
     try {
-      render(
-        <EndOfShowCtas
-          isAdmin={false}
-          shareUrl="https://x.test/results/r1"
-          textSummary="hello"
-          year={2026}
-          event="final"
-        />,
-      );
+      render(<EndOfShowCtas {...baseProps} isAdmin={false} />);
       fireEvent.click(
         screen.getByRole("button", { name: /awards.endOfShow.copyLink/ }),
       );
@@ -99,11 +117,9 @@ describe("EndOfShowCtas", () => {
   it("Copy summary writes the textSummary prop", async () => {
     render(
       <EndOfShowCtas
+        {...baseProps}
         isAdmin={false}
-        shareUrl="https://x.test/results/r1"
         textSummary="🇪🇺 Eurovision recap"
-        year={2026}
-        event="final"
       />,
     );
     fireEvent.click(
@@ -116,15 +132,7 @@ describe("EndOfShowCtas", () => {
   });
 
   it("Create another routes to /create with prefilled year + event", () => {
-    render(
-      <EndOfShowCtas
-        isAdmin={true}
-        shareUrl="https://x.test/results/r1"
-        textSummary="hello"
-        year={2026}
-        event="final"
-      />,
-    );
+    render(<EndOfShowCtas {...baseProps} isAdmin={true} />);
     fireEvent.click(
       screen.getByRole("button", { name: /awards.endOfShow.createAnother/ }),
     );
