@@ -1,0 +1,102 @@
+# SPEC §5.5 — daily integration smoke against the live EurovisionAPI.
+#
+# Runs the assertions described in `scripts/contestant-api-smoke.ts`.
+# Failures file (or update) a GitHub Issue with the `api-upstream`
+# label so a human can intervene before show night. Does NOT block
+# PRs — the fallback cascade in src/lib/contestants.ts exists
+# precisely so upstream flakiness doesn't break us. The job's value
+# is surfacing slow rot in the upstream schema before it bites
+# mid-show.
+
+name: Contestant API smoke
+
+on:
+  schedule:
+    # 06:00 UTC daily — chosen so the next morning's first commit
+    # surfaces yesterday's failures before anyone starts work.
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/lib/contestants.ts"
+      - "src/app/api/contestants/**"
+      - "scripts/contestant-api-smoke.ts"
+      - ".github/workflows/contestant-api-smoke.yml"
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  smoke:
+    name: Hit EurovisionAPI for 2025 grand-final
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run smoke test
+        id: smoke
+        # `continue-on-error` keeps the workflow alive on failure so we
+        # can file an issue. The `Fail the workflow` step at the end
+        # surfaces the actual exit code to GitHub's UI.
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          npx tsx scripts/contestant-api-smoke.ts 2>&1 | tee smoke-output.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: File or update api-upstream issue (cron only)
+        # Only file issues for scheduled / manual runs — PR runs already
+        # surface failures inline in the PR's checks.
+        if: |
+          steps.smoke.outputs.exit_code != '0' &&
+          (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # If an open `api-upstream` issue already exists, append a
+          # comment instead of opening a duplicate. Closes the
+          # idempotency gap from the spec ("doesn't post 30 issues").
+          existing=$(gh issue list \
+            --label api-upstream \
+            --state open \
+            --json number,title \
+            --limit 1 \
+            --jq '.[0].number // empty')
+
+          run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          body=$(printf 'Daily smoke failed at %s.\n\nRun: %s\n\nOutput:\n```\n%s\n```\n' \
+            "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            "$run_url" \
+            "$(cat smoke-output.txt)")
+
+          if [ -n "$existing" ]; then
+            echo "Appending to existing issue #${existing}"
+            gh issue comment "$existing" --body "$body"
+          else
+            echo "Filing new api-upstream issue"
+            gh issue create \
+              --title "EurovisionAPI smoke is failing" \
+              --label api-upstream \
+              --body "$body"
+          fi
+
+      - name: Fail the workflow when smoke failed
+        if: steps.smoke.outputs.exit_code != '0'
+        run: |
+          echo "Smoke exited with code ${{ steps.smoke.outputs.exit_code }}"
+          exit 1
