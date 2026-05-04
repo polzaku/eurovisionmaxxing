@@ -120,6 +120,7 @@ export default function DoneCeremony({
       <p className="text-2xl" aria-hidden>🎉</p>
       <EndOfShowCtas
         isAdmin={isAdmin}
+        roomId={roomId}
         shareUrl={shareUrl}
         textSummary={textSummary}
         year={data?.year ?? new Date().getFullYear()}

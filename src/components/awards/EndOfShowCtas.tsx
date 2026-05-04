@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 
 interface EndOfShowCtasProps {
   isAdmin: boolean;
+  roomId: string;
   shareUrl: string;
   textSummary: string;
   year: number;
@@ -15,13 +16,17 @@ interface EndOfShowCtasProps {
 const COPY_CONFIRM_MS = 2000;
 
 /**
- * SPEC §11.3 post-awards 3-CTA footer. Guests see Copy share link + Copy
- * text summary. Admins additionally see Create another room (routes to
- * /create with year + event prefilled). Each clipboard CTA flips to a
- * 2-s "copied!" confirmation state on success.
+ * SPEC §11.3 post-awards 4-CTA footer. Everyone sees Copy share link,
+ * Copy text summary, and View full results (routes to /results/{roomId}
+ * so the user can revisit the leaderboard / breakdowns / award cards
+ * at their own pace — the cinematic reveal is unidirectional, this is
+ * the in-flow path back). Admins additionally see Create another room
+ * (routes to /create with year + event prefilled). Each clipboard CTA
+ * flips to a 2-s "copied!" confirmation state on success.
  */
 export default function EndOfShowCtas({
   isAdmin,
+  roomId,
   shareUrl,
   textSummary,
   year,
@@ -70,6 +75,10 @@ export default function EndOfShowCtas({
     }
   }, [textSummary]);
 
+  const viewFullResults = useCallback(() => {
+    router.push(`/results/${encodeURIComponent(roomId)}`);
+  }, [router, roomId]);
+
   const createAnother = useCallback(() => {
     router.push(
       `/create?year=${encodeURIComponent(year)}&event=${encodeURIComponent(event)}`,
@@ -95,6 +104,13 @@ export default function EndOfShowCtas({
         {summaryCopied
           ? t("awards.endOfShow.copySummaryConfirm")
           : t("awards.endOfShow.copySummary")}
+      </button>
+      <button
+        type="button"
+        onClick={viewFullResults}
+        className="flex-1 rounded-xl border-2 border-border px-4 py-3 text-sm font-semibold transition-transform hover:scale-[1.02] active:scale-[0.98]"
+      >
+        {t("awards.endOfShow.viewFullResults")}
       </button>
       {isAdmin ? (
         <button
