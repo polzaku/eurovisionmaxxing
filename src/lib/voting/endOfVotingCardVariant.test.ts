@@ -210,6 +210,62 @@ describe("endOfVotingCardVariant — host variants", () => {
     }
   });
 
+  // SPEC §8.11.2 "Count semantics — no degenerate `1 of 1` fallback"
+  it("returns hostSelfDoneOnlyNoCount (no count) when admin completed (a) but roomCompletion is undefined", () => {
+    const v = endOfVotingCardVariant(
+      input({
+        viewerRole: "admin",
+        scoresByContestant: {
+          "2026-cy": fullScores(),
+        },
+        // roomCompletion intentionally omitted — bug-fix path: caller has
+        // no broadcast data yet, so the host MUST see the no-count
+        // variant rather than "1 of 1 done so far".
+      }),
+    );
+    expect(v).toEqual({ kind: "hostSelfDoneOnlyNoCount" });
+  });
+
+  it("returns the count-bearing hostSelfDoneOnly when roomCompletion is provided (real numbers, condition (b) does not fire)", () => {
+    // 4-member room, host is the only one finished — ready*2 (=2) is not
+    // greater than total (=4), so condition (b) doesn't fire and the
+    // count-bearing self-done-only variant is the right choice.
+    const v = endOfVotingCardVariant(
+      input({
+        viewerRole: "admin",
+        scoresByContestant: {
+          "2026-cy": fullScores(),
+        },
+        roomCompletion: {
+          lastContestantCompletedOthers: 0,
+          eligibleVoterCount: 4,
+          allEligibleAllDone: false,
+        },
+      }),
+    );
+    expect(v.kind).toBe("hostSelfDoneOnly");
+    if (v.kind === "hostSelfDoneOnly") {
+      expect(v.ready).toBe(1);
+      expect(v.total).toBe(4);
+    }
+  });
+
+  it("guests still get their normal variants when roomCompletion is undefined (no-count is host-only)", () => {
+    const v = endOfVotingCardVariant(
+      input({
+        viewerRole: "guest",
+        scoresByContestant: {
+          "2026-al": fullScores(),
+          "2026-be": fullScores(),
+          "2026-cy": fullScores(),
+        },
+        // roomCompletion omitted — guest still gets the normal
+        // guestAllScored variant from condition (a) on local data.
+      }),
+    );
+    expect(v.kind).toBe("guestAllScored");
+  });
+
   it("prefers (c) > (b) > (a) for admins", () => {
     // (c) wins over (b) — even though both could be true, (c) implies (b)
     const cWins = endOfVotingCardVariant(
