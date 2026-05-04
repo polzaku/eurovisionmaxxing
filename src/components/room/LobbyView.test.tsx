@@ -388,8 +388,26 @@ describe("<LobbyView>", () => {
     await user.click(screen.getByRole("button", { name: /The Spectacle/i }));
     expect(onChange).toHaveBeenCalledTimes(1);
     const arg = onChange.mock.calls[0][0] as { name: string }[];
-    const names = new Set(arg.map((c) => c.name));
-    expect(names).toContain("Drama");
-    expect(names).toContain("Costume commitment");
+    expect(arg.map((c) => c.name)).toContain("Drama");
+    expect(arg.map((c) => c.name)).toContain("Costume commitment");
+  });
+
+  it("renders 'Open present view on TV' link for admin (L1 / §10.3)", () => {
+    renderLobby({ isAdmin: true });
+    const link = screen.getByTestId("lobby-present-link");
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute(
+      "href",
+      "https://eurovisionmaxxing.com/room/r-1/present",
+    );
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("hides the present-view link for guests", () => {
+    renderLobby({ isAdmin: false });
+    expect(
+      screen.queryByTestId("lobby-present-link"),
+    ).not.toBeInTheDocument();
   });
 });
