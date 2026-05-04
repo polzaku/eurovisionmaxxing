@@ -1970,3 +1970,111 @@ When `rooms.bets_enabled = true`, the `/results/{id}` page adds a **Bets section
 - **Admin leaves bets enabled but never picks**: room creation enforces 3 picks server-side — this state is unreachable.
 - **All 3 bets resolve `unknown`**: valid. Every user has `correctCount = 0`. Wishcaster is a 15-way tie → deterministic alphabetical top-two per §11.2. Oracle award is **suppressed** (locale key `awards.the_oracle.suppressed` renders *"The Oracle was unreachable this year"* as a small flavour card). Edge case intentionally handled as narrative.
 - **Single-member room (admin alone)**: bets work identically — the admin can still place picks and resolve. The Oracle and Wishcaster are the same person (acceptable MVP outcome; rare in practice).
+
+---
+
+## 23. Phase E — Europe comparison (post-show alignment)
+
+**Status: post-MVP feature, prioritized above V2.** Designed and scoped here so we can build it the night of the 2026-05-16 show or the day after, while watch-party momentum is still warm.
+
+### 23.1 Goal
+
+After the Eurovision Grand Final ends, every room with `status = 'done'` gains a "How did your room compare to Europe?" surface on `/results/{roomId}`. The surface answers four questions, all derivable from the official per-country jury+televote breakdown and the room's existing `votes` / `results` rows:
+
+1. **Room vs Europe** — Spearman rank correlation between the room's aggregate ranking and the official Eurovision final ranking. Rendered as a single percentage + diff badges per contestant ("you ranked Sweden 3rd; Europe ranked it 1st").
+2. **Each user vs Europe** — same metric per user. Rendered in the existing per-user breakdown cards as a new chip ("84% aligned with Europe").
+3. **Each user's nearest-neighbour country** — for each user, find the European country whose jury (or combined) ranking aligns most closely with their picks. Rendered as *"Alice voted most like Sweden's jury (87% match)"*. Pure narrative flavour, not a leaderboard.
+4. **Room's nearest-neighbour country** — same, for the room aggregate. *"Your room voted most like Cyprus's televote (76% match)"*.
+
+These are post-show flavour reveals, not voting mechanics. No live broadcast hooks — the data isn't available until after the show ends.
+
+### 23.2 Realtime constraints (and why this isn't a Phase 5b/5c-style live feature)
+
+There is **no public structured stream** of Eurovision results during the live broadcast. EBU does not expose a feed. Community sites scrape and republish with minutes of lag. Watch-party "compare during the show" is therefore out of scope.
+
+What is available:
+
+- **Final leaderboard** — eurovision.tv publishes ~10–30 min after broadcast end.
+- **Per-country jury + televote breakdown** — eurovision.tv press release ~1 h after broadcast end. This is the load-bearing dataset for §23 — without per-country breakdown, only #1 and #2 above are computable.
+- **EurovisionAPI** (community: `eurovisionapi.runasp.net` or successor) — typically catches up with eurovision.tv within minutes, exposes JSON.
+- **Wikipedia ESC 2026 article** — populated within hours; structured tables, but scrape-only.
+
+The `/api/europe-comparison/{year}/{event}` endpoint (proposed below) treats EurovisionAPI as primary and falls back to a hand-curated `data/europe-results/{year}/{event}.json` file for resilience — same contestant-data cascade pattern as §5.1.
+
+### 23.3 Data shape (`data/europe-results/{year}/{event}.json`)
+
+```jsonc
+{
+  "year": 2026,
+  "event": "final",
+  "publishedAt": "2026-05-16T22:30:00Z",   // ISO timestamp from EBU
+  "ranking": [                              // final leaderboard
+    { "countryCode": "SE", "rank": 1, "totalPoints": 432, "juryPoints": 200, "televotePoints": 232 },
+    // … one per qualified contestant (~26)
+  ],
+  "votingByCountry": [                      // 50 rows (voting countries, includes some non-participants)
+    {
+      "voterCountryCode": "SE",
+      "jury":     { "AT": 12, "AL": 10, "FI": 8, "ES": 7, /* … */ },   // recipientCountryCode → points (1, 2, 3, 4, 5, 6, 7, 8, 10, 12)
+      "televote": { "AT": 12, "AL": 10, /* … */ }
+    },
+    // …
+  ]
+}
+```
+
+`countryCode` semantics match §5.1a (ISO-3166-1 alpha-2 uppercase). The recipient set in `jury` / `televote` is exactly the awards each voting country gave (10 entries per voter: 1, 2, 3, 4, 5, 6, 7, 8, 10, 12).
+
+### 23.4 Endpoints
+
+- **`GET /api/europe-comparison/{year}/{event}`** — read-only, public. Returns the §23.3 payload. Cascade: live API → hardcoded fallback → 404. Cached aggressively (`Cache-Control: public, max-age=86400`) once published.
+- **`POST /api/admin/refresh-europe-results`** — operator action, owner of the deployment only (gated by a `MAINTAINER_TOKEN` env var, never exposed via the wizard). Hits EurovisionAPI, normalises to §23.3 shape, writes to a new `europe_results` table keyed by `(year, event)`. The above GET reads from this table when present.
+
+### 23.5 Computation primitives (`src/lib/europe/`)
+
+Pure helpers, all unit-testable on small fixtures:
+
+- `spearman(rankingA: number[], rankingB: number[]): number` — already exists in `src/lib/scoring.ts`; reuse.
+- `roomVsEurope(roomLeaderboard, europeRanking): { spearman: number, perContestantDiff: Map<contestantId, number> }`.
+- `userVsEurope(userVotes, europeRanking, scoringContext): { spearman: number }` — scoringContext supplies the user's weighted ranking the same way `runScoring` does.
+- `nearestNeighbourCountry(targetRanking, votingByCountry, mode: "jury" | "televote" | "combined"): { countryCode, alignment: number }` — for each voting country, compute Spearman between target and that country's awards, return argmax. `combined` averages jury + televote awards before ranking.
+
+### 23.6 UI surface on `/results/{roomId}`
+
+A new section between the main leaderboard and the per-user breakdowns, rendered only when `rooms.status = 'done'` AND `europe_results` exists for the room's year+event:
+
+1. **Headline card**: *"Your room ranked Sweden 3rd; Europe ranked it 1st."* + the room's overall Spearman score as a percentage + a diff badge per contestant (the top-5 contestants with the biggest deltas).
+2. **Per-user chip on each breakdown card**: *"84% aligned with Europe"* — small chip below the user's points total, tinted by alignment band (≥80% green, 50–80% neutral, <50% pink).
+3. **Nearest-neighbour callout per user**: under each user's breakdown, one-line *"Voted most like 🇸🇪 Sweden's jury (87% match)"*. Tappable to expand the country's full ranking.
+4. **Room nearest-neighbour callout**: a flavour card near the headline. *"Your room voted most like 🇨🇾 Cyprus's televote (76% match)"*.
+
+All four use the §3.2 palette + animations; no new tokens. No bets coupling.
+
+### 23.7 Text summary + exports (§12.2 / §12.3 / §12.4)
+
+When europe-comparison data exists, the text summary gains a 2-line section:
+
+```
+🇪🇺 vs Europe: 71% aligned · most like 🇨🇾 Cyprus televote
+Top miss: Albania (you 4th, Europe 12th)
+```
+
+HTML and PDF exports include the full headline card + per-user chips + nearest-neighbour rows. No bet-style gate.
+
+### 23.8 Constraints & edge cases
+
+- **Data not yet available**: `/api/europe-comparison/{year}/{event}` returns 404; the UI section renders a one-line *"Europe results aren't published yet — check back after midnight CET."* placeholder.
+- **Partial data** (leaderboard exists but per-country breakdown missing): only #1 (room vs Europe) and #2 (per-user vs Europe) compute; #3 and #4 (nearest-neighbour) suppress with a *"Per-country breakdown lands in ~1 hour after the broadcast."* note.
+- **Year mismatch**: if the room's `year` doesn't match an available `europe_results` row, suppress the entire section. Don't fall back to a different year.
+- **No room votes**: a degenerate room with `voting_ended_at` set but every user marked all contestants `missed=true` shouldn't crash the comparison; pass-through Spearman returns NaN → render a single-line *"Not enough data to compare."*.
+
+### 23.9 Build phasing
+
+Roughly half a day each:
+
+1. **E1** — Data fetcher + endpoint + hardcoded fallback. `scripts/fetch-europe-results.ts` (CLI) + `/api/europe-comparison/{year}/{event}` route + `europe_results` Supabase table.
+2. **E2** — Pure computation primitives in `src/lib/europe/`. Reuse `spearman`. Heavy unit-test coverage.
+3. **E3** — `/results/{roomId}` UI: headline card + per-user chips + nearest-neighbour callouts. RTL coverage with seeded europe-results fixtures.
+4. **E4** — Text summary + HTML/PDF export integration (depends on §12.3 / §12.4 if those ship; otherwise just text summary).
+5. **E5** — Operator runbook: when to run `npm run fetch-europe-results 2026 final` on show night. Document expected timing window.
+
