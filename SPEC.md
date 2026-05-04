@@ -230,6 +230,8 @@ The repo must ship the following fallback JSON files under `data/contestants/`:
 
 A `data/README.md` documents the minimal JSON shape (four fields) and the fact that the other fields are derived at runtime.
 
+**Pre-show requirement (2026 season):** before the Grand Final ship cut-off, `2026/final.json` MUST be populated with the actual finalised lineup (running order, country, artist, song). An empty or stub file is a critical bug: the upstream EurovisionAPI cascade is best-effort, and the moment it returns 4xx/5xx during a show, every room falls through to this file. An empty fallback yields a room with zero contestants, which is a blank voting screen on TV. The fetch path is documented in §5.1c — running the refresh script and spot-checking the JSON is part of the pre-show checklist.
+
 ### 5.1c Operational runbook for contestant data refresh
 
 The hardcoded fallback is load-bearing whenever the EurovisionAPI lags behind the public announcement. A documented refresh process prevents show-night surprises.
@@ -789,6 +791,8 @@ When the viewer is the room owner (or co-admin per §6.7) and the gating trigger
 
 The host always sees their own (a) / (b) / (c) state — never the guest "waiting for admin" copy.
 
+**Count semantics — no degenerate `1 of 1` fallback.** The `{readyCount} of {totalCount}` substitution requires room-wide completion data (condition (b) / (c) signals). In MVP the substitution is sourced from per-contestant `voting_progress` broadcasts accumulated client-side plus `room.memberships.length`. **If room-wide data is unavailable** (e.g. broadcasts haven't landed yet, or the host opens the page after voting started and hasn't seen prior broadcasts) the host MUST see a degenerate-safe copy variant — drop the count entirely, render *"✅ Your vote is in."* — rather than render the misleading *"1 of 1 done so far"* implied by single-user defaults. Same for `host.mostDone`: drop the count when total is unknown rather than print a misleading fraction. The host's variant must never paint the room as smaller than it is.
+
 #### 8.11.3 Implementation notes
 
 The affordance is **client-side rendered**. (a)-driven variants use existing local data (`seedScoresFromVotes` / `seedMissedFromVotes`). (b)/(c)-driven variants need room-wide completion state — see §8.11.1. Distinct from §8.10's `lock-scores` flow: that's the admin-facing "I'm done" data signal; this is the user-facing "what now?" UI signal at the last contestant. Both are needed.
@@ -1113,10 +1117,11 @@ These awards follow the same storage convention as §11.2 — `room_awards.award
   2. Personality awards in order of increasing "social heat": Biggest stan, Harshest critic, Most contrarian, Hive mind master, Neighbourhood voters, Dark horse, Fashion stan.
   3. **Bet-based awards** if enabled (§11.2a): Wishcaster first, then Oracle — playful before reward. Followed immediately by a **full bet leaderboard** card (not dual-avatar; ranked list of every user with their bet-correctness count and the 3 bets resolved yes/no).
   4. **The enabler** — always the last award; narrative closer.
-- After all awards the screen shows three CTAs side-by-side:
+- After all awards the screen shows four CTAs:
   - **"Copy share link"** — copies the `/results/{roomId}` URL and shows a 2s *"Copied!"* confirmation.
   - **"Copy text summary"** — copies an emoji-formatted leaderboard + bet results (see §12.2) to the clipboard for pasting into group chats. 2s confirmation.
-  - **"Create another room"** — routes back to `/create` pre-filled with the same year/event (admin only; guests see the first two CTAs).
+  - **"View full results"** — routes to `/results/{roomId}` so the user can revisit the full leaderboard, per-user breakdowns, and award cards at their own pace. **Required**: the cinematic awards reveal advances unidirectionally and ends on this CTA footer; without an in-flow path back to the static results page, the user has no way to take a closer look at the leaderboard or any individual award once the show is over (other than typing the URL or pulling out their browser history). Shown to everyone.
+  - **"Create another room"** — routes back to `/create` pre-filled with the same year/event (admin only; guests see the first three CTAs).
 
 ---
 
@@ -1647,6 +1652,27 @@ The repo has three layers of automated test, each with a clear scope:
 **Reference implementations:** `src/components/instant/OwnPointsCeremony.test.tsx` (canonical mock shape for `next-intl` + `next/navigation`, basic interaction patterns) and `src/components/instant/LeaderboardCeremony.test.tsx` (fake-timer + `requestAnimationFrame` + `matchMedia` polyfill + `globalThis.fetch` mock). Author conventions also documented in `src/__tests__/README.md`.
 
 **Smoke checklist discipline.** The manual smoke checklist on a PR description should shrink as component tests cover more behaviour. Anything that *could* be asserted under jsdom but is left to manual smoke is a smoke-debt to flag in review.
+
+### 17a.6 Smoke-test fixture seeding
+
+The end-to-end manual smoke (Phase 7 §3) currently exercises the full create-room → onboard → join → vote → end-voting → score → announce → done path on every dry run. Walking that flow takes 5–10 minutes per scenario and most steps are unaffected by the bug being smoke-tested. Fixture seeding shortens the loop.
+
+**Goal:** any tester (or the operator on show night) can land directly on the room state they want to verify — voting screen with N pre-filled votes, `voting_ending` countdown 4 s in, `announcing` mid-queue, `done` with awards — without manually transitioning the room each time.
+
+**Mechanism (MVP):** a dev-only `npm run seed:room <state>` script that populates a Supabase room row, memberships, and (when relevant) votes / results / awards rows, then prints the `/room/{id}` URL. Gated behind `NODE_ENV === 'development'` and the explicit script invocation; never wired into the production app.
+
+**Required states for ship night:**
+
+- `lobby-with-3-guests` — empty room, three pre-onboarded guests, ready to start voting.
+- `voting-half-done` — voting state, 50% of contestants scored, last-contestant gating not yet met.
+- `voting-ending-mid-countdown` — `voting_ending` status with 3 s remaining; smoke-tests the undo path.
+- `announcing-mid-queue-live` — live mode, second announcer mid-queue with 5 reveals shown / 5 pending.
+- `announcing-instant-all-ready` — instant mode, every member marked ready, awaiting admin reveal.
+- `done-with-awards` — full results page populated; smoke-tests the `<DoneCeremony>` chain + `/results/{id}` static page + the post-awards CTA footer.
+
+**Out of scope for MVP:** UI for picking states (the script is CLI-only), seeding bets / hot-takes / late-joiners, automated assertions on the resulting state. All of those are V2.
+
+**Cleanup:** seeded rooms write to the same tables as real rooms; the script tags them with a `seed_*` prefix in `pin` so the operator can identify and `DELETE` them via the Supabase SQL Editor without touching real-user data. The `9999` test-fixture year stays as the contestant cataogue for seeded rooms — it's already gated dev-only and the cleanup story is the same.
 
 ---
 
