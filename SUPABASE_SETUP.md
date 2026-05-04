@@ -85,6 +85,15 @@ For existing projects, run the per-migration SQL listed in the changelog below i
 
 ### Changelog
 
+- **2026-05-04 — R0 + R3 §8.7.2:** added `votes.hot_take_deleted_by_user_id UUID REFERENCES users(id)` and `votes.hot_take_deleted_at TIMESTAMPTZ` to back the admin hot-take deletion endpoint. Both NULL on author self-deletion (clearing the textarea routes through `upsertVote`); both populated when an admin calls `DELETE /api/rooms/{id}/votes/{contestantId}/hot-take`. Apply with:
+
+  ```sql
+  ALTER TABLE votes ADD COLUMN IF NOT EXISTS hot_take_deleted_by_user_id UUID REFERENCES users(id);
+  ALTER TABLE votes ADD COLUMN IF NOT EXISTS hot_take_deleted_at TIMESTAMPTZ;
+  ```
+
+  Backfill unnecessary — existing rows correctly read as "not admin-deleted".
+
 - **2026-05-04 — R0 + R3 §8.7.1:** added `votes.hot_take_edited_at TIMESTAMPTZ` so the upsert orchestrator can stamp subsequent edits and the results page can render the *"edited"* tag. NULL on first save and after deletion (per §8.7.2). Apply with:
 
   ```sql
