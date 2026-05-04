@@ -19,18 +19,16 @@ npm run seed:cleanup
 
 The seeder prints the room URL, the room PIN, and the owner's session payload. Paste the session JSON into your browser's localStorage as `emx_session` to "be" the owner without going through onboard.
 
-## Implemented states
+## Implemented states (all 6 scoped in SPEC §17a.6)
 
-| State | Status | What it lands you on |
-|---|---|---|
-| `lobby-with-3-guests` | ✅ implemented | A `status=lobby` room with the owner + 3 guests already joined. Test the lobby UI, edit-categories, edit-mode, "Start voting", roster behaviour. |
-| `voting-half-done` | 🚧 stub | (see "Adding states" below) |
-| `voting-ending-mid-countdown` | 🚧 stub | |
-| `announcing-mid-queue-live` | 🚧 stub | |
-| `announcing-instant-all-ready` | 🚧 stub | |
-| `done-with-awards` | ✅ implemented | A `status=done` room with 4 users, votes on every contestant, results rows, and 2 demo awards. Test `<DoneCeremony>` + the post-awards CTA footer + `/results/{id}` static page. |
-
-The two implemented states cover the highest-ROI dry-run scenarios: the entry surface (lobby) and the post-show reveal flow (done). The other four are scoped in SPEC §17a.6 and listed as stubs that bail with a helpful message — extending them is a follow-up PR.
+| State | What it lands you on |
+|---|---|
+| `lobby-with-3-guests` | A `status=lobby` room with the owner + 3 guests already joined. Test the lobby UI, edit-categories, edit-mode, "Start voting", roster behaviour. |
+| `voting-half-done` | A `status=voting` room with 4 users, half-filled scores on every contestant (only the first ⌈N/2⌉ categories scored). EndOfVotingCard is suppressed until the operator fully scores the last contestant. Tests the mid-vote UI, jump-to drawer, save chip cycle. |
+| `voting-ending-mid-countdown` | A `status=voting_ending` room with `voting_ends_at` 30s in the future, half-scored votes. Admin sees `<EndVotingCountdownToast>` with Undo; guests see `<EndingPill>`. Either can let the timer elapse for runScoring. |
+| `announcing-mid-queue-live` | A `status=announcing`, `mode=live` room with all results computed. Order is `[owner → guest1 → guest2 → guest3]`. The first user has fully announced; the second user is mid-queue (3 of 5 reveals done); guests 2 + 3 haven't started. Tests the active-driver tap zone, "Up next" panel, /present TV view, owner-watching panel, roster. |
+| `announcing-instant-all-ready` | A `status=announcing`, `mode=instant` room. Every member is `is_ready=true` so the admin's "Reveal final results" CTA fires immediately. Operator can also test "Reveal anyway" + always-available admin override. |
+| `done-with-awards` | A `status=done` room with 4 users, votes on every contestant, results rows, and 2 demo awards. Tests `<DoneCeremony>` + the post-awards CTA footer (Copy link · Copy summary · View full results · Create another) + `/results/{id}` static page. |
 
 ## Safety gates
 
@@ -45,13 +43,14 @@ The cleanup script wipes by PIN prefix on `rooms` first, cascades through `room_
 
 ## Adding states
 
-Each state is an `async function (db: Db) => Promise<SeedReport>` in `seed-room.ts`. Wire it into `STATE_BUILDERS` and `SEED_STATES`. The pattern (per the implemented examples):
+Each state is an `async function (db: Db) => Promise<SeedReport>` in `seed-room.ts`. Wire it into `STATE_BUILDERS` and add the name to `SEED_STATES` in `seed-helpers.ts`. The pattern (per the implemented examples):
 
 1. Insert seeded users via `insertSeededUser(db, idx)` — idx 0 is the owner.
 2. Insert the room via `insertSeededRoom(db, ownerUserId, overrides)` — overrides set status, voting timestamps, announcement_mode, etc.
-3. Insert memberships for every user.
-4. Insert votes / results / awards as needed for the target state.
-5. Return a `SeedReport` with the URL, owner session, and any operator notes.
+3. Insert memberships for every user (use `isReady=true` for instant-ready states).
+4. For post-voting states (announcing / done), call `buildFullVotesAndResults(roomId, users, contestants)` to get vote + result rows. Override per-row fields (`announced=true`, etc.) before insert.
+5. For voting-mid-flight states, build votes manually with `buildHalfScores` or a custom helper.
+6. Return a `SeedReport` with the URL, owner session, and any operator notes.
 
 The pure data builders (`buildFullScores`, `buildHalfScores`, `buildSeedDisplayName`, etc.) live in `seed-helpers.ts` and are unit-tested in `seed-helpers.test.ts`.
 
