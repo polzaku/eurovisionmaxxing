@@ -317,3 +317,116 @@ describe("<AnnouncingView> — owner-watching skip CTA", () => {
     expect(screen.getByText(/waiting for an announcer/i)).toBeInTheDocument();
   });
 });
+
+// ─── L2 tap-anywhere advance zone (SPEC §10.2 step 4) ───────────────────────
+
+describe("<AnnouncingView> — active-driver tap-anywhere zone", () => {
+  beforeEach(() => {
+    postAnnounceNextMock.mockReset();
+    postAnnounceHandoffMock.mockReset();
+    postAnnounceSkipMock.mockReset();
+    mockResultsFetch();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  async function renderAsAnnouncer() {
+    const utils = render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={ANNOUNCER_ID}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("active-driver-tap-zone")).toBeInTheDocument(),
+    );
+    return utils;
+  }
+
+  it("renders the tap-anywhere zone for the active announcer", async () => {
+    await renderAsAnnouncer();
+    const zone = screen.getByTestId("active-driver-tap-zone");
+    expect(zone).toBeInTheDocument();
+    // Helper copy reflects the new behaviour, not the old "tap below" wording.
+    expect(zone.textContent).toContain("tap anywhere to reveal");
+  });
+
+  it("does NOT render the tap-anywhere zone for a non-driver guest", async () => {
+    // Render as a guest (not announcer, not owner) — Up-next + tap zone are
+    // suppressed (no spoilers) per the active-driver gate.
+    const guestId = "44444444-4444-4444-8444-444444444444";
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={guestId}
+      />,
+    );
+    // Wait for the leaderboard cell to confirm announcement state has loaded.
+    // (Header label "{name} is announcing" lives across two spans for
+    // non-owner viewers, so getByText(/bob is announcing/i) wouldn't match —
+    // Austria is a single-element signal that the fetch resolved.)
+    await waitFor(() =>
+      expect(screen.getByText("Austria")).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByTestId("active-driver-tap-zone"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("calls postAnnounceNext when the tap zone is clicked outside the button", async () => {
+    postAnnounceNextMock.mockResolvedValue({
+      ok: true,
+      data: { finished: false },
+    });
+    await renderAsAnnouncer();
+    // Click the "Up next" label inside the zone — not the Reveal button.
+    await userEvent.click(screen.getByText(/up next/i));
+    await waitFor(() => {
+      expect(postAnnounceNextMock).toHaveBeenCalledTimes(1);
+    });
+    expect(postAnnounceNextMock).toHaveBeenCalledWith(
+      ROOM_ID,
+      ANNOUNCER_ID,
+      expect.objectContaining({ fetch: expect.any(Function) }),
+    );
+  });
+
+  it("does NOT double-fire postAnnounceNext when the inner Reveal button is clicked (stopPropagation)", async () => {
+    postAnnounceNextMock.mockResolvedValue({
+      ok: true,
+      data: { finished: false },
+    });
+    await renderAsAnnouncer();
+    await userEvent.click(
+      screen.getByRole("button", { name: /reveal next point/i }),
+    );
+    await waitFor(() => {
+      expect(postAnnounceNextMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("suppresses tap-zone clicks while a reveal is already submitting", async () => {
+    let resolveReveal: ((v: unknown) => void) | undefined;
+    postAnnounceNextMock.mockImplementation(
+      () => new Promise((r) => (resolveReveal = r)),
+    );
+    await renderAsAnnouncer();
+    // First click — kicks off the in-flight reveal.
+    await userEvent.click(
+      screen.getByRole("button", { name: /reveal next point/i }),
+    );
+    await waitFor(() => {
+      expect(postAnnounceNextMock).toHaveBeenCalledTimes(1);
+    });
+    // Second click on the tap zone (not the disabled button) while still
+    // submitting — should be swallowed by the kind-check guard.
+    await userEvent.click(screen.getByText(/up next/i));
+    expect(postAnnounceNextMock).toHaveBeenCalledTimes(1);
+    // Tidy the pending promise so React doesn't warn.
+    resolveReveal?.({ ok: true, data: { finished: false } });
+  });
+});

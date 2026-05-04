@@ -310,9 +310,28 @@ export default function AnnouncingView({
           </div>
         ) : null}
 
-        {/* Up Next + Reveal — only the active driver sees the queue spoiler. */}
+        {/* Up Next + Reveal — only the active driver sees the queue spoiler.
+         *
+         * The whole card is a tap-anywhere zone per SPEC §10.2 step 4 — taps
+         * anywhere on the card advance, the explicit "Reveal next point"
+         * button below stays as the canonical control (keyboard / screen-reader
+         * focus target). The redundant zone is for live-event fumble
+         * protection: a phone held loose under camera lights overshoots small
+         * tap targets.
+         *
+         * Auto-advance + Hold (the rest of §10.2 step 4) deferred to V1.1 —
+         * default-on auto-advance can cut narrators off mid-sentence on TV
+         * and the manual reveal flow already works fine.
+         */}
         {isActiveDriver && announcement?.pendingReveal ? (
-          <div className="rounded-2xl border-2 border-accent/60 bg-accent/5 px-5 py-4 space-y-3">
+          <div
+            data-testid="active-driver-tap-zone"
+            onClick={() => {
+              if (advanceState.kind === "submitting") return;
+              void handleReveal();
+            }}
+            className="cursor-pointer select-none rounded-2xl border-2 border-accent/60 bg-accent/5 px-5 py-4 space-y-3 transition-all hover:border-accent hover:bg-accent/10 active:scale-[0.995]"
+          >
             <p className="text-xs uppercase tracking-widest text-accent">
               Up next
             </p>
@@ -329,13 +348,16 @@ export default function AnnouncingView({
               </span>{" "}
               <span className="text-muted-foreground">
                 {announcement.pendingReveal.points === 1
-                  ? "point — tap below to reveal"
-                  : "points — tap below to reveal"}
+                  ? "point — tap anywhere to reveal"
+                  : "points — tap anywhere to reveal"}
               </span>
             </p>
             <button
               type="button"
-              onClick={handleReveal}
+              onClick={(e) => {
+                e.stopPropagation();
+                void handleReveal();
+              }}
               disabled={advanceState.kind === "submitting"}
               className="w-full rounded-xl bg-primary px-6 py-4 text-lg font-semibold text-primary-foreground transition-all hover:scale-[1.01] hover:emx-glow-gold active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
             >
@@ -344,9 +366,9 @@ export default function AnnouncingView({
                 : "Reveal next point"}
             </button>
             <p className="text-xs text-muted-foreground">
-              Eurovision style — points reveal lowest to highest. Each tap
-              calls one more country and pushes the leaderboard. After your
-              last reveal it&rsquo;ll automatically pass to the next
+              Eurovision style — points reveal lowest to highest. Tap the
+              button or anywhere on this card to call the next country. After
+              your last reveal it&rsquo;ll automatically pass to the next
               announcer.
             </p>
             {advanceState.error ? (
@@ -360,7 +382,10 @@ export default function AnnouncingView({
             {isDelegate ? (
               <button
                 type="button"
-                onClick={() => handleTakeControl(false)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleTakeControl(false);
+                }}
                 disabled={handoffState.kind === "submitting"}
                 className="w-full rounded-lg border-2 border-border bg-background px-3 py-2 text-sm font-medium transition-all hover:border-accent active:scale-[0.98] disabled:opacity-60"
               >
