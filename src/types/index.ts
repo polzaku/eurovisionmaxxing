@@ -146,6 +146,8 @@ export type RoomEvent =
   | { type: "voting_progress"; userId: string; contestantId: string; scoredCount: number }
   | { type: "announce_next"; contestantId: string; points: number; announcingUserId: string }
   | { type: "announce_skip"; userId: string; displayName: string }
+  /** SPEC §10.2.1 — admin restored a previously-skipped user. */
+  | { type: "announce_skip_restored"; userId: string; displayName: string }
   | { type: "announce_turn"; userId: string }
   | { type: "score_update"; contestantId: string; newTotal: number; newRank: number }
   | {
