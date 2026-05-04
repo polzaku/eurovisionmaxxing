@@ -205,7 +205,14 @@
       "noPoints": "—"
     },
     "hotTake": {
-      "edited": "edited"
+      "edited": "edited",
+      "deleteAria": "Delete {name}'s hot-take",
+      "deleteConfirmTitle": "Delete this hot-take?",
+      "deleteConfirmBody": "Delete {name}'s hot-take? They won't be notified.",
+      "deleteConfirmAction": "Delete",
+      "deleteSubmitting": "Deleting…",
+      "deleteCancel": "Cancel",
+      "deleteError": "Couldn't delete. Try again?"
     },
     "breakdown": {
       "gave": "gave {points} to {country}"

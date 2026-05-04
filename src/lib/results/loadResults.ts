@@ -87,6 +87,8 @@ export type ResultsData =
       year: number;
       event: EventType;
       pin: string;
+      /** Room owner — clients with a matching session unlock admin moderation (§8.7.2). */
+      ownerUserId: string;
       leaderboard: LeaderboardEntry[];
       contestants: Contestant[];
       breakdowns: UserBreakdown[];
@@ -148,6 +150,7 @@ type RoomBase = {
   pin: string;
   year: number;
   event: string;
+  owner_user_id: string;
   announcement_order: string[] | null;
   announcing_user_id: string | null;
   current_announce_idx: number | null;
@@ -223,7 +226,7 @@ export async function loadResults(
   const roomQuery = await deps.supabase
     .from("rooms")
     .select(
-      "id, status, pin, year, event, announcement_order, announcing_user_id, current_announce_idx, delegate_user_id",
+      "id, status, pin, year, event, owner_user_id, announcement_order, announcing_user_id, current_announce_idx, delegate_user_id",
     )
     .eq("id", roomId)
     .maybeSingle();
@@ -509,6 +512,7 @@ async function loadDone(
       year: room.year,
       event,
       pin: room.pin,
+      ownerUserId: room.owner_user_id,
       leaderboard,
       contestants,
       breakdowns,

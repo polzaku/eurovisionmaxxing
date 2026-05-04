@@ -552,6 +552,7 @@ describe("loadResults — announcing", () => {
 // ─── done ────────────────────────────────────────────────────────────────────
 
 describe("loadResults — done", () => {
+  const DONE_ROOM_OWNER_ID = "u-owner";
   const doneRoom = {
     data: {
       id: VALID_ROOM_ID,
@@ -559,6 +560,7 @@ describe("loadResults — done", () => {
       pin: "PIN123",
       year: 2026,
       event: "final" as EventType,
+      owner_user_id: DONE_ROOM_OWNER_ID,
     },
     error: null,
   };

@@ -9,6 +9,7 @@ import type { Contestant } from "@/types";
 import ScoringPoller from "./ScoringPoller";
 import CopySummaryButton from "./CopySummaryButton";
 import AwardsSection from "@/components/results/AwardsSection";
+import HotTakesSection from "@/components/results/HotTakesSection";
 
 export async function generateMetadata({
   params,
@@ -253,11 +254,13 @@ async function DoneBody({
         />
       ) : null}
       {data.hotTakes.length > 0 ? (
-        <HotTakes
+        <HotTakesSection
           title={t("headings.hotTakes")}
           editedLabel={t("results.hotTake.edited")}
           hotTakes={data.hotTakes}
           contestants={data.contestants}
+          roomId={roomId}
+          ownerUserId={data.ownerUserId}
         />
       ) : null}
     </>
@@ -353,71 +356,6 @@ function Breakdowns({
             </ul>
           </details>
         ))}
-      </div>
-    </section>
-  );
-}
-
-function HotTakes({
-  title,
-  editedLabel,
-  hotTakes,
-  contestants,
-}: {
-  title: string;
-  editedLabel: string;
-  hotTakes: Extract<ResultsData, { status: "done" }>["hotTakes"];
-  contestants: Contestant[];
-}) {
-  const lookup = new Map<string, Contestant>(contestants.map((c) => [c.id, c]));
-  // Group by country for a tidier render.
-  const byCountry = new Map<string, typeof hotTakes>();
-  for (const h of hotTakes) {
-    const list = byCountry.get(h.contestantId) ?? [];
-    list.push(h);
-    byCountry.set(h.contestantId, list);
-  }
-  return (
-    <section className="space-y-3">
-      <h2 className="text-xl font-semibold">{title}</h2>
-      <div className="space-y-4">
-        {[...byCountry.entries()].map(([contestantId, takes]) => {
-          const c = lookup.get(contestantId);
-          return (
-            <div key={contestantId} className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span aria-hidden>{c?.flagEmoji ?? "🏳️"}</span>
-                <span>{c?.country ?? contestantId}</span>
-              </div>
-              <ul className="space-y-2">
-                {takes.map((t, i) => (
-                  <li
-                    key={`${t.userId}-${i}`}
-                    className="rounded-xl border border-border px-4 py-3"
-                  >
-                    <p className="text-sm text-muted-foreground mb-1">
-                      {t.displayName}
-                    </p>
-                    <p>
-                      {t.hotTake}
-                      {t.hotTakeEditedAt ? (
-                        <>
-                          {" "}
-                          <span
-                            data-testid="hot-take-edited-tag"
-                            className="text-xs uppercase tracking-wider text-muted-foreground"
-                          >
-                            {editedLabel}
-                          </span>
-                        </>
-                      ) : null}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          );
-        })}
       </div>
     </section>
   );
