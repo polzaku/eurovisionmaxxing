@@ -1,0 +1,66 @@
+# SPEC §17a.4 — verifies every PR and push to main.
+#
+# Mirrors the local pre-push hook (`npm run pre-push` =
+# type-check + lint + test) plus a Next.js build check on PRs only.
+# We skip the build on main-branch pushes because Vercel re-builds
+# every merge anyway — running it again here just burns CI minutes
+# without catching anything new.
+#
+# No caching beyond the default `actions/setup-node` npm cache. No
+# matrix beyond Node 20 (Next.js 14's recommended LTS at time of
+# writing).
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# In-flight runs on the same ref cancel when a new commit lands. Only
+# applies to PR runs — we keep main-branch runs intact so every merged
+# commit's verdict is recorded.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: type-check · lint · test (+ build on PR)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm run test
+
+      # Build runs on pull_request only — no point recompiling main
+      # since Vercel already does it. The build verifies that the
+      # Next.js compiler can complete; runtime env vars are not
+      # required for compile (NEXT_PUBLIC_* missing → values just
+      # become undefined at runtime, which is the existing behaviour
+      # the deployed app already relies on for unset overrides).
+      - name: Build (PR only)
+        if: github.event_name == 'pull_request'
+        run: npm run build
