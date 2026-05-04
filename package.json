@@ -13,7 +13,9 @@
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium",
     "pre-push": "npm run type-check && npm run lint && npm run test",
-    "prepare": "git config core.hooksPath .githooks || true"
+    "prepare": "git config core.hooksPath .githooks || true",
+    "seed:room": "tsx --env-file=.env.local scripts/seed-room.ts",
+    "seed:cleanup": "tsx --env-file=.env.local scripts/cleanup-seed-rooms.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.0",
@@ -44,6 +46,7 @@
     "jsdom": "^25.0.1",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.5.0",
     "vitest": "^2.1.9"
   }

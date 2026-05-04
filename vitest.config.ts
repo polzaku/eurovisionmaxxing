@@ -13,7 +13,7 @@ export default defineConfig({
     // Component tests opt into jsdom per-file via the
     // `// @vitest-environment jsdom` pragma at the top of the file.
     environment: "node",
-    include: ["src/**/*.test.{ts,tsx}"],
+    include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.{ts,tsx}"],
     setupFiles: ["./vitest.setup.ts"],
   },
   resolve: {
