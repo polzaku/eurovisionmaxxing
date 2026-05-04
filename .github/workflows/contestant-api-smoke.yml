@@ -48,20 +48,21 @@ jobs:
 
       - name: Run smoke test
         id: smoke
-        # `continue-on-error` keeps the workflow alive on failure so we
-        # can file an issue. The `Fail the workflow` step at the end
-        # surfaces the actual exit code to GitHub's UI.
+        # `continue-on-error: true` keeps the workflow alive on failure
+        # so we can still file an issue afterwards. We don't capture
+        # the exit code via $GITHUB_OUTPUT because GitHub Actions runs
+        # `run:` steps with `set -eo pipefail`, which means anything
+        # after a failing command never executes. Subsequent steps key
+        # on `steps.smoke.outcome` instead — that's set automatically
+        # by the runner regardless of `continue-on-error`.
         continue-on-error: true
-        run: |
-          set -o pipefail
-          npx tsx scripts/contestant-api-smoke.ts 2>&1 | tee smoke-output.txt
-          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+        run: npx tsx scripts/contestant-api-smoke.ts 2>&1 | tee smoke-output.txt
 
       - name: File or update api-upstream issue (cron only)
         # Only file issues for scheduled / manual runs — PR runs already
         # surface failures inline in the PR's checks.
         if: |
-          steps.smoke.outputs.exit_code != '0' &&
+          steps.smoke.outcome == 'failure' &&
           (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -96,7 +97,7 @@ jobs:
           fi
 
       - name: Fail the workflow when smoke failed
-        if: steps.smoke.outputs.exit_code != '0'
+        if: steps.smoke.outcome == 'failure'
         run: |
-          echo "Smoke exited with code ${{ steps.smoke.outputs.exit_code }}"
+          echo "Smoke step outcome was 'failure' — see the 'Run smoke test' step output above."
           exit 1
