@@ -26,9 +26,16 @@ interface MembershipShape {
   displayName: string;
 }
 
+interface AnnouncementShape {
+  pendingReveal: { contestantId: string; points: number } | null;
+  announcerPosition: number;
+  announcerCount: number;
+}
+
 interface ResultsShape {
   status: string;
   leaderboard?: LeaderboardEntry[];
+  announcement?: AnnouncementShape | null;
 }
 
 type Phase =
@@ -170,6 +177,13 @@ export default function PresentPage({ params }: { params: { id: string } }) {
         leaderboard={results?.leaderboard}
         announcerDisplayName={announcerDisplayName}
         roomMemberTotal={phase.memberships.length}
+        pendingReveal={
+          results?.announcement
+            ? results.announcement.pendingReveal
+            : undefined
+        }
+        announcerPosition={results?.announcement?.announcerPosition}
+        announcerCount={results?.announcement?.announcerCount}
       />
       <FullscreenPrompt />
     </>

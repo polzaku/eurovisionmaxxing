@@ -23,6 +23,19 @@ interface PresentScreenProps {
   announcerDisplayName?: string;
   /** Total room members for §8.x progress copy. */
   roomMemberTotal?: number;
+  /**
+   * The reveal that's about to happen — pulled from the announcement state
+   * exposed by /api/results. Null when the queue is exhausted (transitional);
+   * undefined when the caller doesn't have it (e.g. instant mode or a
+   * pre-announce poll). When truthy, the TV renders the "Up next" card above
+   * the leaderboard so the room can read what's coming before the announcer
+   * speaks it (SPEC §10.2 turn / next-point indicators).
+   */
+  pendingReveal?: { contestantId: string; points: number } | null;
+  /** 1-indexed position of the current announcer in `announcement_order`. */
+  announcerPosition?: number;
+  /** Total number of eligible announcers in `announcement_order`. */
+  announcerCount?: number;
 }
 
 const RANK_MEDAL: Record<number, string> = {
@@ -54,6 +67,9 @@ export default function PresentScreen({
   leaderboard,
   announcerDisplayName,
   roomMemberTotal,
+  pendingReveal,
+  announcerPosition,
+  announcerCount,
 }: PresentScreenProps) {
   const t = useTranslations();
   const contestantById = new Map(contestants.map((c) => [c.id, c]));
@@ -125,6 +141,14 @@ export default function PresentScreen({
 
   // announcing | done — render the leaderboard
   const rows = leaderboard ?? [];
+  const showPosition =
+    status === "announcing" &&
+    typeof announcerPosition === "number" &&
+    typeof announcerCount === "number" &&
+    announcerCount > 0;
+  const pendingContestant = pendingReveal
+    ? contestantById.get(pendingReveal.contestantId)
+    : null;
 
   return (
     <PresentLeaderboard
@@ -139,6 +163,29 @@ export default function PresentScreen({
           ? t("present.announcing.announcer", { name: announcerDisplayName })
           : ""
       }
+      positionLabel={
+        showPosition
+          ? t("present.announcing.position", {
+              position: announcerPosition,
+              total: announcerCount,
+            })
+          : ""
+      }
+      pendingReveal={
+        status === "announcing" && pendingReveal !== undefined
+          ? {
+              upNext: t("present.announcing.upNext"),
+              detail: pendingReveal
+                ? t("present.announcing.upNextDetail", {
+                    points: pendingReveal.points,
+                    country: pendingContestant?.country ?? pendingReveal.contestantId,
+                  })
+                : t("present.announcing.queueExhausted"),
+              flagEmoji: pendingContestant?.flagEmoji ?? "🏳️",
+              hasReveal: pendingReveal !== null,
+            }
+          : null
+      }
     />
   );
 }
@@ -151,6 +198,21 @@ interface PresentLeaderboardProps {
   titleAnnouncing: string;
   titleDone: string;
   announcerLabel: string;
+  /** Empty string when there's no position info to show. */
+  positionLabel: string;
+  /**
+   * Pre-resolved copy for the "Up next" card. Null suppresses the card
+   * entirely (e.g. status=done, or caller didn't pass announcement data).
+   * `hasReveal=false` renders the queue-exhausted variant.
+   */
+  pendingReveal:
+    | {
+        upNext: string;
+        detail: string;
+        flagEmoji: string;
+        hasReveal: boolean;
+      }
+    | null;
 }
 
 /**
@@ -174,6 +236,8 @@ function PresentLeaderboard({
   titleAnnouncing,
   titleDone,
   announcerLabel,
+  positionLabel,
+  pendingReveal,
 }: PresentLeaderboardProps) {
   const rowRefs = useRef<Map<string, HTMLLIElement>>(new Map());
   const prevRectsRef = useRef<Map<string, DOMRect>>(new Map());
@@ -208,10 +272,44 @@ function PresentLeaderboard({
         <h1 className="text-4xl font-bold tracking-tight">
           {status === "done" ? titleDone : titleAnnouncing}
         </h1>
-        {announcerDisplayName && status === "announcing" ? (
-          <p className="text-2xl text-muted-foreground">{announcerLabel}</p>
-        ) : null}
+        <div className="flex flex-col items-end gap-1">
+          {announcerDisplayName && status === "announcing" ? (
+            <p className="text-2xl text-muted-foreground">{announcerLabel}</p>
+          ) : null}
+          {positionLabel ? (
+            <p
+              data-testid="present-announcer-position"
+              className="text-lg uppercase tracking-[0.3em] text-muted-foreground"
+            >
+              {positionLabel}
+            </p>
+          ) : null}
+        </div>
       </header>
+      {pendingReveal ? (
+        <section
+          data-testid="present-pending-reveal"
+          data-has-reveal={pendingReveal.hasReveal ? "true" : "false"}
+          className="mb-6 flex items-center gap-6 rounded-2xl border border-primary/40 bg-primary/10 px-8 py-5"
+          aria-live="polite"
+        >
+          <span className="text-xs uppercase tracking-[0.4em] text-primary">
+            {pendingReveal.upNext}
+          </span>
+          {pendingReveal.hasReveal ? (
+            <span className="flex items-center gap-4 text-3xl font-semibold">
+              <span className="text-5xl" aria-hidden>
+                {pendingReveal.flagEmoji}
+              </span>
+              <span>{pendingReveal.detail}</span>
+            </span>
+          ) : (
+            <span className="text-2xl text-muted-foreground">
+              {pendingReveal.detail}
+            </span>
+          )}
+        </section>
+      ) : null}
       <ol className="flex-1 space-y-2 overflow-hidden">
         {rows.map((row) => {
           const c = contestantById.get(row.contestantId);
