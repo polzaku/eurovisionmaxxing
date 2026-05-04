@@ -28,6 +28,11 @@ export type RoomEventPayload =
       displayName: string;
     }
   | {
+      type: "announce_skip_restored";
+      userId: string;
+      displayName: string;
+    }
+  | {
       type: "score_update";
       contestantId: string;
       newTotal: number;
