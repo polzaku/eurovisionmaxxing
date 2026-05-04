@@ -120,8 +120,8 @@ These are intentionally not automated. Do them in order.
 1. Connect the GitHub repo to a new Vercel project (via the dashboard).
 2. Set environment variables in **Production**, **Preview**, and **Development** environments:
    - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (publishable, can ship to browser)
-   - `SUPABASE_SERVICE_ROLE_KEY` (secret, server-only — NEVER expose)
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (publishable, can ship to browser)
+   - `SUPABASE_SECRET_KEY` (secret, server-only — NEVER expose. Mark **Sensitive** in Vercel so the value is write-only.)
    - `NEXT_PUBLIC_APP_URL` (set to the final domain, e.g. `https://eurovisionmaxxing.com`)
 3. Deploy a preview build off `main`. Run the §3 smoke checklist on it.
 4. Promote to production once smoke is green.
@@ -164,8 +164,8 @@ This phase is complete when:
 
 - [x] Code audit (§1 + §2) passes — **done 2026-05-03**.
 - [ ] Manual smoke (§3) passes on a Vercel preview build with 3+ devices.
-- [ ] Production deploy live at `eurovisionmaxxing.com`.
-- [ ] UptimeRobot monitor reporting `200 OK` on `/api/health`.
+- [x] Production deploy live at `eurovisionmaxxing.com` — **confirmed 2026-05-04** (UptimeRobot dashboard shows 15d+ uptime; audit drift, deploy actually happened weeks earlier).
+- [x] UptimeRobot monitor reporting `200 OK` on `/api/health` — **confirmed 2026-05-04** (100% uptime last 7d/30d, 5-minute interval).
 - [ ] On-call backup name committed to `SUPABASE_SETUP.md`.
 
 The first item is closed by this doc. The remaining four are operator actions and don't block any further code work.
