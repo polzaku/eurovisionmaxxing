@@ -147,6 +147,7 @@
         "allDone": "🎉 Everyone's done — ready to end voting?",
         "mostDone": "⏳ {ready} of {total} have finished — give the rest a moment, then end voting.",
         "selfDoneOnly": "✅ Your vote is in — {ready} of {total} done so far.",
+        "selfDoneOnlyNoCount": "✅ Your vote is in.",
         "endVotingCta": "End voting"
       }
     },

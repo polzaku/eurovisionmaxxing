@@ -25,7 +25,16 @@ export type EndOfVotingCardVariant =
   | { kind: "guestRoomMomentum"; unscored: Contestant[] }
   | { kind: "hostAllDone"; ready: number; total: number }
   | { kind: "hostMostDone"; ready: number; total: number }
-  | { kind: "hostSelfDoneOnly"; ready: number; total: number };
+  | { kind: "hostSelfDoneOnly"; ready: number; total: number }
+  /**
+   * SPEC §8.11.2 "Count semantics — no degenerate `1 of 1` fallback".
+   * Fires when condition (a) holds (the host finished their own vote on
+   * the last contestant) but no `roomCompletion` data is available — drop
+   * the count entirely rather than print misleading "1 of 1 done so far".
+   * Conditions (b) and (c) require room data by definition, so the
+   * `hostMostDone` / `hostAllDone` variants don't have a no-count form.
+   */
+  | { kind: "hostSelfDoneOnlyNoCount" };
 
 export interface EndOfVotingCardInput {
   contestants: readonly Contestant[];
@@ -80,11 +89,14 @@ export function endOfVotingCardVariant(
     input.categoryNames,
   );
 
-  // Conditions (b) and (c) require room-wide data.
+  // Conditions (b) and (c) require room-wide data. Without it, only (a)
+  // can fire and the host gets the no-count variant — never the misleading
+  // single-user-default "1 of 1 done so far".
+  const hasRoomData = !!input.roomCompletion;
   let conditionB = false;
   let conditionC = false;
-  let ready = conditionA ? 1 : 0;
-  let total = 1;
+  let ready = 0;
+  let total = 0;
 
   if (input.roomCompletion) {
     const { lastContestantCompletedOthers, eligibleVoterCount, allEligibleAllDone } =
@@ -102,7 +114,13 @@ export function endOfVotingCardVariant(
   if (input.viewerRole === "admin") {
     if (conditionC) return { kind: "hostAllDone", ready, total };
     if (conditionB) return { kind: "hostMostDone", ready, total };
-    if (conditionA) return { kind: "hostSelfDoneOnly", ready, total };
+    if (conditionA) {
+      // No-count variant when room-wide data isn't plumbed through —
+      // protects against the "1 of 1 done so far" footgun on multi-member
+      // rooms before voting_progress broadcasts arrive.
+      if (!hasRoomData) return { kind: "hostSelfDoneOnlyNoCount" };
+      return { kind: "hostSelfDoneOnly", ready, total };
+    }
     return { kind: "none" };
   }
 

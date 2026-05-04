@@ -68,6 +68,18 @@ export interface VotingViewProps {
   scoredByCounts?: Record<string, number>;
   /** Total room members for §8.8 chip denominator. */
   roomMemberTotal?: number;
+  /**
+   * SPEC §8.11.2 "Count semantics" — room-wide completion data fed into
+   * `endOfVotingCardVariant`. Computed by the parent (room page) since
+   * it owns the `voting_progress` reducer state. When omitted, the host
+   * variant degrades to the no-count form rather than printing the
+   * misleading "1 of 1 done so far" implied by single-user defaults.
+   */
+  roomCompletion?: {
+    lastContestantCompletedOthers: number;
+    eligibleVoterCount: number;
+    allEligibleAllDone: boolean;
+  };
 }
 
 function getPersistentStorage() {
@@ -100,6 +112,7 @@ export default function VotingView({
   queueOverflow,
   scoredByCounts,
   roomMemberTotal,
+  roomCompletion,
 }: VotingViewProps) {
   const sortedContestants = useMemo(
     () => [...contestants].sort((a, b) => a.runningOrder - b.runningOrder),
@@ -283,11 +296,7 @@ export default function VotingView({
         missedByContestant,
         onLastContestant,
         viewerRole: isAdmin ? "admin" : "guest",
-        // Room-wide completion (b)/(c) wiring lands in a follow-up slice
-        // when the voting_progress broadcast extension or a periodic
-        // refetch is available — see SPEC §8.11.1. Until then only (a) can
-        // fire and the card stays guest-shaped for guests.
-        roomCompletion: undefined,
+        roomCompletion,
       }),
     [
       sortedContestants,
@@ -296,6 +305,7 @@ export default function VotingView({
       missedByContestant,
       onLastContestant,
       isAdmin,
+      roomCompletion,
     ]
   );
 

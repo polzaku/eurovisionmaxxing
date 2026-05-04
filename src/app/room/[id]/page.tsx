@@ -622,6 +622,46 @@ export default function RoomPage({ params }: { params: { id: string } }) {
       scoredByCounts[c.id] = countsFromState(votingProgress, c.id);
     }
     const roomMemberTotal = phase.memberships.length;
+    // SPEC §8.11.2 "Count semantics" — feed real room-wide completion data
+    // to <EndOfVotingCard> via VotingView so the host doesn't see the
+    // misleading "1 of 1 done so far" default. Compute from the existing
+    // voting_progress reducer state (Map<contestantId, Set<userId>>).
+    // Skip when memberships are empty (degenerate; component handles
+    // undefined as the no-count fallback).
+    let roomCompletion:
+      | {
+          lastContestantCompletedOthers: number;
+          eligibleVoterCount: number;
+          allEligibleAllDone: boolean;
+        }
+      | undefined;
+    const sessionUserId = getSession()?.userId ?? null;
+    if (
+      roomMemberTotal > 0 &&
+      phase.contestants.length > 0 &&
+      sessionUserId
+    ) {
+      const sortedByOrder = [...phase.contestants].sort(
+        (a, b) => a.runningOrder - b.runningOrder,
+      );
+      const lastId = sortedByOrder[sortedByOrder.length - 1]?.id;
+      const lastSet = lastId ? votingProgress.get(lastId) : undefined;
+      const lastTotal = lastSet?.size ?? 0;
+      const lastIncludesSelf = lastSet?.has(sessionUserId) ?? false;
+      const lastContestantCompletedOthers = Math.max(
+        0,
+        lastTotal - (lastIncludesSelf ? 1 : 0),
+      );
+      const allEligibleAllDone = sortedByOrder.every((c) => {
+        const set = votingProgress.get(c.id);
+        return !!set && set.size === roomMemberTotal;
+      });
+      roomCompletion = {
+        lastContestantCompletedOthers,
+        eligibleVoterCount: roomMemberTotal,
+        allEligibleAllDone,
+      };
+    }
     return (
       <>
         {isEnding ? (
@@ -676,6 +716,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
           queueOverflow={autosave.queueOverflow}
           scoredByCounts={scoredByCounts}
           roomMemberTotal={roomMemberTotal}
+          roomCompletion={roomCompletion}
         />
       </>
     );

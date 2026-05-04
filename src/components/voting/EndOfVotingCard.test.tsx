@@ -168,4 +168,30 @@ describe("<EndOfVotingCard>", () => {
     ).not.toBeInTheDocument();
     expect(onEndVoting).not.toHaveBeenCalled();
   });
+
+  // SPEC §8.11.2 "Count semantics — no degenerate `1 of 1` fallback"
+  it("hostSelfDoneOnlyNoCount — shows the bare 'Your vote is in.' without any fraction", () => {
+    const onEndVoting = vi.fn();
+    render(
+      <EndOfVotingCard
+        variant={{ kind: "hostSelfDoneOnlyNoCount" }}
+        onJumpTo={() => {}}
+        onEndVoting={onEndVoting}
+      />,
+    );
+    const card = screen.getByTestId("end-of-voting-card");
+    expect(card).toHaveAttribute(
+      "data-variant",
+      "host-self-done-only-no-count",
+    );
+    expect(card).toHaveTextContent(/your vote is in\./i);
+    // Critical: no "X of Y" fraction must appear — that's the bug we're
+    // protecting against ("1 of 1 done so far" on a multi-member room).
+    expect(card.textContent).not.toMatch(/\d+\s+of\s+\d+/i);
+    expect(card.textContent).not.toMatch(/done so far/i);
+    expect(
+      screen.queryByRole("button", { name: /end voting/i }),
+    ).not.toBeInTheDocument();
+    expect(onEndVoting).not.toHaveBeenCalled();
+  });
 });

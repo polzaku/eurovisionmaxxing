@@ -159,6 +159,23 @@ export default function EndOfVotingCard({
     );
   }
 
+  if (variant.kind === "hostSelfDoneOnlyNoCount") {
+    // Degenerate-safe variant per SPEC §8.11.2 "Count semantics" —
+    // room-wide completion data unavailable, so we drop the count entirely
+    // rather than print misleading "1 of 1 done so far" on a multi-member
+    // room.
+    return (
+      <div
+        role="status"
+        data-testid="end-of-voting-card"
+        data-variant="host-self-done-only-no-count"
+        className="rounded-md border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-foreground"
+      >
+        ✅ Your vote is in.
+      </div>
+    );
+  }
+
   // hostSelfDoneOnly — informational only, no End-voting CTA at this stage
   // (would cut the room off too early per SPEC §8.11.2).
   return (
