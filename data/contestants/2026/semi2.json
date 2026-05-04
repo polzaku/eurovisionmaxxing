@@ -1,0 +1,20 @@
+[
+  { "country": "Bulgaria", "artist": "Dara", "song": "Bangaranga", "runningOrder": 1 },
+  { "country": "Azerbaijan", "artist": "Jiva", "song": "Just Go", "runningOrder": 2 },
+  { "country": "Romania", "artist": "Alexandra Căpitănescu", "song": "Choke Me", "runningOrder": 3 },
+  { "country": "Luxembourg", "artist": "Eva Marija", "song": "Mother Nature", "runningOrder": 4 },
+  { "country": "Czechia", "artist": "Daniel Žižka", "song": "Crossroads", "runningOrder": 5 },
+  { "country": "France", "artist": "Monroe", "song": "Regarde !", "runningOrder": 6 },
+  { "country": "Armenia", "artist": "Simón", "song": "Paloma Rumba", "runningOrder": 7 },
+  { "country": "Switzerland", "artist": "Veronica Fusaro", "song": "Alice", "runningOrder": 8 },
+  { "country": "Cyprus", "artist": "Antigoni", "song": "Jalla", "runningOrder": 9 },
+  { "country": "Austria", "artist": "Cosmó", "song": "Tanzschein", "runningOrder": 10 },
+  { "country": "Latvia", "artist": "Atvara", "song": "Ēnā", "runningOrder": 11 },
+  { "country": "Denmark", "artist": "Søren Torpegaard Lund", "song": "Før vi går hjem", "runningOrder": 12 },
+  { "country": "Australia", "artist": "Delta Goodrem", "song": "Eclipse", "runningOrder": 13 },
+  { "country": "Ukraine", "artist": "Leléka", "song": "Ridnym", "runningOrder": 14 },
+  { "country": "United Kingdom", "artist": "Look Mum No Computer", "song": "Eins, Zwei, Drei", "runningOrder": 15 },
+  { "country": "Albania", "artist": "Alis", "song": "Nân", "runningOrder": 16 },
+  { "country": "Malta", "artist": "Aidan", "song": "Bella", "runningOrder": 17 },
+  { "country": "Norway", "artist": "Jonas Lovv", "song": "Ya ya ya", "runningOrder": 18 }
+]

@@ -1,0 +1,19 @@
+[
+  { "country": "Moldova", "artist": "Satoshi", "song": "Viva, Moldova", "runningOrder": 1 },
+  { "country": "Sweden", "artist": "Felicia", "song": "My System", "runningOrder": 2 },
+  { "country": "Croatia", "artist": "Lelek", "song": "Andromeda", "runningOrder": 3 },
+  { "country": "Greece", "artist": "Akylas", "song": "Ferto", "runningOrder": 4 },
+  { "country": "Portugal", "artist": "Bandidos do Cante", "song": "Rosa", "runningOrder": 5 },
+  { "country": "Georgia", "artist": "Bzikebi", "song": "On Replay", "runningOrder": 6 },
+  { "country": "Italy", "artist": "Sal Da Vinci", "song": "Per sempre sì", "runningOrder": 7 },
+  { "country": "Finland", "artist": "Linda Lampenius & Pete Parkkonen", "song": "Liekinheitin", "runningOrder": 8 },
+  { "country": "Montenegro", "artist": "Tamara Živković", "song": "Nova zora", "runningOrder": 9 },
+  { "country": "Estonia", "artist": "Vanilla Ninja", "song": "Too Epic To Be True", "runningOrder": 10 },
+  { "country": "Israel", "artist": "Noam Bettan", "song": "Michelle", "runningOrder": 11 },
+  { "country": "Germany", "artist": "Sarah Engels", "song": "Fire", "runningOrder": 12 },
+  { "country": "Belgium", "artist": "Essyla", "song": "Dancing on the Ice", "runningOrder": 13 },
+  { "country": "Lithuania", "artist": "Lion Ceccah", "song": "Sólo quiero más", "runningOrder": 14 },
+  { "country": "San Marino", "artist": "Senhit", "song": "Superstar", "runningOrder": 15 },
+  { "country": "Poland", "artist": "Alicja", "song": "Pray", "runningOrder": 16 },
+  { "country": "Serbia", "artist": "Lavina", "song": "Kraj mene", "runningOrder": 17 }
+]
