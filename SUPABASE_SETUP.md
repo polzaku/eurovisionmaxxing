@@ -85,6 +85,15 @@ For existing projects, run the per-migration SQL listed in the changelog below i
 
 ### Changelog
 
+- **2026-05-04 — R0 + R3 §8.7.1:** added `votes.hot_take_edited_at TIMESTAMPTZ` so the upsert orchestrator can stamp subsequent edits and the results page can render the *"edited"* tag. NULL on first save and after deletion (per §8.7.2). Apply with:
+
+  ```sql
+  ALTER TABLE votes
+    ADD COLUMN IF NOT EXISTS hot_take_edited_at TIMESTAMPTZ;
+  ```
+
+  Backfill is unnecessary — every existing row has a NULL `hot_take_edited_at`, which correctly indicates "first save / never edited". The next user-driven edit will start populating the column.
+
 - **2026-05-03 — R4 §10.2.1:** added `rooms.announce_skipped_user_ids UUID[] NOT NULL DEFAULT '{}'` so the admin can mark absent announcers as skipped during a live reveal. Apply with:
 
   ```sql

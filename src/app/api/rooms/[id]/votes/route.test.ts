@@ -26,6 +26,7 @@ const persistedVote = {
   scores: { Vocals: 7 },
   missed: false,
   hot_take: null,
+  hot_take_edited_at: null,
   updated_at: "2026-04-21T12:00:00Z",
 };
 

@@ -66,16 +66,20 @@ CREATE TABLE room_memberships (
 -- ─── VOTES ──────────────────────────────────────────────────────────────────
 
 CREATE TABLE votes (
-  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  room_id         UUID REFERENCES rooms(id) ON DELETE CASCADE,
-  user_id         UUID REFERENCES users(id),
-  contestant_id   VARCHAR(20) NOT NULL,         -- "{year}-{countryCode}"
-  scores          JSONB,                        -- {categoryName: score} NULL if missed & unfilled
-  missed          BOOLEAN DEFAULT FALSE,
-  hot_take        VARCHAR(140),
-  updated_at      TIMESTAMPTZ DEFAULT NOW(),
+  id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  room_id             UUID REFERENCES rooms(id) ON DELETE CASCADE,
+  user_id             UUID REFERENCES users(id),
+  contestant_id       VARCHAR(20) NOT NULL,        -- "{year}-{countryCode}"
+  scores              JSONB,                       -- {categoryName: score} NULL if missed & unfilled
+  missed              BOOLEAN DEFAULT FALSE,
+  hot_take            VARCHAR(140),
+  hot_take_edited_at  TIMESTAMPTZ,                 -- §8.7.1 — set on subsequent edits, NULL on first save / after delete
+  updated_at          TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE (room_id, user_id, contestant_id)
 );
+
+-- Migration for existing deployments (additive, idempotent):
+-- ALTER TABLE votes ADD COLUMN IF NOT EXISTS hot_take_edited_at TIMESTAMPTZ;
 
 -- ─── RESULTS ────────────────────────────────────────────────────────────────
 

@@ -190,7 +190,7 @@ export async function upsertVote(
   // Read existing row (may be null) for partial-merge semantics
   const existingQuery = await deps.supabase
     .from("votes")
-    .select("scores, missed, hot_take")
+    .select("scores, missed, hot_take, hot_take_edited_at")
     .eq("room_id", roomId)
     .eq("user_id", userId)
     .eq("contestant_id", contestantId)
@@ -200,6 +200,7 @@ export async function upsertVote(
     scores: Record<string, number> | null;
     missed: boolean;
     hot_take: string | null;
+    hot_take_edited_at: string | null;
   } | null;
 
   // Merge per design §4
@@ -217,6 +218,25 @@ export async function upsertVote(
     mergedHotTake = existing?.hot_take ?? null;
   }
 
+  // SPEC §8.7.1 / §8.7.2 — stamp `hot_take_edited_at` on subsequent edits;
+  // clear it on initial save and on author/admin deletion. Identical-content
+  // re-saves preserve the existing timestamp (so an autosave that doesn't
+  // actually change the text doesn't keep flipping the "edited" tag).
+  let mergedHotTakeEditedAt: string | null;
+  if (mergedHotTake === null) {
+    // Deletion (or never set) — clear per §8.7.2.
+    mergedHotTakeEditedAt = null;
+  } else if (existing?.hot_take == null) {
+    // Initial save (no previous content) — not an edit.
+    mergedHotTakeEditedAt = null;
+  } else if (existing.hot_take === mergedHotTake) {
+    // No-op save — preserve whatever was there.
+    mergedHotTakeEditedAt = existing.hot_take_edited_at;
+  } else {
+    // Genuine edit — stamp now.
+    mergedHotTakeEditedAt = new Date().toISOString();
+  }
+
   const upsertPayload: Database["public"]["Tables"]["votes"]["Insert"] = {
     room_id: roomId,
     user_id: userId,
@@ -224,6 +244,7 @@ export async function upsertVote(
     scores: mergedScores,
     missed: mergedMissed,
     hot_take: mergedHotTake,
+    hot_take_edited_at: mergedHotTakeEditedAt,
   };
 
   const upsertResult = await deps.supabase
@@ -245,6 +266,7 @@ export async function upsertVote(
     scores: row.scores,
     missed: row.missed,
     hotTake: row.hot_take,
+    hotTakeEditedAt: row.hot_take_edited_at,
     updatedAt: row.updated_at,
   };
 
