@@ -87,6 +87,7 @@ function mapVote(row: VoteRow): Vote {
     scores: row.scores,
     missed: row.missed,
     hotTake: row.hot_take,
+    hotTakeEditedAt: row.hot_take_edited_at,
     updatedAt: row.updated_at,
   };
 }

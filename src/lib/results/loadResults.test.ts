@@ -626,11 +626,13 @@ describe("loadResults — done", () => {
             user_id: "u-1",
             contestant_id: "2026-al",
             hot_take: "Pure fire.",
+            hot_take_edited_at: "2026-04-25T08:00:00.000Z",
           },
           {
             user_id: "u-2",
             contestant_id: "2026-be",
             hot_take: "  ", // whitespace-only → filtered out
+            hot_take_edited_at: null,
           },
         ],
         error: null,
@@ -675,7 +677,9 @@ describe("loadResults — done", () => {
     ]);
     expect(result.data.breakdowns[1].displayName).toBe("Bob");
 
-    // Hot takes: whitespace-only filtered, real one kept.
+    // Hot takes: whitespace-only filtered, real one kept. The non-null
+    // edited_at flows through so the results-page UI can render the
+    // "edited" tag per §8.7.1.
     expect(result.data.hotTakes).toEqual([
       {
         userId: "u-1",
@@ -683,6 +687,7 @@ describe("loadResults — done", () => {
         avatarSeed: "seed-a",
         contestantId: "2026-al",
         hotTake: "Pure fire.",
+        hotTakeEditedAt: "2026-04-25T08:00:00.000Z",
       },
     ]);
 

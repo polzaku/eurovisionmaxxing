@@ -204,6 +204,9 @@
       "points": "{count, plural, one {# pt} other {# pts}}",
       "noPoints": "—"
     },
+    "hotTake": {
+      "edited": "edited"
+    },
     "breakdown": {
       "gave": "gave {points} to {country}"
     },

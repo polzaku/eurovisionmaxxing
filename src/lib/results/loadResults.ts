@@ -23,6 +23,8 @@ export interface HotTakeEntry {
   avatarSeed: string;
   contestantId: string;
   hotTake: string;
+  /** SPEC §8.7.1 — non-null indicates the hot-take was edited after first save. */
+  hotTakeEditedAt: string | null;
 }
 
 /**
@@ -168,6 +170,7 @@ interface VoteHotTakeRow {
   user_id: string;
   contestant_id: string;
   hot_take: string | null;
+  hot_take_edited_at: string | null;
 }
 
 /**
@@ -410,7 +413,7 @@ async function loadDone(
 
   const hotTakesQuery = await deps.supabase
     .from("votes")
-    .select("user_id, contestant_id, hot_take")
+    .select("user_id, contestant_id, hot_take, hot_take_edited_at")
     .eq("room_id", room.id)
     .not("hot_take", "is", null);
 
@@ -489,6 +492,7 @@ async function loadDone(
       avatarSeed: info.avatarSeed,
       contestantId: row.contestant_id,
       hotTake: row.hot_take,
+      hotTakeEditedAt: row.hot_take_edited_at,
     });
   }
 

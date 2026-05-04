@@ -134,6 +134,7 @@ describe("computeMissedFill", () => {
     scores: overrides.scores,
     missed: overrides.missed ?? false,
     hotTake: null,
+    hotTakeEditedAt: null,
     updatedAt: "2026-04-19T00:00:00Z",
   });
 
@@ -230,6 +231,7 @@ function makeVote(overrides: Partial<Vote>): Vote {
     scores: null,
     missed: false,
     hotTake: null,
+    hotTakeEditedAt: null,
     updatedAt: "2026-04-19T00:00:00Z",
     ...overrides,
   };

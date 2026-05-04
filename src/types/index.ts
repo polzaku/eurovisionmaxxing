@@ -94,6 +94,8 @@ export interface Vote {
   scores: Record<string, number> | null; // {categoryName: score 1-10}
   missed: boolean;
   hotTake: string | null;
+  /** SPEC §8.7.1 — non-null indicates the hot-take has been edited since first save. */
+  hotTakeEditedAt: string | null;
   updatedAt: string;
 }
 

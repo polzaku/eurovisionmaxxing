@@ -255,6 +255,7 @@ async function DoneBody({
       {data.hotTakes.length > 0 ? (
         <HotTakes
           title={t("headings.hotTakes")}
+          editedLabel={t("results.hotTake.edited")}
           hotTakes={data.hotTakes}
           contestants={data.contestants}
         />
@@ -359,10 +360,12 @@ function Breakdowns({
 
 function HotTakes({
   title,
+  editedLabel,
   hotTakes,
   contestants,
 }: {
   title: string;
+  editedLabel: string;
   hotTakes: Extract<ResultsData, { status: "done" }>["hotTakes"];
   contestants: Contestant[];
 }) {
@@ -395,7 +398,20 @@ function HotTakes({
                     <p className="text-sm text-muted-foreground mb-1">
                       {t.displayName}
                     </p>
-                    <p>{t.hotTake}</p>
+                    <p>
+                      {t.hotTake}
+                      {t.hotTakeEditedAt ? (
+                        <>
+                          {" "}
+                          <span
+                            data-testid="hot-take-edited-tag"
+                            className="text-xs uppercase tracking-wider text-muted-foreground"
+                          >
+                            {editedLabel}
+                          </span>
+                        </>
+                      ) : null}
+                    </p>
                   </li>
                 ))}
               </ul>

@@ -41,6 +41,7 @@ function makeSupabaseMock(opts: MockOptions = {}) {
         scores: null,
         missed: false,
         hot_take: null,
+        hot_take_edited_at: null,
         updated_at: "2026-04-21T12:00:00Z",
       },
       error: null,
@@ -654,4 +655,147 @@ describe("upsertVote — room & membership guards", () => {
       expect(mock.upsertPayloads).toEqual([]);
     }
   );
+});
+
+// ─── §8.7.1 hot-take edit detection ─────────────────────────────────────────
+
+describe("upsertVote — hot_take_edited_at semantics (§8.7.1)", () => {
+  it("first hot-take save (no previous content) does NOT stamp edited_at", async () => {
+    const mock = makeSupabaseMock({
+      existingVoteSelectResult: {
+        data: { scores: null, missed: false, hot_take: null, hot_take_edited_at: null },
+        error: null,
+      },
+    });
+    await upsertVote(
+      {
+        roomId: VALID_ROOM_ID,
+        userId: VALID_USER_ID,
+        contestantId: VALID_CONTESTANT_ID,
+        hotTake: "Iconic opening",
+      },
+      makeDeps(mock),
+    );
+    expect(mock.upsertPayloads[0]).toMatchObject({
+      hot_take: "Iconic opening",
+      hot_take_edited_at: null,
+    });
+  });
+
+  it("editing an existing hot-take (different content) stamps edited_at to now", async () => {
+    const mock = makeSupabaseMock({
+      existingVoteSelectResult: {
+        data: {
+          scores: null,
+          missed: false,
+          hot_take: "Old take",
+          hot_take_edited_at: null,
+        },
+        error: null,
+      },
+    });
+    await upsertVote(
+      {
+        roomId: VALID_ROOM_ID,
+        userId: VALID_USER_ID,
+        contestantId: VALID_CONTESTANT_ID,
+        hotTake: "New take",
+      },
+      makeDeps(mock),
+    );
+    const payload = mock.upsertPayloads[0];
+    expect(payload.hot_take).toBe("New take");
+    // Stamped to a non-null ISO string (now()).
+    expect(payload.hot_take_edited_at).toEqual(expect.any(String));
+    expect(typeof payload.hot_take_edited_at).toBe("string");
+    expect(
+      Number.isFinite(Date.parse(payload.hot_take_edited_at as string)),
+    ).toBe(true);
+  });
+
+  it("re-saving identical content preserves the existing edited_at (no re-stamp)", async () => {
+    const ORIGINAL_EDITED_AT = "2026-04-25T08:00:00.000Z";
+    const mock = makeSupabaseMock({
+      existingVoteSelectResult: {
+        data: {
+          scores: null,
+          missed: false,
+          hot_take: "Stable text",
+          hot_take_edited_at: ORIGINAL_EDITED_AT,
+        },
+        error: null,
+      },
+    });
+    await upsertVote(
+      {
+        roomId: VALID_ROOM_ID,
+        userId: VALID_USER_ID,
+        contestantId: VALID_CONTESTANT_ID,
+        hotTake: "Stable text",
+      },
+      makeDeps(mock),
+    );
+    expect(mock.upsertPayloads[0]).toMatchObject({
+      hot_take: "Stable text",
+      hot_take_edited_at: ORIGINAL_EDITED_AT,
+    });
+  });
+
+  it("deletion (hotTake=null) clears edited_at per §8.7.2", async () => {
+    const mock = makeSupabaseMock({
+      existingVoteSelectResult: {
+        data: {
+          scores: null,
+          missed: false,
+          hot_take: "About to be deleted",
+          hot_take_edited_at: "2026-04-25T08:00:00.000Z",
+        },
+        error: null,
+      },
+    });
+    await upsertVote(
+      {
+        roomId: VALID_ROOM_ID,
+        userId: VALID_USER_ID,
+        contestantId: VALID_CONTESTANT_ID,
+        hotTake: null,
+      },
+      makeDeps(mock),
+    );
+    expect(mock.upsertPayloads[0]).toMatchObject({
+      hot_take: null,
+      hot_take_edited_at: null,
+    });
+  });
+
+  it("save WITHOUT touching hot_take preserves both hot_take and edited_at", async () => {
+    // Caller updates only `scores`; hot_take + edited_at must round-trip
+    // unchanged. This protects against an autosave that flips the chip
+    // off when the user wasn't editing the hot-take.
+    const ORIGINAL_EDITED_AT = "2026-04-25T08:00:00.000Z";
+    const mock = makeSupabaseMock({
+      existingVoteSelectResult: {
+        data: {
+          scores: { Vocals: 5 },
+          missed: false,
+          hot_take: "Untouched",
+          hot_take_edited_at: ORIGINAL_EDITED_AT,
+        },
+        error: null,
+      },
+    });
+    await upsertVote(
+      {
+        roomId: VALID_ROOM_ID,
+        userId: VALID_USER_ID,
+        contestantId: VALID_CONTESTANT_ID,
+        scores: { Staging: 7 },
+      },
+      makeDeps(mock),
+    );
+    expect(mock.upsertPayloads[0]).toMatchObject({
+      hot_take: "Untouched",
+      hot_take_edited_at: ORIGINAL_EDITED_AT,
+    });
+  });
 });

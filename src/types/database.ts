@@ -121,6 +121,8 @@ export interface Database {
           scores: Record<string, number> | null;
           missed: boolean;
           hot_take: string | null;
+          /** SPEC §8.7.1 — set on subsequent edits, NULL on first save / after deletion. */
+          hot_take_edited_at: string | null;
           updated_at: string;
         };
         Insert: {
@@ -131,11 +133,13 @@ export interface Database {
           scores?: Record<string, number> | null;
           missed?: boolean;
           hot_take?: string | null;
+          hot_take_edited_at?: string | null;
         };
         Update: {
           scores?: Record<string, number> | null;
           missed?: boolean;
           hot_take?: string | null;
+          hot_take_edited_at?: string | null;
           updated_at?: string;
         };
         Relationships: [];
