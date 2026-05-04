@@ -128,4 +128,13 @@ test.describe("/present — TV cast surface", () => {
     await page.getByRole("button", { name: /Dismiss fullscreen prompt/i }).click();
     await expect(prompt).not.toBeVisible();
   });
+
+  // FLIP rank-shift coverage lives in the unit suite (PresentScreen.test.tsx)
+  // — it asserts class application + --shift-from CSS variable values
+  // deterministically via mocked getBoundingClientRect. Verifying the same
+  // class transition in a real browser was attempted but proved timing-flaky:
+  // the class is applied synchronously in useLayoutEffect during one render
+  // commit, and Playwright's toHaveClass retry may race with the next React
+  // reconciliation pass that runs after the next polling tick. The unit test
+  // gives stronger guarantees with no flake risk.
 });
