@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Avatar from "@/components/ui/Avatar";
 import DoneCard from "@/components/room/DoneCard";
+import AnnouncerRoster, {
+  type RosterMember,
+} from "@/components/room/AnnouncerRoster";
 import { useRoomRealtime } from "@/hooks/useRoomRealtime";
+import { useRoomPresence } from "@/hooks/useRoomPresence";
 import {
   postAnnounceNext,
   postAnnounceHandoff,
@@ -22,6 +26,12 @@ interface AnnouncingViewProps {
   room: RoomShape;
   contestants: Contestant[];
   currentUserId: string;
+  /**
+   * Owner-only: roster data for the §10.2 step 7 announcer roster panel.
+   * Optional so non-owner views (and existing tests that don't care about
+   * the panel) can omit. When absent, the roster is suppressed entirely.
+   */
+  members?: RosterMember[];
   /**
    * Called when the in-component refetch detects the room has left
    * `announcing` status (e.g. show finished, broadcast lagged behind for
@@ -87,6 +97,7 @@ export default function AnnouncingView({
   room,
   contestants,
   currentUserId,
+  members,
   onAnnouncementEnded,
 }: AnnouncingViewProps) {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -112,6 +123,10 @@ export default function AnnouncingView({
 
   const roomId = room.id;
   const isOwner = currentUserId === room.ownerUserId;
+  // Track presence on the room channel — used by the owner-only roster
+  // panel to show who's online. Non-owners still subscribe (each client
+  // tracks itself) but ignore the returned set.
+  const presenceUserIds = useRoomPresence(roomId, currentUserId);
   const isAnnouncer = currentUserId === announcement?.announcingUserId;
   const delegateUserId = announcement?.delegateUserId ?? null;
   const isDelegate = !!delegateUserId && currentUserId === delegateUserId;
@@ -506,6 +521,19 @@ export default function AnnouncingView({
             </ol>
           )}
         </section>
+
+        {/* Owner-only roster panel — visibility for who's online + current
+         * announcer / delegate markers. Renders below the leaderboard so
+         * it doesn't push the live data offscreen on small phones.
+         */}
+        {isOwner && members && members.length > 0 ? (
+          <AnnouncerRoster
+            members={members}
+            presenceUserIds={presenceUserIds}
+            currentAnnouncerId={announcement?.announcingUserId ?? null}
+            delegateUserId={announcement?.delegateUserId ?? null}
+          />
+        ) : null}
       </div>
     </main>
   );

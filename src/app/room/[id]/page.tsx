@@ -712,6 +712,12 @@ export default function RoomPage({ params }: { params: { id: string } }) {
       );
     }
 
+    const rosterMembers = phase.memberships.map((m) => ({
+      userId: m.userId,
+      displayName: m.displayName,
+      avatarSeed: m.avatarSeed,
+    }));
+
     return (
       <>
         <CatchingUpPill active={showCatchingUp} />
@@ -723,6 +729,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
           }}
           contestants={phase.contestants}
           currentUserId={session.userId}
+          members={rosterMembers}
           onAnnouncementEnded={() => void loadRoom()}
         />
       </>
