@@ -11,6 +11,16 @@ vi.mock("@/hooks/useRoomRealtime", () => ({
   useRoomRealtime: () => {},
 }));
 
+// useRoomPresence is the §10.2 step 7 presence hook. The default mock
+// returns an empty set; specific tests override with mockImplementation.
+const useRoomPresenceMock: ReturnType<typeof vi.fn> = vi.fn(
+  (_roomId: string | null, _userId: string | null) => new Set<string>(),
+);
+vi.mock("@/hooks/useRoomPresence", () => ({
+  useRoomPresence: (roomId: string | null, userId: string | null) =>
+    useRoomPresenceMock(roomId, userId) as Set<string>,
+}));
+
 // Avatar pulls DiceBear; render a stable stub to keep snapshots
 // readable + tests fast.
 vi.mock("@/components/ui/Avatar", () => ({
@@ -428,5 +438,123 @@ describe("<AnnouncingView> — active-driver tap-anywhere zone", () => {
     expect(postAnnounceNextMock).toHaveBeenCalledTimes(1);
     // Tidy the pending promise so React doesn't warn.
     resolveReveal?.({ ok: true, data: { finished: false } });
+  });
+});
+
+// ─── A11 announcer roster (SPEC §10.2 step 7) ───────────────────────────────
+
+describe("<AnnouncingView> — owner-only announcer roster", () => {
+  beforeEach(() => {
+    postAnnounceNextMock.mockReset();
+    postAnnounceHandoffMock.mockReset();
+    postAnnounceSkipMock.mockReset();
+    useRoomPresenceMock.mockReset();
+    useRoomPresenceMock.mockImplementation(() => new Set<string>());
+    mockResultsFetch();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const ROSTER = [
+    {
+      userId: ANNOUNCER_ID,
+      displayName: "Bob",
+      avatarSeed: "seed-bob",
+    },
+    {
+      userId: "44444444-4444-4444-8444-444444444444",
+      displayName: "Carol",
+      avatarSeed: "seed-carol",
+    },
+  ];
+
+  it("renders the roster panel for the owner with members listed", async () => {
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={OWNER_ID}
+        members={ROSTER}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("announcer-roster")).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId(`roster-row-${ANNOUNCER_ID}`)).toBeInTheDocument();
+    expect(
+      screen.getByTestId("roster-row-44444444-4444-4444-8444-444444444444"),
+    ).toBeInTheDocument();
+  });
+
+  it("does NOT render the roster panel for non-owner viewers (announcer)", async () => {
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={ANNOUNCER_ID}
+        members={ROSTER}
+      />,
+    );
+    // Active-announcer mode renders the tap zone — wait for that as the
+    // load signal. (Austria appears twice for this user, in the Up-next
+    // card + the leaderboard, which would fail getByText.)
+    await waitFor(() =>
+      expect(screen.getByTestId("active-driver-tap-zone")).toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId("announcer-roster")).not.toBeInTheDocument();
+  });
+
+  it("does NOT render the roster panel when members prop is omitted", async () => {
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={OWNER_ID}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByText("Austria")).toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId("announcer-roster")).not.toBeInTheDocument();
+  });
+
+  it("flags the row matching presenceUserIds as online", async () => {
+    useRoomPresenceMock.mockImplementation(() => new Set([ANNOUNCER_ID]));
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={OWNER_ID}
+        members={ROSTER}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId(`roster-row-${ANNOUNCER_ID}`)).toHaveAttribute(
+        "data-online",
+        "true",
+      ),
+    );
+    expect(
+      screen.getByTestId("roster-row-44444444-4444-4444-8444-444444444444"),
+    ).toHaveAttribute("data-online", "false");
+  });
+
+  it("highlights the current announcer's row inside the roster", async () => {
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={OWNER_ID}
+        members={ROSTER}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId(`roster-row-${ANNOUNCER_ID}`)).toHaveAttribute(
+        "data-current-announcer",
+        "true",
+      ),
+    );
   });
 });
