@@ -5,13 +5,13 @@
  * Usage:
  *   npm run seed:room -- <state>
  *
- * States (see SEED_STATES in `seed-helpers.ts`):
- *   - lobby-with-3-guests           ✅ implemented
- *   - voting-half-done              🚧 stub
- *   - voting-ending-mid-countdown   🚧 stub
- *   - announcing-mid-queue-live     🚧 stub
- *   - announcing-instant-all-ready  🚧 stub
- *   - done-with-awards              ✅ implemented
+ * States (see SEED_STATES in `seed-helpers.ts`) — all 6 implemented:
+ *   - lobby-with-3-guests
+ *   - voting-half-done
+ *   - voting-ending-mid-countdown
+ *   - announcing-mid-queue-live
+ *   - announcing-instant-all-ready
+ *   - done-with-awards
  *
  * Each implemented state inserts a fresh room (PIN prefix `SEED`) plus
  * the membership / vote / result / award rows needed to render the
@@ -43,6 +43,7 @@ import type { Contestant } from "../src/types";
 import {
   SEED_CATEGORIES,
   buildFullScores,
+  buildHalfScores,
   buildSeedAvatarSeed,
   buildSeedDisplayName,
   buildSeedPin,
@@ -66,12 +67,12 @@ function parseArgs(argv: readonly string[]): CliArgs {
     bail(
       "Usage: npm run seed:room -- <state> [--allow-prod]\n\n" +
         "Available states:\n" +
-        "  lobby-with-3-guests           ✅ implemented\n" +
-        "  voting-half-done              🚧 stub\n" +
-        "  voting-ending-mid-countdown   🚧 stub\n" +
-        "  announcing-mid-queue-live     🚧 stub\n" +
-        "  announcing-instant-all-ready  🚧 stub\n" +
-        "  done-with-awards              ✅ implemented\n",
+        "  lobby-with-3-guests\n" +
+        "  voting-half-done\n" +
+        "  voting-ending-mid-countdown\n" +
+        "  announcing-mid-queue-live\n" +
+        "  announcing-instant-all-ready\n" +
+        "  done-with-awards\n",
     );
   }
 
@@ -278,44 +279,19 @@ async function seedDoneWithAwards(db: Db): Promise<SeedReport> {
   }
 
   const contestants = await fetchSeedContestants();
-
-  // Votes: each user fully scores every contestant with a deterministic
-  // pattern so leaderboards are non-trivial.
-  const voteRows = allUsers.flatMap((u, ui) =>
-    contestants.map((c) => ({
-      room_id: room.roomId,
-      user_id: u.userId,
-      contestant_id: c.id,
-      scores: buildFullScores(SEED_CATEGORIES, c.runningOrder + ui),
-      missed: false,
-      hot_take: ui === 0 && c.runningOrder === 1 ? "Stunning opening." : null,
-    })),
+  const { voteRows, resultRows } = buildFullVotesAndResults(
+    room.roomId,
+    allUsers,
+    contestants,
   );
+  // For "done", every reveal has happened — mark all results announced.
+  const announcedResults = resultRows.map((r) => ({ ...r, announced: true }));
+
   const { error: votesErr } = await db.from("votes").insert(voteRows);
   if (votesErr) bail(`Failed to insert votes: ${votesErr.message}`);
-
-  // Results: per-user × contestant, with rank + Eurovision points.
-  // Eurovision points-from-rank: 12, 10, 8, 7, 6, 5, 4, 3, 2, 1, 0…
-  const eurovisionPoints = [12, 10, 8, 7, 6, 5, 4, 3, 2, 1];
-  const resultRows = allUsers.flatMap((u, ui) => {
-    // Stable per-user ranking: rotate the contestant order so each user
-    // has a different #1.
-    const sorted = [...contestants].sort((a, b) => {
-      const wa = (a.runningOrder * (ui + 1) * 7) % 100;
-      const wb = (b.runningOrder * (ui + 1) * 7) % 100;
-      return wb - wa;
-    });
-    return sorted.map((c, rank) => ({
-      room_id: room.roomId,
-      user_id: u.userId,
-      contestant_id: c.id,
-      weighted_score: 10 - rank, // synthetic but ordered
-      rank: rank + 1,
-      points_awarded: eurovisionPoints[rank] ?? 0,
-      announced: true,
-    }));
-  });
-  const { error: resultsErr } = await db.from("results").insert(resultRows);
+  const { error: resultsErr } = await db
+    .from("results")
+    .insert(announcedResults);
   if (resultsErr) bail(`Failed to insert results: ${resultsErr.message}`);
 
   // Two demo awards so the awards section renders something. Real
@@ -356,26 +332,302 @@ async function seedDoneWithAwards(db: Db): Promise<SeedReport> {
   };
 }
 
-function notImplementedYet(state: SeedState): never {
-  bail(
-    `State "${state}" is scoped in SPEC §17a.6 but not yet implemented in ` +
-      `this script. See the SeedReport pattern in seedLobbyWith3Guests + ` +
-      `seedDoneWithAwards. The implementation needs to insert: rooms + ` +
-      `memberships + votes (where applicable) + results + awards in the ` +
-      `target shape. Open a follow-up PR to extend.`,
+// ─── Shared row-build helpers used by multiple state builders ──────────────
+
+interface FullVotesResult {
+  /** Votes inserted (one per user × contestant) — full scores, no missed. */
+  voteRows: Database["public"]["Tables"]["votes"]["Insert"][];
+  /** Per-user × contestant × rank + Eurovision points. Sort order rotates per user. */
+  resultRows: Database["public"]["Tables"]["results"]["Insert"][];
+}
+
+const EUROVISION_POINTS_FROM_RANK = [12, 10, 8, 7, 6, 5, 4, 3, 2, 1];
+
+/**
+ * Build full vote + result row sets for a given user list × contestant list.
+ * Used by every "post-voting" state (announcing live, announcing instant,
+ * done). Each user gets a deterministic ranking that varies per-user so
+ * the leaderboard isn't a flat tie. `announced` defaults to false; callers
+ * override per-row for announcing-mid-queue.
+ */
+function buildFullVotesAndResults(
+  roomId: string,
+  users: SeededUser[],
+  contestants: Contestant[],
+): FullVotesResult {
+  const voteRows = users.flatMap((u, ui) =>
+    contestants.map((c) => ({
+      room_id: roomId,
+      user_id: u.userId,
+      contestant_id: c.id,
+      scores: buildFullScores(SEED_CATEGORIES, c.runningOrder + ui),
+      missed: false,
+      hot_take: ui === 0 && c.runningOrder === 1 ? "Stunning opening." : null,
+    })),
   );
+  const resultRows = users.flatMap((u, ui) => {
+    const sorted = [...contestants].sort((a, b) => {
+      const wa = (a.runningOrder * (ui + 1) * 7) % 100;
+      const wb = (b.runningOrder * (ui + 1) * 7) % 100;
+      return wb - wa;
+    });
+    return sorted.map((c, rank) => ({
+      room_id: roomId,
+      user_id: u.userId,
+      contestant_id: c.id,
+      weighted_score: 10 - rank,
+      rank: rank + 1,
+      points_awarded: EUROVISION_POINTS_FROM_RANK[rank] ?? 0,
+      announced: false,
+    }));
+  });
+  return { voteRows, resultRows };
+}
+
+// ─── Voting states ──────────────────────────────────────────────────────────
+
+async function seedVotingHalfDone(db: Db): Promise<SeedReport> {
+  // status=voting. Each user has half-filled scores on every contestant
+  // (only the first ceil(N/2) categories scored). The voting screen
+  // renders normally; the operator can score any contestant's remaining
+  // categories or navigate around. EndOfVotingCard suppression: condition
+  // (a) won't fire because the last contestant isn't fully scored.
+  const owner = await insertSeededUser(db, 0);
+  const guests = await Promise.all([
+    insertSeededUser(db, 1),
+    insertSeededUser(db, 2),
+    insertSeededUser(db, 3),
+  ]);
+  const allUsers = [owner, ...guests];
+  const room = await insertSeededRoom(db, owner.userId, { status: "voting" });
+  for (const u of allUsers) {
+    await insertMembership(db, room.roomId, u.userId);
+  }
+  const contestants = await fetchSeedContestants();
+
+  const voteRows = allUsers.flatMap((u, ui) =>
+    contestants.map((c) => ({
+      room_id: room.roomId,
+      user_id: u.userId,
+      contestant_id: c.id,
+      scores: buildHalfScores(SEED_CATEGORIES, c.runningOrder + ui),
+      missed: false,
+      hot_take: null,
+    })),
+  );
+  const { error: votesErr } = await db.from("votes").insert(voteRows);
+  if (votesErr) bail(`Failed to insert votes: ${votesErr.message}`);
+
+  return {
+    roomId: room.roomId,
+    pin: room.pin,
+    url: `/room/${room.roomId}`,
+    notes: [
+      `Status: voting — operator lands on the voting card with half-scored contestants.`,
+      `4 users, ${contestants.length} contestants, only first ${Math.ceil(SEED_CATEGORIES.length / 2)} of ${SEED_CATEGORIES.length} categories filled per row.`,
+      `EndOfVotingCard won't render until the operator fully scores the last contestant or condition (b) fires.`,
+    ],
+    ownerSession: {
+      userId: owner.userId,
+      rejoinToken: owner.rejoinToken,
+    },
+  };
+}
+
+async function seedVotingEndingMidCountdown(db: Db): Promise<SeedReport> {
+  // status=voting_ending with voting_ends_at set 30s in the future. Gives
+  // the operator plenty of headroom to see the countdown UI, tap Undo,
+  // or watch the auto-finalise fire.
+  const COUNTDOWN_HEADROOM_S = 30;
+  const owner = await insertSeededUser(db, 0);
+  const guests = await Promise.all([
+    insertSeededUser(db, 1),
+    insertSeededUser(db, 2),
+    insertSeededUser(db, 3),
+  ]);
+  const allUsers = [owner, ...guests];
+  const endsAt = new Date(Date.now() + COUNTDOWN_HEADROOM_S * 1000);
+  const room = await insertSeededRoom(db, owner.userId, {
+    status: "voting_ending",
+    voting_ends_at: endsAt.toISOString(),
+  });
+  for (const u of allUsers) {
+    await insertMembership(db, room.roomId, u.userId);
+  }
+  const contestants = await fetchSeedContestants();
+
+  // Half-scored votes — same as voting-half-done so the user has
+  // something to look at on the screen behind the countdown toast.
+  const voteRows = allUsers.flatMap((u, ui) =>
+    contestants.map((c) => ({
+      room_id: room.roomId,
+      user_id: u.userId,
+      contestant_id: c.id,
+      scores: buildHalfScores(SEED_CATEGORIES, c.runningOrder + ui),
+      missed: false,
+      hot_take: null,
+    })),
+  );
+  const { error: votesErr } = await db.from("votes").insert(voteRows);
+  if (votesErr) bail(`Failed to insert votes: ${votesErr.message}`);
+
+  return {
+    roomId: room.roomId,
+    pin: room.pin,
+    url: `/room/${room.roomId}`,
+    notes: [
+      `Status: voting_ending — 30s countdown until auto-scoring fires (voting_ends_at = ${endsAt.toISOString()}).`,
+      `Admin sees EndVotingCountdownToast with Undo button.`,
+      `Guest sees EndingPill. Either can let the timer elapse to roll into runScoring.`,
+    ],
+    ownerSession: {
+      userId: owner.userId,
+      rejoinToken: owner.rejoinToken,
+    },
+  };
+}
+
+// ─── Announcing states ──────────────────────────────────────────────────────
+
+async function seedAnnouncingMidQueueLive(db: Db): Promise<SeedReport> {
+  // status=announcing, mode=live. 4 announcers in the order. The first
+  // user has fully announced; the second user is mid-queue with 3 of 5
+  // reveals done; the remaining 2 users haven't started.
+  const owner = await insertSeededUser(db, 0);
+  const guests = await Promise.all([
+    insertSeededUser(db, 1),
+    insertSeededUser(db, 2),
+    insertSeededUser(db, 3),
+  ]);
+  const allUsers = [owner, ...guests];
+  const order = allUsers.map((u) => u.userId);
+  const announcingUserId = order[1]; // second user — mid-queue
+  const REVEALS_DONE_FOR_CURRENT = 3;
+
+  const room = await insertSeededRoom(db, owner.userId, {
+    status: "announcing",
+    announcement_mode: "live",
+    announcement_order: order,
+    announcing_user_id: announcingUserId,
+    current_announce_idx: REVEALS_DONE_FOR_CURRENT,
+    voting_ended_at: new Date(Date.now() - 5 * 60_000).toISOString(),
+  });
+  for (const u of allUsers) {
+    await insertMembership(db, room.roomId, u.userId);
+  }
+
+  const contestants = await fetchSeedContestants();
+  const { voteRows, resultRows } = buildFullVotesAndResults(
+    room.roomId,
+    allUsers,
+    contestants,
+  );
+
+  // Mark the right rows as announced=true:
+  //   - All of the FIRST announcer's results (they're "done")
+  //   - The lowest-points-awarded REVEALS_DONE_FOR_CURRENT rows of the
+  //     current announcer (Eurovision live reveal goes 1pt → 12pt, so
+  //     "done" means the smallest points_awarded values have been
+  //     called out already).
+  const firstAnnouncerId = order[0];
+  const adjustedResults = resultRows.map((r) => {
+    if (r.user_id === firstAnnouncerId) {
+      return { ...r, announced: true };
+    }
+    return r;
+  });
+  // Sort the current announcer's rows by points_awarded ascending,
+  // mark the first N as announced.
+  const currentRows = adjustedResults.filter(
+    (r) => r.user_id === announcingUserId,
+  );
+  currentRows
+    .sort((a, b) => (a.points_awarded ?? 0) - (b.points_awarded ?? 0))
+    .slice(0, REVEALS_DONE_FOR_CURRENT)
+    .forEach((r) => {
+      r.announced = true;
+    });
+
+  const { error: votesErr } = await db.from("votes").insert(voteRows);
+  if (votesErr) bail(`Failed to insert votes: ${votesErr.message}`);
+  const { error: resultsErr } = await db
+    .from("results")
+    .insert(adjustedResults);
+  if (resultsErr) bail(`Failed to insert results: ${resultsErr.message}`);
+
+  const announcerName = allUsers.find((u) => u.userId === announcingUserId)
+    ?.displayName ?? "?";
+  return {
+    roomId: room.roomId,
+    pin: room.pin,
+    url: `/room/${room.roomId}`,
+    notes: [
+      `Status: announcing (live). Order: ${allUsers.map((u) => u.displayName).join(" → ")}.`,
+      `Currently announcing: ${announcerName} — ${REVEALS_DONE_FOR_CURRENT} of 5 reveals done.`,
+      `Owner sees "Announce for {name}" CTA + roster panel. Operator can also visit /room/{id}/present for the TV view.`,
+    ],
+    ownerSession: {
+      userId: owner.userId,
+      rejoinToken: owner.rejoinToken,
+    },
+  };
+}
+
+async function seedAnnouncingInstantAllReady(db: Db): Promise<SeedReport> {
+  // status=announcing, mode=instant. Every member is_ready=true so the
+  // admin's "Reveal final results" CTA is enabled (canRevealAll fires
+  // when readyCount === totalCount per nextRevealCtaState).
+  const owner = await insertSeededUser(db, 0);
+  const guests = await Promise.all([
+    insertSeededUser(db, 1),
+    insertSeededUser(db, 2),
+    insertSeededUser(db, 3),
+  ]);
+  const allUsers = [owner, ...guests];
+  const room = await insertSeededRoom(db, owner.userId, {
+    status: "announcing",
+    announcement_mode: "instant",
+    voting_ended_at: new Date(Date.now() - 5 * 60_000).toISOString(),
+  });
+  for (const u of allUsers) {
+    // Mark every member ready so the admin CTA fires.
+    await insertMembership(db, room.roomId, u.userId, /* isReady */ true);
+  }
+
+  const contestants = await fetchSeedContestants();
+  const { voteRows, resultRows } = buildFullVotesAndResults(
+    room.roomId,
+    allUsers,
+    contestants,
+  );
+  const { error: votesErr } = await db.from("votes").insert(voteRows);
+  if (votesErr) bail(`Failed to insert votes: ${votesErr.message}`);
+  const { error: resultsErr } = await db.from("results").insert(resultRows);
+  if (resultsErr) bail(`Failed to insert results: ${resultsErr.message}`);
+
+  return {
+    roomId: room.roomId,
+    pin: room.pin,
+    url: `/room/${room.roomId}`,
+    notes: [
+      `Status: announcing (instant). All 4 members marked ready.`,
+      `Admin's "Reveal final results" CTA is enabled (no countdown — canRevealAll fires immediately).`,
+      `Operator can also test "Reveal anyway" + the always-available admin override.`,
+    ],
+    ownerSession: {
+      userId: owner.userId,
+      rejoinToken: owner.rejoinToken,
+    },
+  };
 }
 
 const STATE_BUILDERS: Record<SeedState, (db: Db) => Promise<SeedReport>> = {
   "lobby-with-3-guests": seedLobbyWith3Guests,
+  "voting-half-done": seedVotingHalfDone,
+  "voting-ending-mid-countdown": seedVotingEndingMidCountdown,
+  "announcing-mid-queue-live": seedAnnouncingMidQueueLive,
+  "announcing-instant-all-ready": seedAnnouncingInstantAllReady,
   "done-with-awards": seedDoneWithAwards,
-  "voting-half-done": async () => notImplementedYet("voting-half-done"),
-  "voting-ending-mid-countdown": async () =>
-    notImplementedYet("voting-ending-mid-countdown"),
-  "announcing-mid-queue-live": async () =>
-    notImplementedYet("announcing-mid-queue-live"),
-  "announcing-instant-all-ready": async () =>
-    notImplementedYet("announcing-instant-all-ready"),
 };
 
 // ─── Main ──────────────────────────────────────────────────────────────────
