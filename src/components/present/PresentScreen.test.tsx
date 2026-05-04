@@ -189,3 +189,165 @@ describe("PresentScreen — announcing", () => {
     expect(screen.getByText("2026-se")).toBeInTheDocument();
   });
 });
+
+describe("PresentScreen — FLIP rank-shift animation (§10.3)", () => {
+  // jsdom returns a zero-DOMRect for getBoundingClientRect by default,
+  // so we mock it to drive deterministic dy values across rerenders.
+  // The first render captures rects, the second computes diffs.
+
+  function mockRects(rects: Map<string, { top: number }>) {
+    const orig = Element.prototype.getBoundingClientRect;
+    Element.prototype.getBoundingClientRect = function () {
+      const id = (this as HTMLElement).getAttribute("data-testid") ?? "";
+      const match = id.match(/^present-row-(.+)$/);
+      const ck = match?.[1];
+      const r = ck ? rects.get(ck) : undefined;
+      return {
+        top: r?.top ?? 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: 0,
+        height: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      };
+    };
+    return () => {
+      Element.prototype.getBoundingClientRect = orig;
+    };
+  }
+
+  const CONTESTANTS = [
+    {
+      id: "2026-se",
+      year: 2026,
+      event: "final",
+      countryCode: "se",
+      country: "Sweden",
+      artist: "A",
+      song: "S",
+      flagEmoji: "🇸🇪",
+      runningOrder: 1,
+    },
+    {
+      id: "2026-ua",
+      year: 2026,
+      event: "final",
+      countryCode: "ua",
+      country: "Ukraine",
+      artist: "A",
+      song: "S",
+      flagEmoji: "🇺🇦",
+      runningOrder: 2,
+    },
+  ] as const;
+
+  it("does NOT apply animate-rank-shift on the very first render", () => {
+    const { container } = render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS as never}
+        leaderboard={[
+          { contestantId: "2026-se", totalPoints: 12, rank: 1 },
+          { contestantId: "2026-ua", totalPoints: 8, rank: 2 },
+        ]}
+      />,
+    );
+    expect(container.innerHTML).not.toContain("animate-rank-shift");
+  });
+
+  it("applies animate-rank-shift to a row whose vertical position changed between renders", () => {
+    // First render: SE on top (top=0), UA below (top=100).
+    const restore1 = mockRects(
+      new Map([
+        ["2026-se", { top: 0 }],
+        ["2026-ua", { top: 100 }],
+      ]),
+    );
+    const { rerender, container } = render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS as never}
+        leaderboard={[
+          { contestantId: "2026-se", totalPoints: 12, rank: 1 },
+          { contestantId: "2026-ua", totalPoints: 8, rank: 2 },
+        ]}
+      />,
+    );
+    restore1();
+
+    // Now flip: UA moves to top, SE drops to second.
+    const restore2 = mockRects(
+      new Map([
+        ["2026-se", { top: 100 }],
+        ["2026-ua", { top: 0 }],
+      ]),
+    );
+    rerender(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS as never}
+        leaderboard={[
+          { contestantId: "2026-ua", totalPoints: 16, rank: 1 },
+          { contestantId: "2026-se", totalPoints: 12, rank: 2 },
+        ]}
+      />,
+    );
+    restore2();
+
+    // Both rows shifted by ±100 px → both should pick up the FLIP class
+    // and the --shift-from CSS variable.
+    const seRow = container.querySelector(
+      "[data-testid='present-row-2026-se']",
+    ) as HTMLElement;
+    const uaRow = container.querySelector(
+      "[data-testid='present-row-2026-ua']",
+    ) as HTMLElement;
+    expect(seRow.className).toContain("motion-safe:animate-rank-shift");
+    expect(uaRow.className).toContain("motion-safe:animate-rank-shift");
+    // SE moved DOWN 100 px → dy = oldTop(0) - newTop(100) = -100.
+    expect(seRow.style.getPropertyValue("--shift-from")).toBe("-100px");
+    // UA moved UP 100 px → dy = oldTop(100) - newTop(0) = 100.
+    expect(uaRow.style.getPropertyValue("--shift-from")).toBe("100px");
+  });
+
+  it("does NOT apply animate-rank-shift to rows that didn't move (sub-pixel diff threshold)", () => {
+    // Both rows render at the same top; the second render keeps positions
+    // identical → no FLIP fire.
+    const restore = mockRects(
+      new Map([
+        ["2026-se", { top: 0 }],
+        ["2026-ua", { top: 100 }],
+      ]),
+    );
+    const { rerender, container } = render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS as never}
+        leaderboard={[
+          { contestantId: "2026-se", totalPoints: 12, rank: 1 },
+          { contestantId: "2026-ua", totalPoints: 8, rank: 2 },
+        ]}
+      />,
+    );
+    rerender(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS as never}
+        leaderboard={[
+          { contestantId: "2026-se", totalPoints: 14, rank: 1 }, // total bumped, position unchanged
+          { contestantId: "2026-ua", totalPoints: 8, rank: 2 },
+        ]}
+      />,
+    );
+    restore();
+    expect(container.innerHTML).not.toContain("animate-rank-shift");
+  });
+});

@@ -1,5 +1,6 @@
 "use client";
 
+import { useLayoutEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import type { Contestant } from "@/types";
 import type { LeaderboardEntry } from "@/lib/results/formatRoomSummary";
@@ -126,6 +127,78 @@ export default function PresentScreen({
   const rows = leaderboard ?? [];
 
   return (
+    <PresentLeaderboard
+      status={status}
+      rows={rows}
+      contestantById={contestantById}
+      announcerDisplayName={announcerDisplayName}
+      titleAnnouncing={t("present.announcing.title")}
+      titleDone={t("present.done.title")}
+      announcerLabel={
+        announcerDisplayName
+          ? t("present.announcing.announcer", { name: announcerDisplayName })
+          : ""
+      }
+    />
+  );
+}
+
+interface PresentLeaderboardProps {
+  status: "announcing" | "done";
+  rows: LeaderboardEntry[];
+  contestantById: Map<string, Contestant>;
+  announcerDisplayName?: string;
+  titleAnnouncing: string;
+  titleDone: string;
+  announcerLabel: string;
+}
+
+/**
+ * Inner component for the announcing+done leaderboard so the FLIP
+ * useLayoutEffect lives at a single hook scope rather than buried
+ * behind status branches in the parent. Hooks-of-the-day rule of
+ * thumb: don't put hooks behind early returns.
+ *
+ * Rank-shift animation per SPEC §10.3 — when `rows` re-renders with
+ * different ordering, each row that moved gets `animate-rank-shift`
+ * with `--shift-from` set to (oldTop - newTop) so it slides from its
+ * previous visual position to its new one. Reuses the FLIP pattern
+ * shipped in `<LeaderboardCeremony>`. First render captures initial
+ * rects without animating — only diffs on subsequent renders fire.
+ */
+function PresentLeaderboard({
+  status,
+  rows,
+  contestantById,
+  announcerDisplayName,
+  titleAnnouncing,
+  titleDone,
+  announcerLabel,
+}: PresentLeaderboardProps) {
+  const rowRefs = useRef<Map<string, HTMLLIElement>>(new Map());
+  const prevRectsRef = useRef<Map<string, DOMRect>>(new Map());
+
+  useLayoutEffect(() => {
+    const newRects = new Map<string, DOMRect>();
+    for (const [id, el] of rowRefs.current) {
+      newRects.set(id, el.getBoundingClientRect());
+    }
+    for (const [id, oldRect] of prevRectsRef.current) {
+      const newRect = newRects.get(id);
+      const el = rowRefs.current.get(id);
+      if (!newRect || !el) continue;
+      const dy = oldRect.top - newRect.top;
+      if (Math.abs(dy) < 0.5) continue;
+      el.style.setProperty("--shift-from", `${dy}px`);
+      el.classList.remove("motion-safe:animate-rank-shift");
+      // Force reflow so re-adding the class restarts the animation.
+      void el.offsetHeight;
+      el.classList.add("motion-safe:animate-rank-shift");
+    }
+    prevRectsRef.current = newRects;
+  }, [rows]);
+
+  return (
     <main
       data-testid="present-screen"
       data-status={status}
@@ -133,16 +206,10 @@ export default function PresentScreen({
     >
       <header className="mb-6 flex items-baseline justify-between gap-6">
         <h1 className="text-4xl font-bold tracking-tight">
-          {status === "done"
-            ? t("present.done.title")
-            : t("present.announcing.title")}
+          {status === "done" ? titleDone : titleAnnouncing}
         </h1>
         {announcerDisplayName && status === "announcing" ? (
-          <p className="text-2xl text-muted-foreground">
-            {t("present.announcing.announcer", {
-              name: announcerDisplayName,
-            })}
-          </p>
+          <p className="text-2xl text-muted-foreground">{announcerLabel}</p>
         ) : null}
       </header>
       <ol className="flex-1 space-y-2 overflow-hidden">
@@ -152,8 +219,12 @@ export default function PresentScreen({
           return (
             <li
               key={row.contestantId}
+              ref={(el) => {
+                if (el) rowRefs.current.set(row.contestantId, el);
+                else rowRefs.current.delete(row.contestantId);
+              }}
               data-testid={`present-row-${row.contestantId}`}
-              className="flex items-center justify-between gap-6 rounded-xl border border-border bg-card px-6 py-4 motion-safe:animate-fade-in"
+              className="flex items-center justify-between gap-6 rounded-xl border border-border bg-card px-6 py-4"
             >
               <span className="flex items-center gap-6 min-w-0">
                 <span className="w-12 text-center text-2xl tabular-nums font-bold text-muted-foreground">
