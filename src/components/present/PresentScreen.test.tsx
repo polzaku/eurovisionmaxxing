@@ -188,6 +188,132 @@ describe("PresentScreen — announcing", () => {
     // The country col shows the contestantId fallback when contestant lookup fails.
     expect(screen.getByText("2026-se")).toBeInTheDocument();
   });
+
+  it("renders the announcer-position label when announcerPosition + announcerCount are provided", () => {
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={LEADERBOARD}
+        announcerPosition={3}
+        announcerCount={7}
+      />,
+    );
+    const label = screen.getByTestId("present-announcer-position");
+    expect(label).toHaveTextContent("present.announcing.position");
+    // Mock joins the params payload onto the key — make sure both numbers landed.
+    expect(label.textContent).toContain('"position":3');
+    expect(label.textContent).toContain('"total":7');
+  });
+
+  it("does NOT render the position label when announcerCount is 0 (degenerate empty-room)", () => {
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={LEADERBOARD}
+        announcerPosition={1}
+        announcerCount={0}
+      />,
+    );
+    expect(
+      screen.queryByTestId("present-announcer-position"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does NOT render the position label in 'done' status", () => {
+    render(
+      <PresentScreen
+        status="done"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={LEADERBOARD}
+        announcerPosition={3}
+        announcerCount={7}
+      />,
+    );
+    expect(
+      screen.queryByTestId("present-announcer-position"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders the 'Up next' card with flag + country + points when pendingReveal is provided", () => {
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={LEADERBOARD}
+        pendingReveal={{ contestantId: "2026-se", points: 8 }}
+      />,
+    );
+    const card = screen.getByTestId("present-pending-reveal");
+    expect(card).toHaveAttribute("data-has-reveal", "true");
+    expect(card).toHaveTextContent("present.announcing.upNext");
+    // Mock concatenates params — verify both points and country surfaced.
+    expect(card.textContent).toContain('"points":8');
+    expect(card.textContent).toContain('"country":"Sweden"');
+  });
+
+  it("renders the queue-exhausted variant when pendingReveal is null (transitional)", () => {
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={LEADERBOARD}
+        pendingReveal={null}
+      />,
+    );
+    const card = screen.getByTestId("present-pending-reveal");
+    expect(card).toHaveAttribute("data-has-reveal", "false");
+    expect(card).toHaveTextContent("present.announcing.queueExhausted");
+  });
+
+  it("does NOT render the 'Up next' card when pendingReveal prop is undefined", () => {
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={LEADERBOARD}
+      />,
+    );
+    expect(
+      screen.queryByTestId("present-pending-reveal"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does NOT render the 'Up next' card in 'done' status even when pendingReveal is provided", () => {
+    render(
+      <PresentScreen
+        status="done"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={LEADERBOARD}
+        pendingReveal={{ contestantId: "2026-se", points: 12 }}
+      />,
+    );
+    expect(
+      screen.queryByTestId("present-pending-reveal"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("falls back to the contestantId in 'Up next' when the contestant is unknown", () => {
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={[]}
+        leaderboard={LEADERBOARD}
+        pendingReveal={{ contestantId: "2026-xx", points: 12 }}
+      />,
+    );
+    const card = screen.getByTestId("present-pending-reveal");
+    expect(card.textContent).toContain('"country":"2026-xx"');
+  });
 });
 
 describe("PresentScreen — FLIP rank-shift animation (§10.3)", () => {
