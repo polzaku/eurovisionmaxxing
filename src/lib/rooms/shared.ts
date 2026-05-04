@@ -40,7 +40,13 @@ export type RoomEventPayload =
       readyCount: number;
       totalCount: number;
     }
-  | { type: "contestants_refreshed" };
+  | { type: "contestants_refreshed" }
+  | {
+      type: "hot_take_deleted";
+      userId: string;
+      contestantId: string;
+      deletedByUserId: string;
+    };
 
 type RoomRow = Database["public"]["Tables"]["rooms"]["Row"];
 

@@ -155,7 +155,14 @@ export type RoomEvent =
       readyCount: number;
       totalCount: number;
     }
-  | { type: "contestants_refreshed" };
+  | { type: "contestants_refreshed" }
+  /** SPEC §8.7.2 — admin deleted a hot-take. Subscribers drop the row from any live hot-takes surface. */
+  | {
+      type: "hot_take_deleted";
+      userId: string;
+      contestantId: string;
+      deletedByUserId: string;
+    };
 
 // ─── Voting Templates ────────────────────────────────────────────────────────
 
