@@ -43,11 +43,13 @@ vi.mock("@/components/room/DoneCard", () => ({
 const postAnnounceNextMock = vi.fn();
 const postAnnounceHandoffMock = vi.fn();
 const postAnnounceSkipMock = vi.fn();
+const postAnnounceRestoreMock = vi.fn();
 
 vi.mock("@/lib/room/api", () => ({
   postAnnounceNext: (...args: unknown[]) => postAnnounceNextMock(...args),
   postAnnounceHandoff: (...args: unknown[]) => postAnnounceHandoffMock(...args),
   postAnnounceSkip: (...args: unknown[]) => postAnnounceSkipMock(...args),
+  postAnnounceRestore: (...args: unknown[]) => postAnnounceRestoreMock(...args),
 }));
 
 import AnnouncingView from "./AnnouncingView";
@@ -87,6 +89,7 @@ const ANNOUNCEMENT_STATE = {
   delegateUserId: null,
   announcerPosition: 1,
   announcerCount: 2,
+  skippedUserIds: [] as string[],
 };
 
 const RESULTS_RESPONSE_BODY = {
@@ -448,6 +451,7 @@ describe("<AnnouncingView> — owner-only announcer roster", () => {
     postAnnounceNextMock.mockReset();
     postAnnounceHandoffMock.mockReset();
     postAnnounceSkipMock.mockReset();
+    postAnnounceRestoreMock.mockReset();
     useRoomPresenceMock.mockReset();
     useRoomPresenceMock.mockImplementation(() => new Set<string>());
     mockResultsFetch();
@@ -556,5 +560,144 @@ describe("<AnnouncingView> — owner-only announcer roster", () => {
         "true",
       ),
     );
+  });
+
+  // ─── §10.2.1 stage 2 — restore-skipped wiring ──────────────────────────
+  describe("restore-skipped CTA wiring", () => {
+    const CAROL_ID = "44444444-4444-4444-8444-444444444444";
+
+    it("renders the Restore button on skipped rows from announcement.skippedUserIds", async () => {
+      mockResultsFetch({
+        ...RESULTS_RESPONSE_BODY,
+        announcement: {
+          ...ANNOUNCEMENT_STATE,
+          skippedUserIds: [CAROL_ID],
+        },
+      });
+      render(
+        <AnnouncingView
+          room={ROOM}
+          contestants={CONTESTANTS}
+          currentUserId={OWNER_ID}
+          members={ROSTER}
+        />,
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByTestId(`roster-restore-${CAROL_ID}`),
+        ).toBeInTheDocument(),
+      );
+      // Bob isn't skipped → no restore button on him.
+      expect(
+        screen.queryByTestId(`roster-restore-${ANNOUNCER_ID}`),
+      ).not.toBeInTheDocument();
+    });
+
+    it("calls postAnnounceRestore with (roomId, ownerId, restoreUserId, deps) on click", async () => {
+      mockResultsFetch({
+        ...RESULTS_RESPONSE_BODY,
+        announcement: {
+          ...ANNOUNCEMENT_STATE,
+          skippedUserIds: [CAROL_ID],
+        },
+      });
+      postAnnounceRestoreMock.mockResolvedValue({
+        ok: true,
+        data: {
+          restoredUserId: CAROL_ID,
+          restoredDisplayName: "Carol",
+          announcementOrder: [],
+          announceSkippedUserIds: [],
+        },
+      });
+      render(
+        <AnnouncingView
+          room={ROOM}
+          contestants={CONTESTANTS}
+          currentUserId={OWNER_ID}
+          members={ROSTER}
+        />,
+      );
+      const btn = await screen.findByTestId(`roster-restore-${CAROL_ID}`);
+      await userEvent.click(btn);
+      await waitFor(() => {
+        expect(postAnnounceRestoreMock).toHaveBeenCalledTimes(1);
+      });
+      expect(postAnnounceRestoreMock).toHaveBeenCalledWith(
+        ROOM_ID,
+        OWNER_ID,
+        CAROL_ID,
+        expect.objectContaining({ fetch: expect.any(Function) }),
+      );
+    });
+
+    it("disables the in-flight Restore button + flips to 'Restoring…'", async () => {
+      mockResultsFetch({
+        ...RESULTS_RESPONSE_BODY,
+        announcement: {
+          ...ANNOUNCEMENT_STATE,
+          skippedUserIds: [CAROL_ID],
+        },
+      });
+      let resolveRestore: ((v: unknown) => void) | undefined;
+      postAnnounceRestoreMock.mockImplementation(
+        () => new Promise((r) => (resolveRestore = r)),
+      );
+      render(
+        <AnnouncingView
+          room={ROOM}
+          contestants={CONTESTANTS}
+          currentUserId={OWNER_ID}
+          members={ROSTER}
+        />,
+      );
+      await userEvent.click(
+        await screen.findByTestId(`roster-restore-${CAROL_ID}`),
+      );
+      await waitFor(() => {
+        const btn = screen.getByTestId(
+          `roster-restore-${CAROL_ID}`,
+        ) as HTMLButtonElement;
+        expect(btn).toBeDisabled();
+        expect(btn).toHaveTextContent(/restoring/i);
+      });
+      // Tidy the pending promise.
+      resolveRestore?.({ ok: true, data: { announceSkippedUserIds: [] } });
+    });
+
+    it("renders an inline error when the restore call fails", async () => {
+      mockResultsFetch({
+        ...RESULTS_RESPONSE_BODY,
+        announcement: {
+          ...ANNOUNCEMENT_STATE,
+          skippedUserIds: [CAROL_ID],
+        },
+      });
+      postAnnounceRestoreMock.mockResolvedValue({
+        ok: false,
+        code: "USER_NOT_SKIPPED",
+        message: "nothing to restore",
+      });
+      render(
+        <AnnouncingView
+          room={ROOM}
+          contestants={CONTESTANTS}
+          currentUserId={OWNER_ID}
+          members={ROSTER}
+        />,
+      );
+      await userEvent.click(
+        await screen.findByTestId(`roster-restore-${CAROL_ID}`),
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("restore-error")).toBeInTheDocument(),
+      );
+      // Roster row stays visible — failure doesn't optimistically remove
+      // the skipped marker. The next refetch (on broadcast or subsequent
+      // success) will reconcile.
+      expect(
+        screen.getByTestId(`roster-row-${CAROL_ID}`),
+      ).toHaveAttribute("data-skipped", "true");
+    });
   });
 });

@@ -65,6 +65,12 @@ export interface AnnouncementState {
   announcerPosition: number;
   /** Total number of eligible announcers in `announcement_order`. */
   announcerCount: number;
+  /**
+   * SPEC §10.2.1 — userIds the admin has skipped during this announce
+   * flow. The roster panel renders these with a strikethrough + the
+   * owner's "Restore" CTA.
+   */
+  skippedUserIds: string[];
 }
 
 // Discriminated union per SPEC §12.5. `voting_ending` is forward-compat
@@ -155,6 +161,7 @@ type RoomBase = {
   announcing_user_id: string | null;
   current_announce_idx: number | null;
   delegate_user_id: string | null;
+  announce_skipped_user_ids: string[] | null;
 };
 
 type ResultRow = {
@@ -226,7 +233,7 @@ export async function loadResults(
   const roomQuery = await deps.supabase
     .from("rooms")
     .select(
-      "id, status, pin, year, event, owner_user_id, announcement_order, announcing_user_id, current_announce_idx, delegate_user_id",
+      "id, status, pin, year, event, owner_user_id, announcement_order, announcing_user_id, current_announce_idx, delegate_user_id, announce_skipped_user_ids",
     )
     .eq("id", roomId)
     .maybeSingle();
@@ -360,6 +367,7 @@ async function loadAnnouncing(
       delegateUserId: room.delegate_user_id ?? null,
       announcerPosition: positionIdx >= 0 ? positionIdx + 1 : 1,
       announcerCount: order.length || 1,
+      skippedUserIds: room.announce_skipped_user_ids ?? [],
     };
   }
 

@@ -429,6 +429,7 @@ describe("loadResults — announcing", () => {
       delegateUserId: null,
       announcerPosition: 1,
       announcerCount: 1,
+      skippedUserIds: [],
     });
   });
 

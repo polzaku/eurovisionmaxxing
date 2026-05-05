@@ -22,6 +22,19 @@ interface AnnouncerRosterProps {
    * can see at a glance who's been bypassed.
    */
   skippedUserIds?: Set<string>;
+  /**
+   * SPEC §10.2.1 — owner-only callback for restoring a skipped user.
+   * When provided, skipped rows render a "Restore" CTA next to the
+   * "skipped" label. Omit (e.g. for non-owner views) to keep the
+   * roster display-only.
+   */
+  onRestore?: (userId: string) => void;
+  /**
+   * UserId currently in-flight on `onRestore` — used to disable the
+   * button + render busy copy. Optional; absent means no in-flight
+   * restores.
+   */
+  restoringUserId?: string | null;
 }
 
 /**
@@ -43,6 +56,8 @@ export default function AnnouncerRoster({
   currentAnnouncerId,
   delegateUserId,
   skippedUserIds,
+  onRestore,
+  restoringUserId,
 }: AnnouncerRosterProps) {
   if (members.length === 0) return null;
 
@@ -113,12 +128,26 @@ export default function AnnouncerRoster({
                 </span>
               ) : null}
               {isSkipped ? (
-                <span
-                  className="text-xs font-medium text-muted-foreground"
-                  aria-label="Skipped"
-                >
-                  skipped
-                </span>
+                <>
+                  <span
+                    className="text-xs font-medium text-muted-foreground"
+                    aria-label="Skipped"
+                  >
+                    skipped
+                  </span>
+                  {onRestore ? (
+                    <button
+                      type="button"
+                      onClick={() => onRestore(m.userId)}
+                      disabled={restoringUserId === m.userId}
+                      data-testid={`roster-restore-${m.userId}`}
+                      aria-label={`Restore ${m.displayName}`}
+                      className="rounded border border-accent/50 bg-accent/5 px-2 py-0.5 text-xs font-medium text-accent transition-colors hover:bg-accent/10 active:scale-[0.98] disabled:opacity-60"
+                    >
+                      {restoringUserId === m.userId ? "Restoring…" : "Restore"}
+                    </button>
+                  ) : null}
+                </>
               ) : null}
             </li>
           );

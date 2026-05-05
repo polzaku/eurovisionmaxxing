@@ -186,6 +186,35 @@ export async function postAnnounceSkip(
 }
 
 /**
+ * SPEC §10.2.1 — admin reverses a manual skip. Companion to postAnnounceSkip.
+ * Re-inserts `restoreUserId` after the current announcer; the user's
+ * `announced=true` results flip back so reveals replay dramatically.
+ */
+export interface AnnounceRestoreSuccess {
+  restoredUserId: string;
+  restoredDisplayName: string;
+  announcementOrder: string[];
+  announceSkippedUserIds: string[];
+}
+
+export async function postAnnounceRestore(
+  roomId: string,
+  userId: string,
+  restoreUserId: string,
+  deps: Deps,
+): Promise<ApiOk<AnnounceRestoreSuccess> | ApiFail> {
+  return runRequest<AnnounceRestoreSuccess>(
+    () =>
+      deps.fetch(`/api/rooms/${roomId}/announce/restore`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ userId, restoreUserId }),
+      }),
+    (body) => body as AnnounceRestoreSuccess,
+  );
+}
+
+/**
  * Owner-only handoff: take over (`takeControl: true`) or release back to
  * the original announcer (`takeControl: false`). SPEC §10.2 step 7.
  */
