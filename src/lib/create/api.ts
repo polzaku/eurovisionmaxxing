@@ -19,15 +19,25 @@ interface ApiContestantsResponse {
 export async function fetchContestantsPreview(
   year: number,
   event: "semi1" | "semi2" | "final",
-  deps: Deps
+  deps: Deps,
+  options?: { signal?: AbortSignal },
 ): Promise<
   | { ok: true; data: ContestantsPreview }
   | { ok: false; code: string; message: string }
 > {
   let res: Response;
   try {
-    res = await deps.fetch(`/api/contestants?year=${year}&event=${event}`);
-  } catch {
+    res = await deps.fetch(
+      `/api/contestants?year=${year}&event=${event}`,
+      options?.signal ? { signal: options.signal } : undefined,
+    );
+  } catch (err) {
+    // Distinguish caller-driven aborts (year/event change mid-flight)
+    // from real network failures so the UI doesn't render an error
+    // when it should just discard the stale response.
+    if (err instanceof DOMException && err.name === "AbortError") {
+      return { ok: false, code: "ABORTED", message: "" };
+    }
     return { ok: false, code: "NETWORK", message: GENERIC_MESSAGE };
   }
 

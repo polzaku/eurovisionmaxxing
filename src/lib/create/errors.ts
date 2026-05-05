@@ -8,6 +8,7 @@ const MESSAGES: Record<string, string> = {
   INVALID_BODY: "Something went wrong. Please try again.",
   INTERNAL_ERROR: "We hit a snag on our end. Please try again in a moment.",
   NETWORK: "We couldn't reach the server. Check your connection.",
+  TIMEOUT: "Loading is taking too long. Try again, or pick a different year/event.",
 };
 
 const GENERIC = "Something went wrong. Please try again.";
