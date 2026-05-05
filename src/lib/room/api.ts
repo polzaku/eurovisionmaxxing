@@ -215,6 +215,32 @@ export async function postAnnounceRestore(
 }
 
 /**
+ * SPEC §10.2.1 — owner reshuffles the announcement order before any
+ * point has been revealed. Server hard-gates on no
+ * `results.announced=true` rows; the UI should mirror that gate.
+ */
+export interface AnnouncementOrderReshuffleSuccess {
+  announcementOrder: string[];
+  announcingUserId: string;
+}
+
+export async function patchAnnouncementOrder(
+  roomId: string,
+  userId: string,
+  deps: Deps,
+): Promise<ApiOk<AnnouncementOrderReshuffleSuccess> | ApiFail> {
+  return runRequest<AnnouncementOrderReshuffleSuccess>(
+    () =>
+      deps.fetch(`/api/rooms/${roomId}/announcement-order`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ userId }),
+      }),
+    (body) => body as AnnouncementOrderReshuffleSuccess,
+  );
+}
+
+/**
  * Owner-only handoff: take over (`takeControl: true`) or release back to
  * the original announcer (`takeControl: false`). SPEC §10.2 step 7.
  */

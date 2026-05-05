@@ -148,6 +148,12 @@ export type RoomEvent =
   | { type: "announce_skip"; userId: string; displayName: string }
   /** SPEC §10.2.1 — admin restored a previously-skipped user. */
   | { type: "announce_skip_restored"; userId: string; displayName: string }
+  /** SPEC §10.2.1 — admin re-shuffled the announcement order pre-reveal. */
+  | {
+      type: "announcement_order_reshuffled";
+      announcementOrder: string[];
+      announcingUserId: string;
+    }
   | { type: "announce_turn"; userId: string }
   | { type: "score_update"; contestantId: string; newTotal: number; newRank: number }
   | {
