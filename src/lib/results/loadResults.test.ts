@@ -701,6 +701,20 @@ describe("loadResults — done", () => {
       winnerUserId: "u-1",
       statValue: 4.2,
     });
+
+    // Phase U country drill-down: per-contestant inversion of breakdowns.
+    // AL got 12 from Alice + 10 from Bob; BE got 12 from Bob + 10 from Alice;
+    // CR got 8 from each. Within a contestant: points desc, then displayName.
+    const albania = result.data.contestantBreakdowns.find(
+      (b) => b.contestantId === "2026-al",
+    );
+    expect(albania).toBeDefined();
+    expect(albania!.gives.map((g) => g.pointsAwarded)).toEqual([12, 10]);
+    expect(albania!.gives[0].displayName).toBe("Alice");
+    const croatia = result.data.contestantBreakdowns.find(
+      (b) => b.contestantId === "2026-cr",
+    );
+    expect(croatia!.gives.map((g) => g.displayName)).toEqual(["Alice", "Bob"]);
   });
 
   it("excludes 0-point rows from breakdowns (ranks 11+)", async () => {
@@ -792,6 +806,7 @@ describe("loadResults — done", () => {
     expect(result.ok).toBe(true);
     if (!result.ok || result.data.status !== "done") return;
     expect(result.data.breakdowns).toEqual([]);
+    expect(result.data.contestantBreakdowns).toEqual([]);
     expect(result.data.hotTakes).toEqual([]);
     expect(result.data.awards).toEqual([]);
     // Leaderboard still includes every contestant at 0.
