@@ -19,11 +19,21 @@ type TemplateId = "classic" | "spectacle" | "bangerTest";
 type Mode = "live" | "instant";
 
 interface ContestantsState {
-  kind: "idle" | "loading" | "ready" | "error";
+  kind: "idle" | "loading" | "slow" | "ready" | "error" | "timeout";
   count?: number;
   preview?: Array<{ flag: string; country: string }>;
   errorMessage?: string;
 }
+
+/**
+ * SPEC §5.1e timing constants — exported for tests. The wizard
+ * debounces year/event input by 300ms (avoid firing per-keystroke),
+ * shows a "this is taking a while" hint at 5s, and hard-cuts the fetch
+ * at 10s so a hung upstream doesn't render a forever-loading wizard.
+ */
+const DEBOUNCE_MS = 300;
+const SLOW_THRESHOLD_MS = 5_000;
+const HARD_TIMEOUT_MS = 10_000;
 
 type SubmitState =
   | { kind: "idle" }
@@ -57,15 +67,52 @@ export default function CreateRoomPage() {
   const [allowNowPerforming, setAllowNowPerforming] = useState<boolean>(false);
   const [submitState, setSubmitState] = useState<SubmitState>({ kind: "idle" });
 
-  // Debounced contestants preview fetch on year/event change.
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // SPEC §5.1e — debounced fetch with slow-state cue + hard timeout
+  // + abort-on-input-change so a slow upstream doesn't render a forever
+  // -loading wizard or stale results from a previous year/event.
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
     setContestants({ kind: "loading" });
-    debounceRef.current = setTimeout(async () => {
-      const result = await fetchContestantsPreview(year, event, {
-        fetch: window.fetch.bind(window),
-      });
+    const controller = new AbortController();
+    let slowTimer: ReturnType<typeof setTimeout> | null = null;
+    let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const debounce = setTimeout(async () => {
+      // Once the debounce fires, set up the slow + hard-timeout
+      // markers so the user sees feedback when the network is sluggish.
+      slowTimer = setTimeout(() => {
+        if (controller.signal.aborted) return;
+        // Only escalate to "slow" if we're still loading (not already
+        // ready/error). Use the functional updater to avoid a stale
+        // closure on `contestants`.
+        setContestants((prev) =>
+          prev.kind === "loading" ? { ...prev, kind: "slow" } : prev,
+        );
+      }, SLOW_THRESHOLD_MS);
+
+      timeoutTimer = setTimeout(() => {
+        if (controller.signal.aborted) return;
+        controller.abort();
+        setContestants({
+          kind: "timeout",
+          errorMessage: mapCreateError("TIMEOUT"),
+        });
+      }, HARD_TIMEOUT_MS);
+
+      const result = await fetchContestantsPreview(
+        year,
+        event,
+        { fetch: window.fetch.bind(window) },
+        { signal: controller.signal },
+      );
+
+      // Discard responses arriving after the controller was aborted —
+      // either due to year/event change mid-flight or our own hard
+      // timeout firing first.
+      if (controller.signal.aborted) return;
+
+      if (slowTimer) clearTimeout(slowTimer);
+      if (timeoutTimer) clearTimeout(timeoutTimer);
+
       if (result.ok) {
         const data = result.data as ContestantsPreview;
         setContestants({
@@ -73,6 +120,9 @@ export default function CreateRoomPage() {
           count: data.count,
           preview: data.preview,
         });
+      } else if (result.code === "ABORTED") {
+        // No-op — handled by the signal.aborted guard above. Defensive
+        // catch in case the timing shifts.
       } else {
         setContestants({
           kind: "error",
@@ -82,9 +132,13 @@ export default function CreateRoomPage() {
               : mapCreateError(result.code),
         });
       }
-    }, 300);
+    }, DEBOUNCE_MS);
+
     return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+      clearTimeout(debounce);
+      if (slowTimer) clearTimeout(slowTimer);
+      if (timeoutTimer) clearTimeout(timeoutTimer);
+      controller.abort();
     };
   }, [year, event]);
 

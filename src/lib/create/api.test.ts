@@ -65,6 +65,40 @@ describe("fetchContestantsPreview", () => {
     });
     expect(result).toMatchObject({ ok: false, code: "NETWORK" });
   });
+
+  it("returns code ABORTED when the caller aborts the AbortSignal", async () => {
+    // SPEC §5.1e — the wizard cancels in-flight fetches when year/event
+    // changes. The API must distinguish AbortError from real network failures
+    // so the UI can no-op (vs. rendering an error for a stale request).
+    const fetchSpy = vi.fn(async () => {
+      throw new DOMException("aborted", "AbortError");
+    }) as unknown as typeof globalThis.fetch;
+    const controller = new AbortController();
+    controller.abort();
+    const result = await fetchContestantsPreview(
+      2025,
+      "final",
+      { fetch: fetchSpy },
+      { signal: controller.signal },
+    );
+    expect(result).toMatchObject({ ok: false, code: "ABORTED" });
+  });
+
+  it("forwards the AbortSignal to fetch", async () => {
+    const fetchSpy = vi.fn(async () =>
+      jsonResponse(200, { contestants: [] }),
+    ) as unknown as typeof globalThis.fetch;
+    const controller = new AbortController();
+    await fetchContestantsPreview(
+      2025,
+      "final",
+      { fetch: fetchSpy },
+      { signal: controller.signal },
+    );
+    const [, init] = (fetchSpy as unknown as ReturnType<typeof vi.fn>).mock
+      .calls[0];
+    expect(init?.signal).toBe(controller.signal);
+  });
 });
 
 describe("createRoomApi", () => {

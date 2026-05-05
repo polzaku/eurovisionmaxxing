@@ -196,6 +196,83 @@ describe("EventSelection", () => {
     expect(onChange).toHaveBeenCalledWith({ event: "semi1" });
   });
 
+  it("renders the slow indicator with distinct copy when contestants is in slow state", () => {
+    // SPEC §5.1e — at 5s the wizard escalates from "Loading contestants…" to
+    // a "this is taking a while" cue so the user knows we're still trying.
+    render(
+      <EventSelection
+        {...BASE_PROPS}
+        contestants={{ kind: "slow" }}
+        onChange={vi.fn()}
+        onNext={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId("contestants-slow")).toHaveTextContent(
+      /taking longer than usual/i,
+    );
+    expect(screen.queryByText(/Loading contestants/i)).not.toBeInTheDocument();
+  });
+
+  it("renders the timeout error with role='alert' when contestants is in timeout state", () => {
+    // SPEC §5.1e — 10s hard cut renders an actionable error rather than
+    // leaving the wizard in a forever-loading state.
+    render(
+      <EventSelection
+        {...BASE_PROPS}
+        contestants={{
+          kind: "timeout",
+          errorMessage:
+            "Loading is taking too long. Try again, or pick a different year/event.",
+        }}
+        onChange={vi.fn()}
+        onNext={vi.fn()}
+      />,
+    );
+    const alert = screen.getByRole("alert");
+    expect(alert).toBeInTheDocument();
+    expect(alert).toHaveTextContent(/taking too long/i);
+    expect(screen.getByTestId("contestants-timeout")).toBeInTheDocument();
+  });
+
+  it("renders the Back button in timeout state when onBack is provided", () => {
+    render(
+      <EventSelection
+        {...BASE_PROPS}
+        contestants={{
+          kind: "timeout",
+          errorMessage: "Loading is taking too long.",
+        }}
+        onChange={vi.fn()}
+        onNext={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /Back/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("disables Next in slow + timeout states", () => {
+    const { rerender } = render(
+      <EventSelection
+        {...BASE_PROPS}
+        contestants={{ kind: "slow" }}
+        onChange={vi.fn()}
+        onNext={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /Next/ })).toBeDisabled();
+    rerender(
+      <EventSelection
+        {...BASE_PROPS}
+        contestants={{ kind: "timeout", errorMessage: "x" }}
+        onChange={vi.fn()}
+        onNext={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /Next/ })).toBeDisabled();
+  });
+
   it("calls onNext when the Next button is clicked (and enabled)", () => {
     const onNext = vi.fn();
     render(

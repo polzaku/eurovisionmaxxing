@@ -5,7 +5,7 @@ import Button from "@/components/ui/Button";
 type Event = "semi1" | "semi2" | "final";
 
 interface ContestantsState {
-  kind: "idle" | "loading" | "ready" | "error";
+  kind: "idle" | "loading" | "slow" | "ready" | "error" | "timeout";
   count?: number;
   preview?: Array<{ flag: string; country: string }>;
   errorMessage?: string;
@@ -109,8 +109,19 @@ export default function EventSelection({
 
       <div className="min-h-[2.5rem]">
         {contestants.kind === "loading" && (
-          <p className="text-sm text-muted-foreground animate-shimmer">
+          <p
+            data-testid="contestants-loading"
+            className="text-sm text-muted-foreground animate-shimmer"
+          >
             Loading contestants&hellip;
+          </p>
+        )}
+        {contestants.kind === "slow" && (
+          <p
+            data-testid="contestants-slow"
+            className="text-sm text-muted-foreground animate-shimmer"
+          >
+            Loading is taking longer than usual&hellip;
           </p>
         )}
         {contestants.kind === "ready" && (
@@ -125,10 +136,21 @@ export default function EventSelection({
               "We couldn't load contestant data for this event."}
           </p>
         )}
+        {contestants.kind === "timeout" && (
+          <p
+            data-testid="contestants-timeout"
+            role="alert"
+            className="text-sm text-destructive"
+          >
+            {contestants.errorMessage ??
+              "Loading is taking too long. Try again, or pick a different year/event."}
+          </p>
+        )}
       </div>
 
       <div className="flex justify-between gap-3">
-        {contestants.kind === "error" && onBack ? (
+        {(contestants.kind === "error" || contestants.kind === "timeout") &&
+        onBack ? (
           <Button variant="ghost" onClick={onBack}>
             Back
           </Button>
