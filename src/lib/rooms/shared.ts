@@ -33,6 +33,11 @@ export type RoomEventPayload =
       displayName: string;
     }
   | {
+      type: "announcement_order_reshuffled";
+      announcementOrder: string[];
+      announcingUserId: string;
+    }
+  | {
       type: "score_update";
       contestantId: string;
       newTotal: number;
