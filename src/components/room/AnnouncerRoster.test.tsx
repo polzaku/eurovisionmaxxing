@@ -132,4 +132,76 @@ describe("<AnnouncerRoster>", () => {
     expect(screen.queryByLabelText("Active delegate")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Skipped")).not.toBeInTheDocument();
   });
+
+  // ─── §10.2.1 stage 2 — Restore CTA on skipped rows ──────────────────────
+  describe("Restore CTA on skipped rows", () => {
+    it("renders the Restore button on each skipped row when onRestore is provided", () => {
+      render(
+        <AnnouncerRoster
+          members={[ALICE, BOB]}
+          presenceUserIds={new Set()}
+          skippedUserIds={new Set(["u-alice"])}
+          onRestore={() => {}}
+        />,
+      );
+      expect(screen.getByTestId("roster-restore-u-alice")).toBeInTheDocument();
+      // Bob isn't skipped → no restore button on his row.
+      expect(
+        screen.queryByTestId("roster-restore-u-bob"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does NOT render the Restore button when onRestore is omitted", () => {
+      // Display-only roster (e.g. for non-owner viewers, post-R1 co-admins).
+      render(
+        <AnnouncerRoster
+          members={[ALICE, BOB]}
+          presenceUserIds={new Set()}
+          skippedUserIds={new Set(["u-alice"])}
+        />,
+      );
+      expect(
+        screen.queryByTestId("roster-restore-u-alice"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("calls onRestore with the skipped user's id on click", async () => {
+      const onRestore = vi.fn();
+      render(
+        <AnnouncerRoster
+          members={[ALICE, BOB, CAROL]}
+          presenceUserIds={new Set()}
+          skippedUserIds={new Set(["u-alice", "u-carol"])}
+          onRestore={onRestore}
+        />,
+      );
+      const userEvent = (await import("@testing-library/user-event")).default;
+      await userEvent.click(screen.getByTestId("roster-restore-u-carol"));
+      expect(onRestore).toHaveBeenCalledTimes(1);
+      expect(onRestore).toHaveBeenCalledWith("u-carol");
+    });
+
+    it("disables the Restore button + flips to 'Restoring…' for the in-flight user", () => {
+      render(
+        <AnnouncerRoster
+          members={[ALICE, BOB]}
+          presenceUserIds={new Set()}
+          skippedUserIds={new Set(["u-alice", "u-bob"])}
+          onRestore={() => {}}
+          restoringUserId="u-alice"
+        />,
+      );
+      const aliceBtn = screen.getByTestId(
+        "roster-restore-u-alice",
+      ) as HTMLButtonElement;
+      expect(aliceBtn).toBeDisabled();
+      expect(aliceBtn).toHaveTextContent(/restoring/i);
+      // Other skipped rows stay clickable.
+      const bobBtn = screen.getByTestId(
+        "roster-restore-u-bob",
+      ) as HTMLButtonElement;
+      expect(bobBtn).not.toBeDisabled();
+      expect(bobBtn).toHaveTextContent(/^Restore$/);
+    });
+  });
 });

@@ -12,6 +12,7 @@ import {
   postAnnounceNext,
   postAnnounceHandoff,
   postAnnounceSkip,
+  postAnnounceRestore,
 } from "@/lib/room/api";
 import { mapRoomError } from "@/lib/room/errors";
 import type { Contestant } from "@/types";
@@ -57,6 +58,8 @@ interface AnnouncementState {
   delegateUserId: string | null;
   announcerPosition: number;
   announcerCount: number;
+  /** SPEC §10.2.1 — userIds the admin has skipped during this announce flow. */
+  skippedUserIds: string[];
 }
 
 interface ResultsResponse {
@@ -116,6 +119,9 @@ export default function AnnouncingView({
     kind: "idle" | "submitting";
     error?: string;
   }>({ kind: "idle" });
+  /** SPEC §10.2.1 — userId currently being restored (single in-flight). */
+  const [restoringUserId, setRestoringUserId] = useState<string | null>(null);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
   const [justRevealed, setJustRevealed] = useState<JustRevealedFlash | null>(
     null,
   );
@@ -175,6 +181,12 @@ export default function AnnouncingView({
     }
     if (event.type === "score_update") {
       void refetch();
+      return;
+    }
+    if (event.type === "announce_skip" || event.type === "announce_skip_restored") {
+      // Refetch so the roster's skipped markers + restore CTA stay in
+      // sync with whichever admin made the change.
+      void refetch();
     }
   });
 
@@ -219,6 +231,27 @@ export default function AnnouncingView({
     }
     setSkipState({ kind: "idle", error: mapRoomError(result.code) });
   }, [currentUserId, isOwner, refetch, roomId]);
+
+  const handleRestoreSkipped = useCallback(
+    async (restoreUserId: string) => {
+      if (!isOwner || restoringUserId) return;
+      setRestoringUserId(restoreUserId);
+      setRestoreError(null);
+      const result = await postAnnounceRestore(
+        roomId,
+        currentUserId,
+        restoreUserId,
+        { fetch: window.fetch.bind(window) },
+      );
+      setRestoringUserId(null);
+      if (result.ok) {
+        void refetch();
+        return;
+      }
+      setRestoreError(mapRoomError(result.code));
+    },
+    [currentUserId, isOwner, refetch, restoringUserId, roomId],
+  );
 
   const handleTakeControl = useCallback(
     async (takeControl: boolean) => {
@@ -523,16 +556,35 @@ export default function AnnouncingView({
         </section>
 
         {/* Owner-only roster panel — visibility for who's online + current
-         * announcer / delegate markers. Renders below the leaderboard so
-         * it doesn't push the live data offscreen on small phones.
+         * announcer / delegate markers, plus the §10.2.1 restore-skipped
+         * action. Renders below the leaderboard so it doesn't push the
+         * live data offscreen on small phones.
          */}
         {isOwner && members && members.length > 0 ? (
-          <AnnouncerRoster
-            members={members}
-            presenceUserIds={presenceUserIds}
-            currentAnnouncerId={announcement?.announcingUserId ?? null}
-            delegateUserId={announcement?.delegateUserId ?? null}
-          />
+          <>
+            <AnnouncerRoster
+              members={members}
+              presenceUserIds={presenceUserIds}
+              currentAnnouncerId={announcement?.announcingUserId ?? null}
+              delegateUserId={announcement?.delegateUserId ?? null}
+              skippedUserIds={
+                announcement?.skippedUserIds
+                  ? new Set(announcement.skippedUserIds)
+                  : undefined
+              }
+              onRestore={handleRestoreSkipped}
+              restoringUserId={restoringUserId}
+            />
+            {restoreError ? (
+              <p
+                role="alert"
+                data-testid="restore-error"
+                className="text-xs text-destructive text-center"
+              >
+                {restoreError}
+              </p>
+            ) : null}
+          </>
         ) : null}
       </div>
     </main>
