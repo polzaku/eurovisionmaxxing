@@ -42,9 +42,11 @@ CREATE TABLE rooms (
   created_at            TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Existing-database migration (run via Supabase SQL Editor on rooms with existing data):
+-- Existing-database migrations (run via Supabase SQL Editor on rooms with existing data):
 --   ALTER TABLE rooms ADD COLUMN IF NOT EXISTS delegate_user_id UUID REFERENCES users(id);
 --   ALTER TABLE rooms ADD COLUMN IF NOT EXISTS announce_skipped_user_ids UUID[] NOT NULL DEFAULT '{}';
+--   ALTER TABLE room_memberships ADD COLUMN IF NOT EXISTS scores_locked_at TIMESTAMPTZ;
+--   ALTER TABLE room_memberships ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
 --
 -- Existing-database migration for the §6.3.1 undo window (run via Supabase SQL Editor).
 -- The two RLS policies on results + room_awards reference rooms.status, so they
@@ -60,6 +62,7 @@ CREATE TABLE room_memberships (
   is_ready          BOOLEAN DEFAULT FALSE,            -- for instant mode "ready to reveal"
   ready_at          TIMESTAMPTZ,                      -- timestamp when is_ready transitioned to true; MIN across the room is the 60-s countdown anchor in §10.1
   scores_locked_at  TIMESTAMPTZ,                      -- soft lock-in for vote calibration (§8.10); NULL = unlocked / never locked. Cleared automatically on any vote write by this user.
+  last_seen_at      TIMESTAMPTZ,                      -- heartbeat timestamp for presence check; NULL = absent. Used by advance-time cascade-skip (SPEC §10.2.1).
   PRIMARY KEY (room_id, user_id)
 );
 

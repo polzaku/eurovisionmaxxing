@@ -98,6 +98,8 @@ export interface Database {
           joined_at: string;
           is_ready: boolean;
           ready_at: string | null;
+          scores_locked_at: string | null;
+          last_seen_at: string | null;
         };
         Insert: {
           room_id: string;
@@ -105,10 +107,14 @@ export interface Database {
           joined_at?: string;
           is_ready?: boolean;
           ready_at?: string | null;
+          scores_locked_at?: string | null;
+          last_seen_at?: string | null;
         };
         Update: {
           is_ready?: boolean;
           ready_at?: string | null;
+          scores_locked_at?: string | null;
+          last_seen_at?: string | null;
         };
         Relationships: [];
       };
