@@ -202,7 +202,11 @@
     },
     "leaderboard": {
       "points": "{count, plural, one {# pt} other {# pts}}",
-      "noPoints": "—"
+      "noPoints": "—",
+      "drillDownToggleAria": "Show points breakdown for {country}",
+      "drillDownHeading": "Points received",
+      "drillDownEmpty": "No points received from anyone in the room.",
+      "drillDownGive": "{points, plural, one {# pt} other {# pts}}"
     },
     "hotTake": {
       "edited": "edited",

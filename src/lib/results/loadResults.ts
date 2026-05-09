@@ -4,6 +4,10 @@ import type { Contestant, EventType, RoomAward } from "@/types";
 import type { ApiErrorCode } from "@/lib/api-errors";
 import { ContestDataError } from "@/lib/contestants";
 import type { LeaderboardEntry } from "@/lib/results/formatRoomSummary";
+import {
+  buildContestantBreakdowns,
+  type ContestantBreakdown,
+} from "@/lib/results/buildContestantBreakdowns";
 
 export interface UserBreakdownPick {
   contestantId: string;
@@ -98,6 +102,13 @@ export type ResultsData =
       leaderboard: LeaderboardEntry[];
       contestants: Contestant[];
       breakdowns: UserBreakdown[];
+      /**
+       * Phase U country drill-down — per-contestant inversion of `breakdowns`.
+       * Only contains contestants that received >0 points from at least one
+       * voter (matches the `breakdowns` filtering rule). Used by the
+       * `/results/[id]` leaderboard `<details>` expansions.
+       */
+      contestantBreakdowns: ContestantBreakdown[];
       hotTakes: HotTakeEntry[];
       awards: RoomAward[];
       /** Roster (for awards rendering when winners aren't already in `breakdowns`). */
@@ -513,6 +524,8 @@ async function loadDone(
     avatarSeed: info.avatarSeed,
   }));
 
+  const contestantBreakdowns = buildContestantBreakdowns(breakdowns);
+
   return {
     ok: true,
     data: {
@@ -524,6 +537,7 @@ async function loadDone(
       leaderboard,
       contestants,
       breakdowns,
+      contestantBreakdowns,
       hotTakes,
       awards,
       members,

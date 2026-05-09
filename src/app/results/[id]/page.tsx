@@ -10,6 +10,7 @@ import ScoringPoller from "./ScoringPoller";
 import CopySummaryButton from "./CopySummaryButton";
 import AwardsSection from "@/components/results/AwardsSection";
 import HotTakesSection from "@/components/results/HotTakesSection";
+import LeaderboardWithDrillDown from "@/components/results/LeaderboardWithDrillDown";
 
 export async function generateMetadata({
   params,
@@ -181,6 +182,8 @@ async function AnnouncingBody({
       <div className="rounded-xl bg-accent/10 border border-accent/30 px-4 py-3 text-center text-accent font-semibold">
         {t("announcing.banner")}
       </div>
+      {/* Announcing surface stays on the simple leaderboard — drill-downs land
+          alongside the final results. Per-give data is incomplete mid-show. */}
       <Leaderboard
         title={t("headings.leaderboard")}
         leaderboard={data.leaderboard}
@@ -227,10 +230,19 @@ async function DoneBody({
           labels={{ idle: t("copySummary.idle"), done: t("copySummary.done") }}
         />
       </div>
-      <Leaderboard
-        title={t("headings.leaderboard")}
+      <LeaderboardWithDrillDown
         leaderboard={data.leaderboard}
         contestants={data.contestants}
+        contestantBreakdowns={data.contestantBreakdowns}
+        labels={{
+          title: t("headings.leaderboard"),
+          drillDownHeading: t("leaderboard.drillDownHeading"),
+          drillDownEmpty: t("leaderboard.drillDownEmpty"),
+          toggleAria: (country: string) =>
+            t("leaderboard.drillDownToggleAria", { country }),
+          formatGivePoints: (points: number) =>
+            t("leaderboard.drillDownGive", { points }),
+        }}
       />
       {data.awards.length > 0 ? (
         <AwardsSection
