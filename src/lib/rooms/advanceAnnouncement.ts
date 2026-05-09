@@ -257,11 +257,18 @@ export async function advanceAnnouncement(
         const absent = isAbsent(lastSeenAt as string | null, now);
 
         if (absent) {
-          // Accumulate skip: mark their results as announced.
-          await applySingleSkip(
+          // Mark their results as announced. If the DB write fails
+          // mid-cascade, abort cleanly — do NOT push to the in-memory
+          // cascade list and do NOT proceed to the room UPDATE, since
+          // those would lock in a partial-state corruption (room claims
+          // they were skipped but their results.announced flags didn't flip).
+          const skipResult = await applySingleSkip(
             { roomId, skippedUserId: candidateId },
             { supabase: deps.supabase },
           );
+          if (!skipResult.ok) {
+            return fail(skipResult.error.code, skipResult.error.message, 500);
+          }
           cascadedSkippedUserIds.push(candidateId);
           probePos += 1;
         } else {

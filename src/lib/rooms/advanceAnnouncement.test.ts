@@ -41,6 +41,7 @@ interface Scripted {
   roomSelect?: Mock;
   announcerResults?: Mock;
   resultsUpdate?: { error: { message: string } | null };
+  resultsUpdateError?: { message: string } | null;
   roomUpdate?: Mock;
   allResults?: Mock;
   membershipSelects?: Array<{
@@ -61,6 +62,14 @@ function makeSupabaseMock(s: Scripted = {}) {
   const roomUpdate =
     s.roomUpdate ?? { data: { id: VALID_ROOM_ID }, error: null };
   const allResults = s.allResults ?? { data: [], error: null };
+
+  // Queue of results update responses, consumed FIFO.
+  // First call = main reveal mark; subsequent calls = cascade applySingleSkip.
+  // If resultsUpdateError is set, the second call (cascade) returns that error.
+  const resultsUpdateQueue: Array<{ error: { message: string } | null }> =
+    s.resultsUpdateError !== undefined
+      ? [{ error: null }, { error: s.resultsUpdateError ?? null }]
+      : [];
 
   // Queue of membership selects, popped FIFO per probe.
   const membershipSelectQueue: Array<{
@@ -134,10 +143,15 @@ function makeSupabaseMock(s: Scripted = {}) {
               eqs.push({ col, val });
               return chain;
             }),
-            then: (...args: unknown[]) =>
-              Promise.resolve({ data: null, ...resultsUpdate }).then(
+            then: (...args: unknown[]) => {
+              const response =
+                resultsUpdateQueue.length > 0
+                  ? resultsUpdateQueue.shift()!
+                  : { ...resultsUpdate };
+              return Promise.resolve({ data: null, ...response }).then(
                 ...(args as [(v: unknown) => unknown]),
-              ),
+              );
+            },
           };
           return chain;
         }),
@@ -186,9 +200,13 @@ function makeDeps(
   mock: ReturnType<typeof makeSupabaseMock>,
   overrides: Partial<AdvanceAnnouncementDeps> = {},
 ): AdvanceAnnouncementDeps {
+  const defaultBroadcast = vi.fn((roomId: string, event: unknown) => {
+    mock.broadcastCalls.push({ roomId, event });
+    return Promise.resolve(undefined);
+  });
   return {
     supabase: mock.supabase,
-    broadcastRoomEvent: vi.fn().mockResolvedValue(undefined),
+    broadcastRoomEvent: defaultBroadcast,
     ...overrides,
   };
 }
@@ -732,6 +750,62 @@ describe("cascade-skip on rotation (SPEC §10.2.1)", () => {
       (c) => (c[1] as { type: string }).type === "announce_skip",
     );
     expect(skipCalls).toHaveLength(2);
+  });
+
+  it("returns 500 + does not commit room UPDATE when applySingleSkip fails mid-cascade", async () => {
+    const STALE = new Date(NOW.getTime() - 60_000).toISOString();
+    // U2 absent, U3 absent — but the results UPDATE for U2 fails. The
+    // cascade must stop, return 500, and NOT fire the room UPDATE
+    // (no partial-state corruption).
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          id: VALID_ROOM_ID,
+          status: "announcing",
+          owner_user_id: OWNER_ID,
+          announcement_order: [U1, U2, U3],
+          announcing_user_id: U1,
+          current_announce_idx: 0,
+          delegate_user_id: null,
+          announce_skipped_user_ids: [],
+        },
+        error: null,
+      },
+      announcerResults: {
+        data: [
+          { contestant_id: "c1", points_awarded: 12, rank: 1, announced: false },
+        ],
+        error: null,
+      },
+      membershipSelects: [
+        { data: { last_seen_at: STALE }, error: null }, // U2 absent
+      ],
+      // The first applySingleSkip (for U2) hits a results UPDATE error.
+      resultsUpdateError: { message: "boom" },
+    });
+
+    const result = await advanceAnnouncement(
+      { roomId: VALID_ROOM_ID, userId: OWNER_ID },
+      makeDeps(mock, { now: () => NOW }),
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("INTERNAL_ERROR");
+    expect(result.status).toBe(500);
+
+    // CRITICAL: the room UPDATE that would have set the
+    // announce_skipped_user_ids array must NOT have been called. The
+    // mock's roomUpdateCalls should be empty (or contain only the
+    // initial room reads, no UPDATEs).
+    const roomPatchUpdates = mock.roomUpdateCalls;
+    expect(roomPatchUpdates).toHaveLength(0);
+
+    // No announce_skip broadcasts (broadcasts only fire after commit).
+    const skipBroadcasts = (mock as any).broadcastCalls.filter(
+      (b: any) => b.event.type === "announce_skip",
+    );
+    expect(skipBroadcasts).toHaveLength(0);
   });
 
   it("Case 4: golden path — no skip needed, U2 is fresh", async () => {
