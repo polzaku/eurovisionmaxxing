@@ -1123,14 +1123,15 @@ describe("runScoring — pre-cascade skips absent users at scoring→announcing"
       current_announce_idx: 0,
     });
 
-    // Both results marked announced.
-    expect(mock.resultsUpdateCalls.map((c) => c.userId)).toEqual([U1, U2]);
+    // Pre-cascade exhausts → applySingleSkip must NOT be called.
+    // Points stay announced=false for the 'Finish the show' batch reveal.
+    expect(mock.resultsUpdateCalls).toHaveLength(0);
 
-    // Two announce_skip broadcasts.
+    // No announce_skip broadcasts when all absent (batch reveal path).
     const skipBroadcasts = broadcastSpy.mock.calls.filter(
       ([, e]) => e.type === "announce_skip",
     );
-    expect(skipBroadcasts).toHaveLength(2);
+    expect(skipBroadcasts).toHaveLength(0);
   });
 
   /**
@@ -1178,5 +1179,40 @@ describe("runScoring — pre-cascade skips absent users at scoring→announcing"
 
     // No results.update calls from applySingleSkip.
     expect(mock.resultsUpdateCalls).toHaveLength(0);
+  });
+
+  /**
+   * Case 4: Pre-cascade exhausts (all absent) — applySingleSkip NOT called.
+   * Covers SPEC §10.2.1 line 981: points stay announced=false for batch reveal.
+   */
+  it("does NOT call applySingleSkip when pre-cascade exhausts (preserves pending for batch reveal)", async () => {
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: { ...defaultRoomRow, announcement_mode: "live" },
+        error: null,
+      },
+      memberships: { data: TWO_USER_MEMBERSHIPS, error: null },
+      membershipSelects: [
+        { data: { last_seen_at: STALE_LAST_SEEN }, error: null },
+        { data: { last_seen_at: STALE_LAST_SEEN }, error: null },
+      ],
+    });
+
+    const result = await runScoring(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock, {
+        shuffle: (arr) => [...arr],
+        now: () => FAKE_CASCADE_NOW,
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+    // CRITICAL: pre-cascade exhausts → no applySingleSkip calls.
+    expect(mock.resultsUpdateCalls).toHaveLength(0);
+
+    const finalRoomUpdate = mock.roomUpdatePatches[1];
+    expect(finalRoomUpdate?.announcing_user_id).toBeNull();
+    expect(finalRoomUpdate?.status).toBe("announcing");
+    expect(finalRoomUpdate?.announce_skipped_user_ids).toEqual([U1, U2]);
   });
 });

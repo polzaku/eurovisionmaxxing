@@ -353,6 +353,9 @@ export async function runScoring(
 
   // Pre-cascade skipped list — populated below in live mode only.
   const preSkipped: string[] = [];
+  // True only when pre-cascade found a present user (i.e. firstPresentIdx < order.length).
+  // Broadcasts and applySingleSkip calls are guarded by this flag.
+  let preSkipFoundPresent = false;
 
   if (room.announcement_mode === "live") {
     // Eligible announcers: users with at least one points_awarded > 0 row.
@@ -397,15 +400,24 @@ export async function runScoring(
         break;
       }
 
-      // Absent — mark their results as announced before recording the skip.
-      const skipResult = await applySingleSkip(
-        { roomId, skippedUserId: candidateId },
-        { supabase: deps.supabase },
-      );
-      if (!skipResult.ok) {
-        return fail(skipResult.error.code, skipResult.error.message, 500);
-      }
       preSkipped.push(candidateId);
+    }
+
+    // SPEC §10.2.1 line 967 — silent-mark only when a present user was found.
+    // Pre-cascade exhaust (firstPresentIdx === order.length) leaves results
+    // announced=false for the upcoming 'Finish the show' batch reveal
+    // (SPEC §10.2.1 line 981).
+    if (firstPresentIdx < order.length) {
+      preSkipFoundPresent = true;
+      for (const skippedUserId of preSkipped) {
+        const skipResult = await applySingleSkip(
+          { roomId, skippedUserId },
+          { supabase: deps.supabase },
+        );
+        if (!skipResult.ok) {
+          return fail(skipResult.error.code, skipResult.error.message, 500);
+        }
+      }
     }
 
     announcingPatch.announcement_order = order;
@@ -435,7 +447,8 @@ export async function runScoring(
 
   // Emit announce_skip broadcasts for each pre-cascade skipped user, AFTER
   // the room UPDATE commits. Non-fatal — state is already written.
-  if (preSkipped.length > 0) {
+  // Only emit when a present user was found; all-absent path defers to batch reveal.
+  if (preSkipped.length > 0 && preSkipFoundPresent) {
     const usersQuery = await deps.supabase
       .from("users")
       .select("id, display_name")
