@@ -58,6 +58,7 @@ import {
 interface CliArgs {
   state: SeedState;
   allowProd: boolean;
+  json: boolean;
 }
 
 function parseArgs(argv: readonly string[]): CliArgs {
@@ -67,7 +68,7 @@ function parseArgs(argv: readonly string[]): CliArgs {
 
   if (positional.length !== 1 || !isSeedState(positional[0])) {
     bail(
-      "Usage: npm run seed:room -- <state> [--allow-prod]\n\n" +
+      "Usage: npm run seed:room -- <state> [--allow-prod] [--json]\n\n" +
         "Available states:\n" +
         "  lobby-with-3-guests\n" +
         "  voting-half-done\n" +
@@ -82,6 +83,7 @@ function parseArgs(argv: readonly string[]): CliArgs {
   return {
     state: positional[0],
     allowProd: flags.has("--allow-prod"),
+    json: flags.has("--json"),
   };
 }
 
@@ -721,6 +723,19 @@ async function main(): Promise<void> {
   const db = createCliClient();
   const builder = STATE_BUILDERS[args.state];
   const report = await builder(db);
+
+  if (args.json) {
+    // Machine-readable output: one JSON line on stdout, everything else to stderr.
+    process.stdout.write(
+      JSON.stringify({
+        roomId: report.roomId,
+        pin: report.pin,
+        ownerUserId: report.ownerSession.userId,
+        ownerRejoinToken: report.ownerSession.rejoinToken,
+      }) + "\n",
+    );
+    return;
+  }
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   console.log("");
