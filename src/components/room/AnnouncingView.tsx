@@ -17,6 +17,7 @@ import {
   postAnnounceSkip,
   postAnnounceRestore,
   postFinishShow,
+  patchAnnouncementOrder,
 } from "@/lib/room/api";
 import { mapRoomError } from "@/lib/room/errors";
 import type { Contestant } from "@/types";
@@ -26,31 +27,6 @@ interface RoomShape {
   status: string;
   ownerUserId: string;
   batchRevealMode?: boolean;
-}
-
-interface AnnouncingViewProps {
-  room: RoomShape;
-  contestants: Contestant[];
-  currentUserId: string;
-  /**
-   * Owner-only: roster data for the §10.2 step 7 announcer roster panel.
-   * Optional so non-owner views (and existing tests that don't care about
-   * the panel) can omit. When absent, the roster is suppressed entirely.
-   */
-  members?: RosterMember[];
-  /**
-   * Called when the in-component refetch detects the room has left
-   * `announcing` status (e.g. show finished, broadcast lagged behind for
-   * non-announcer guests). The page should re-fetch its room data so its
-   * top-level switch picks the right view.
-   */
-  onAnnouncementEnded?: () => void;
-}
-
-interface LeaderboardEntry {
-  contestantId: string;
-  totalPoints: number;
-  rank: number;
 }
 
 interface AnnouncementState {
@@ -65,6 +41,38 @@ interface AnnouncementState {
   announcerCount: number;
   /** SPEC §10.2.1 — userIds the admin has skipped during this announce flow. */
   skippedUserIds: string[];
+}
+
+interface AnnouncingViewProps {
+  room: RoomShape;
+  contestants: Contestant[];
+  currentUserId: string;
+  /**
+   * Owner-only: roster data for the §10.2 step 7 announcer roster panel.
+   * Optional so non-owner views (and existing tests that don't care about
+   * the panel) can omit. When absent, the roster is suppressed entirely.
+   */
+  members?: RosterMember[];
+  /**
+   * Seed the announcement state directly (used in tests and SSR-primed
+   * renders). When provided, the component uses it as initial state instead
+   * of waiting for the on-mount fetch to populate it. The on-mount refetch
+   * still runs and may overwrite this value.
+   */
+  announcement?: AnnouncementState | null;
+  /**
+   * Called when the in-component refetch detects the room has left
+   * `announcing` status (e.g. show finished, broadcast lagged behind for
+   * non-announcer guests). The page should re-fetch its room data so its
+   * top-level switch picks the right view.
+   */
+  onAnnouncementEnded?: () => void;
+}
+
+interface LeaderboardEntry {
+  contestantId: string;
+  totalPoints: number;
+  rank: number;
 }
 
 interface ResultsResponse {
@@ -106,11 +114,12 @@ export default function AnnouncingView({
   contestants,
   currentUserId,
   members,
+  announcement: announcementSeed = null,
   onAnnouncementEnded,
 }: AnnouncingViewProps) {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [announcement, setAnnouncement] = useState<AnnouncementState | null>(
-    null,
+    announcementSeed,
   );
   const [advanceState, setAdvanceState] = useState<{
     kind: "idle" | "submitting";
@@ -127,6 +136,8 @@ export default function AnnouncingView({
   /** SPEC §10.2.1 — userId currently being restored (single in-flight). */
   const [restoringUserId, setRestoringUserId] = useState<string | null>(null);
   const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [reshuffling, setReshuffling] = useState(false);
+  const [reshuffleError, setReshuffleError] = useState<string | null>(null);
   const [justRevealed, setJustRevealed] = useState<JustRevealedFlash | null>(
     null,
   );
@@ -155,6 +166,15 @@ export default function AnnouncingView({
     room.status === "announcing" &&
     room.batchRevealMode === false &&
     !announcement?.announcingUserId;
+
+  // Re-shuffle is allowed only before any reveal has happened, before any
+  // announcer rotation, and with no skipped users. batchRevealMode rooms
+  // don't use the announcer order at all so the button is suppressed.
+  const canReshuffle =
+    announcement?.currentAnnounceIdx === 0 &&
+    announcement?.announcerPosition === 1 &&
+    (announcement?.skippedUserIds ?? []).length === 0 &&
+    !room.batchRevealMode;
 
   const contestantById = useRef(new Map(contestants.map((c) => [c.id, c])));
   contestantById.current = new Map(contestants.map((c) => [c.id, c]));
@@ -289,6 +309,27 @@ export default function AnnouncingView({
     },
     [currentUserId, isOwner, refetch, restoringUserId, roomId],
   );
+
+  const handleReshuffle = useCallback(async () => {
+    if (!isOwner || reshuffling) return;
+    setReshuffling(true);
+    setReshuffleError(null);
+    try {
+      const result = await patchAnnouncementOrder(roomId, currentUserId, {
+        fetch: window.fetch.bind(window),
+      });
+      if (!result.ok) {
+        setReshuffleError(
+          result.code === "ANNOUNCE_IN_PROGRESS"
+            ? "Cannot reshuffle after announcing has started."
+            : "Failed to reshuffle announcer order. Please try again.",
+        );
+      }
+      // On success: the broadcast subscriber handles the refetch.
+    } finally {
+      setReshuffling(false);
+    }
+  }, [currentUserId, isOwner, reshuffling, roomId]);
 
   const handleTakeControl = useCallback(
     async (takeControl: boolean) => {
@@ -666,6 +707,9 @@ export default function AnnouncingView({
               }
               onRestore={handleRestoreSkipped}
               restoringUserId={restoringUserId}
+              onReshuffle={isOwner ? handleReshuffle : undefined}
+              reshuffling={reshuffling}
+              canReshuffle={isOwner && canReshuffle}
             />
             {restoreError ? (
               <p
@@ -674,6 +718,15 @@ export default function AnnouncingView({
                 className="text-xs text-destructive text-center"
               >
                 {restoreError}
+              </p>
+            ) : null}
+            {reshuffleError ? (
+              <p
+                role="alert"
+                data-testid="reshuffle-error"
+                className="text-xs text-destructive text-center"
+              >
+                {reshuffleError}
               </p>
             ) : null}
           </>
