@@ -34,6 +34,8 @@ export type RoomStatus =
   | "announcing"
   | "done";
 export type AnnouncementMode = "live" | "instant";
+/** SPEC §10.2.2 — only relevant when announcementMode === 'live'. */
+export type AnnouncementStyle = "full" | "short";
 
 export interface VotingCategory {
   name: string; // 2–24 chars
@@ -54,6 +56,7 @@ export interface Room {
   ownerUserId: string;
   status: RoomStatus;
   announcementMode: AnnouncementMode;
+  announcementStyle: AnnouncementStyle;
   announcementOrder: string[] | null; // ordered userIds for live mode
   announcingUserId: string | null;
   currentAnnounceIdx: number;
@@ -159,6 +162,16 @@ export type RoomEvent =
   | { type: "batch_reveal_started"; announcingUserId: string; displayName: string }
   | { type: "announce_turn"; userId: string }
   | { type: "score_update"; contestantId: string; newTotal: number; newRank: number }
+  | {
+      type: "score_batch_revealed";
+      announcingUserId: string;
+      contestants: Array<{
+        contestantId: string;
+        points: number;
+        newTotal: number;
+        newRank: number;
+      }>;
+    }
   | {
       type: "member_ready";
       userId: string;

@@ -76,6 +76,7 @@ export function mapRoom(row: RoomRow): Room {
     ownerUserId: row.owner_user_id,
     status: row.status as Room["status"],
     announcementMode: row.announcement_mode as Room["announcementMode"],
+    announcementStyle: row.announcement_style as Room["announcementStyle"],
     announcementOrder: row.announcement_order,
     announcingUserId: row.announcing_user_id,
     currentAnnounceIdx: row.current_announce_idx,
