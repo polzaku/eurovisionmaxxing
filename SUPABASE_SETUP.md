@@ -85,6 +85,15 @@ For existing projects, run the per-migration SQL listed in the changelog below i
 
 ### Changelog
 
+- **2026-05-10 — Phase R4 advance-time presence check:** added `room_memberships.last_seen_at TIMESTAMPTZ` (nullable, default NULL) to detect absent announcers at rotation time (SPEC §10.2.1). Clients heartbeat this every 15 s on `<RoomPage>`; the cascade-skip path reads it to skip absent announcers. Apply with:
+
+  ```sql
+  ALTER TABLE room_memberships
+    ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
+  ```
+
+  Backfill unnecessary — existing rows correctly read as "absent" (NULL).
+
 - **2026-05-04 — R0 + R3 §8.7.2:** added `votes.hot_take_deleted_by_user_id UUID REFERENCES users(id)` and `votes.hot_take_deleted_at TIMESTAMPTZ` to back the admin hot-take deletion endpoint. Both NULL on author self-deletion (clearing the textarea routes through `upsertVote`); both populated when an admin calls `DELETE /api/rooms/{id}/votes/{contestantId}/hot-take`. Apply with:
 
   ```sql

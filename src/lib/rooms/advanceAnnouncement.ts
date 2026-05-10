@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import type { ApiErrorCode } from "@/lib/api-errors";
 import type { RoomEventPayload } from "@/lib/rooms/shared";
+import { isAbsent } from "@/lib/rooms/isAbsent";
+import { applySingleSkip } from "@/lib/rooms/applySingleSkip";
 
 export interface AdvanceAnnouncementInput {
   roomId: unknown;
@@ -14,6 +16,7 @@ export interface AdvanceAnnouncementDeps {
     roomId: string,
     event: RoomEventPayload,
   ) => Promise<void>;
+  now?: () => Date;
 }
 
 export interface AdvanceAnnouncementSuccess {
@@ -25,6 +28,8 @@ export interface AdvanceAnnouncementSuccess {
   newRank: number;
   nextAnnouncingUserId: string | null;
   finished: boolean;
+  cascadeExhausted: boolean;
+  cascadedSkippedUserIds: string[];
 }
 
 export interface AdvanceAnnouncementFailure {
@@ -61,6 +66,7 @@ type RoomRow = {
   announcing_user_id: string | null;
   current_announce_idx: number | null;
   delegate_user_id: string | null;
+  announce_skipped_user_ids: string[] | null;
 };
 
 type AnnouncerResultRow = {
@@ -88,11 +94,18 @@ type LeaderboardRow = {
  * When the current announcer's last point is revealed:
  * - If another user remains in `announcement_order`, the pointer rotates
  *   to them with `current_announce_idx = 0`.
+ *   At rotation time, each candidate's `room_memberships.last_seen_at` is
+ *   checked via `isAbsent`. Absent users are accumulated and skipped until
+ *   a present user is found or the order exhausts (SPEC §10.2.1).
  * - Otherwise the room transitions to `done`.
+ *
+ * The optional `nowOverride` parameter is for deterministic testing; pass
+ * `undefined` (or omit) in production.
  */
 export async function advanceAnnouncement(
   input: AdvanceAnnouncementInput,
   deps: AdvanceAnnouncementDeps,
+  nowOverride?: Date,
 ): Promise<AdvanceAnnouncementResult> {
   if (typeof input.roomId !== "string" || !UUID_REGEX.test(input.roomId)) {
     return fail("INVALID_ROOM_ID", "roomId must be a UUID.", 400, "roomId");
@@ -112,7 +125,7 @@ export async function advanceAnnouncement(
   const roomQuery = await deps.supabase
     .from("rooms")
     .select(
-      "id, status, owner_user_id, announcement_order, announcing_user_id, current_announce_idx, delegate_user_id",
+      "id, status, owner_user_id, announcement_order, announcing_user_id, current_announce_idx, delegate_user_id, announce_skipped_user_ids",
     )
     .eq("id", roomId)
     .maybeSingle();
@@ -213,14 +226,67 @@ export async function advanceAnnouncement(
   let nextAnnouncingUserId: string | null = currentAnnouncer;
   let nextIdx = expectedIdx + 1;
   let finishedShow = false;
+  let cascadeExhausted = false;
+  const cascadedSkippedUserIds: string[] = [];
 
   if (isLastForAnnouncer) {
     const announcers = room.announcement_order;
     const pos = announcers.indexOf(currentAnnouncer);
     const nextPos = pos + 1;
     if (pos >= 0 && nextPos < announcers.length) {
-      nextAnnouncingUserId = announcers[nextPos];
-      nextIdx = 0;
+      // Rotate to the next user — but first cascade-check for absence.
+      // Snapshot "now" once so all probes in this call use the same instant.
+      const now = nowOverride ?? (deps.now ? deps.now() : new Date());
+
+      let probePos = nextPos;
+      let foundPresent = false;
+
+      while (probePos < announcers.length) {
+        const candidateId = announcers[probePos];
+
+        // Query this candidate's membership last_seen_at.
+        const membershipQuery = await deps.supabase
+          .from("room_memberships")
+          .select("last_seen_at")
+          .eq("room_id", roomId)
+          .eq("user_id", candidateId)
+          .maybeSingle();
+
+        const lastSeenAt =
+          membershipQuery.data?.last_seen_at ?? null;
+        const absent = isAbsent(lastSeenAt as string | null, now);
+
+        if (absent) {
+          // Mark their results as announced. If the DB write fails
+          // mid-cascade, abort cleanly — do NOT push to the in-memory
+          // cascade list and do NOT proceed to the room UPDATE, since
+          // those would lock in a partial-state corruption (room claims
+          // they were skipped but their results.announced flags didn't flip).
+          const skipResult = await applySingleSkip(
+            { roomId, skippedUserId: candidateId },
+            { supabase: deps.supabase },
+          );
+          if (!skipResult.ok) {
+            return fail(skipResult.error.code, skipResult.error.message, 500);
+          }
+          cascadedSkippedUserIds.push(candidateId);
+          probePos += 1;
+        } else {
+          // Present — this is our next announcer.
+          nextAnnouncingUserId = candidateId;
+          nextIdx = 0;
+          foundPresent = true;
+          break;
+        }
+      }
+
+      if (!foundPresent) {
+        // All candidates exhausted — cascade exhausted.
+        cascadeExhausted = true;
+        nextAnnouncingUserId = null;
+        nextIdx = 0;
+        // Do NOT set finishedShow — status stays 'announcing'.
+      }
     } else {
       nextAnnouncingUserId = null;
       nextIdx = 0;
@@ -232,12 +298,23 @@ export async function advanceAnnouncement(
   const roomPatch: {
     announcing_user_id: string | null;
     current_announce_idx: number;
+    announce_skipped_user_ids?: string[];
     status?: string;
   } = {
     announcing_user_id: nextAnnouncingUserId,
     current_announce_idx: nextIdx,
   };
   if (finishedShow) roomPatch.status = "done";
+
+  // If the cascade accumulated any skipped users, append them to the existing list.
+  if (cascadedSkippedUserIds.length > 0) {
+    const prevSkipped = room.announce_skipped_user_ids ?? [];
+    const nextSkipped = [
+      ...prevSkipped,
+      ...cascadedSkippedUserIds.filter((id) => !prevSkipped.includes(id)),
+    ];
+    roomPatch.announce_skipped_user_ids = nextSkipped;
+  }
 
   const updateRoom = await deps.supabase
     .from("rooms")
@@ -262,6 +339,38 @@ export async function advanceAnnouncement(
       "Another reveal happened first. Refresh and try again.",
       409,
     );
+  }
+
+  // After the room UPDATE commits — emit announce_skip broadcasts in cascade order
+  // BEFORE announce_next / score_update.
+  if (cascadedSkippedUserIds.length > 0) {
+    // Bulk-fetch display names.
+    const usersQuery = await deps.supabase
+      .from("users")
+      .select("id, display_name")
+      .in("id", cascadedSkippedUserIds);
+
+    const usersData = (usersQuery.data ?? []) as Array<{
+      id: string;
+      display_name: string;
+    }>;
+    const nameById = new Map(usersData.map((u) => [u.id, u.display_name]));
+
+    for (const skippedId of cascadedSkippedUserIds) {
+      const displayName = nameById.get(skippedId) ?? skippedId;
+      try {
+        await deps.broadcastRoomEvent(roomId, {
+          type: "announce_skip",
+          userId: skippedId,
+          displayName,
+        });
+      } catch (err) {
+        console.warn(
+          `broadcast 'announce_skip' failed for room ${roomId} user ${skippedId}; state committed regardless:`,
+          err,
+        );
+      }
+    }
   }
 
   // 8. Build the broadcast payload from the post-update leaderboard.
@@ -343,5 +452,7 @@ export async function advanceAnnouncement(
     newRank,
     nextAnnouncingUserId,
     finished: finishedShow,
+    cascadeExhausted,
+    cascadedSkippedUserIds,
   };
 }

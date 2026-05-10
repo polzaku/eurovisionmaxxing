@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import type { ApiErrorCode } from "@/lib/api-errors";
 import type { RoomEventPayload } from "@/lib/rooms/shared";
+import { applySingleSkip } from "@/lib/rooms/applySingleSkip";
 
 export interface SkipAnnouncerInput {
   roomId: unknown;
@@ -171,18 +172,12 @@ export async function skipAnnouncer(
 
   // 6. Mark all of the skipped user's not-yet-announced results as
   // announced so the live leaderboard reflects their points immediately.
-  const markAnnounced = await deps.supabase
-    .from("results")
-    .update({ announced: true })
-    .eq("room_id", roomId)
-    .eq("user_id", skippedUserId);
-
-  if (markAnnounced.error) {
-    return fail(
-      "INTERNAL_ERROR",
-      "Could not mark skipped user's points as announced.",
-      500,
-    );
+  const skipResult = await applySingleSkip(
+    { roomId, skippedUserId },
+    { supabase: deps.supabase },
+  );
+  if (!skipResult.ok) {
+    return fail(skipResult.error.code, skipResult.error.message, 500);
   }
 
   // 7. Conditional UPDATE on the room state. Guards against concurrent calls.

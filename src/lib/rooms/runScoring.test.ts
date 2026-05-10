@@ -62,6 +62,42 @@ const THREE_CONTESTANTS: Contestant[] = [
 // u-2 misses BE → filled with mean(10,6)=8 → ranks AL(10) BE(8) CR(6) → pts 12,10,8
 const U1 = "10000000-0000-4000-8000-000000000001";
 const U2 = "20000000-0000-4000-8000-000000000002";
+const U3 = "30000000-0000-4000-8000-000000000003";
+
+const THREE_USER_MEMBERSHIPS = [
+  {
+    user_id: U1,
+    joined_at: "2026-04-21T10:00:00Z",
+    users: { display_name: "Alice" },
+  },
+  {
+    user_id: U2,
+    joined_at: "2026-04-21T10:01:00Z",
+    users: { display_name: "Bob" },
+  },
+  {
+    user_id: U3,
+    joined_at: "2026-04-21T10:02:00Z",
+    users: { display_name: "Charlie" },
+  },
+];
+
+// Three-user votes: all three users vote for all three contestants so all are
+// eligible announcers (all have points_awarded > 0 rows).
+const THREE_USER_VOTES = [
+  // U1 votes
+  { id: "v-1", room_id: VALID_ROOM_ID, user_id: U1, contestant_id: "2026-al", scores: { vocals: 10 }, missed: false, hot_take: null, updated_at: "2026-04-21T10:30:00Z" },
+  { id: "v-2", room_id: VALID_ROOM_ID, user_id: U1, contestant_id: "2026-be", scores: { vocals: 7 }, missed: false, hot_take: null, updated_at: "2026-04-21T10:30:00Z" },
+  { id: "v-3", room_id: VALID_ROOM_ID, user_id: U1, contestant_id: "2026-cr", scores: { vocals: 4 }, missed: false, hot_take: null, updated_at: "2026-04-21T10:30:00Z" },
+  // U2 votes
+  { id: "v-4", room_id: VALID_ROOM_ID, user_id: U2, contestant_id: "2026-al", scores: { vocals: 9 }, missed: false, hot_take: null, updated_at: "2026-04-21T10:30:00Z" },
+  { id: "v-5", room_id: VALID_ROOM_ID, user_id: U2, contestant_id: "2026-be", scores: { vocals: 6 }, missed: false, hot_take: null, updated_at: "2026-04-21T10:30:00Z" },
+  { id: "v-6", room_id: VALID_ROOM_ID, user_id: U2, contestant_id: "2026-cr", scores: { vocals: 3 }, missed: false, hot_take: null, updated_at: "2026-04-21T10:30:00Z" },
+  // U3 votes
+  { id: "v-7", room_id: VALID_ROOM_ID, user_id: U3, contestant_id: "2026-al", scores: { vocals: 8 }, missed: false, hot_take: null, updated_at: "2026-04-21T10:30:00Z" },
+  { id: "v-8", room_id: VALID_ROOM_ID, user_id: U3, contestant_id: "2026-be", scores: { vocals: 5 }, missed: false, hot_take: null, updated_at: "2026-04-21T10:30:00Z" },
+  { id: "v-9", room_id: VALID_ROOM_ID, user_id: U3, contestant_id: "2026-cr", scores: { vocals: 2 }, missed: false, hot_take: null, updated_at: "2026-04-21T10:30:00Z" },
+];
 
 const TWO_USER_MEMBERSHIPS = [
   {
@@ -148,9 +184,23 @@ interface Scripted {
   votesSelect?: Result<unknown>;
   voteUpdateError?: { message: string } | null;
   resultsUpsertError?: { message: string } | null;
+  resultsUpdateError?: { message: string } | null;
   awardsUpsertError?: { message: string } | null;
   roomToAnnouncing?: Result<unknown>;
+  /**
+   * Queue of per-user membership last_seen_at responses for the pre-cascade
+   * presence check. Each entry is dequeued in order as presence queries arrive.
+   * If the queue is empty, falls back to `{ data: { last_seen_at: FRESH_LAST_SEEN }, error: null }`.
+   */
+  membershipSelects?: Array<Result<{ last_seen_at: string | null } | null>>;
+  /** Response for `users.select().in("id", [...])` — used for display-name bulk lookup. */
+  usersByIdSelect?: Result<Array<{ id: string; display_name: string }>>;
 }
+
+// A "fresh" last_seen_at for presence checks — 5 seconds ago relative to FAKE_CASCADE_NOW.
+const FAKE_CASCADE_NOW = new Date("2026-05-09T12:00:00.000Z");
+const FRESH_LAST_SEEN = "2026-05-09T11:59:55.000Z"; // 5 s ago — present
+const STALE_LAST_SEEN = "2026-05-09T11:59:00.000Z"; // 60 s ago — absent
 
 function makeSupabaseMock(s: Scripted = {}) {
   const roomSelect =
@@ -163,9 +213,17 @@ function makeSupabaseMock(s: Scripted = {}) {
     s.votesSelect ?? { data: TWO_USER_VOTES, error: null };
   const voteUpdateError = s.voteUpdateError ?? null;
   const resultsUpsertError = s.resultsUpsertError ?? null;
+  const resultsUpdateError = s.resultsUpdateError ?? null;
   const awardsUpsertError = s.awardsUpsertError ?? null;
   const roomToAnnouncing =
     s.roomToAnnouncing ?? { data: { id: VALID_ROOM_ID }, error: null };
+
+  // Queue for per-user presence queries (pre-cascade). Dequeued in arrival order.
+  const membershipSelectQueue: Array<Result<{ last_seen_at: string | null } | null>> =
+    s.membershipSelects ? [...s.membershipSelects] : [];
+
+  const usersByIdSelect =
+    s.usersByIdSelect ?? { data: [], error: null };
 
   // Spies.
   const voteUpdateCalls: Array<{ id: string; patch: Record<string, unknown> }> = [];
@@ -173,6 +231,7 @@ function makeSupabaseMock(s: Scripted = {}) {
     rows: Record<string, unknown>[];
     options: Record<string, unknown>;
   }> = [];
+  const resultsUpdateCalls: Array<{ userId: string }> = [];
   const awardsUpsertCalls: Array<{
     rows: Record<string, unknown>[];
     options: Record<string, unknown>;
@@ -183,6 +242,10 @@ function makeSupabaseMock(s: Scripted = {}) {
   // Tracks which "rooms.update" call is happening so we route to the right
   // scripted response: the first is voting→scoring, the second is scoring→announcing.
   let roomUpdateCount = 0;
+
+  // Tracks how many times room_memberships has been queried with .order() vs .maybeSingle()
+  // so we can distinguish the bulk load from the per-user presence probes.
+  let membershipBulkDone = false;
 
   const from = vi.fn((table: string) => {
     if (table === "rooms") {
@@ -221,10 +284,41 @@ function makeSupabaseMock(s: Scripted = {}) {
     }
     if (table === "room_memberships") {
       return {
+        select: vi.fn(() => {
+          // The first call is the bulk load (uses .order()); subsequent calls
+          // are per-user presence probes (use .eq().eq().maybeSingle()).
+          if (!membershipBulkDone) {
+            membershipBulkDone = true;
+            return {
+              eq: vi.fn(() => ({
+                order: vi.fn().mockResolvedValue(memberships),
+              })),
+            };
+          }
+          // Per-user presence probe: .eq(room_id, X).eq(user_id, Y).maybeSingle()
+          return {
+            eq: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                maybeSingle: vi.fn().mockImplementation(() => {
+                  if (membershipSelectQueue.length > 0) {
+                    return Promise.resolve(membershipSelectQueue.shift()!);
+                  }
+                  // Default: user is present (always fresh relative to wall clock).
+                  return Promise.resolve({
+                    data: { last_seen_at: new Date().toISOString() },
+                    error: null,
+                  });
+                }),
+              })),
+            })),
+          };
+        }),
+      };
+    }
+    if (table === "users") {
+      return {
         select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            order: vi.fn().mockResolvedValue(memberships),
-          })),
+          in: vi.fn(() => Promise.resolve(usersByIdSelect)),
         })),
       };
     }
@@ -259,6 +353,15 @@ function makeSupabaseMock(s: Scripted = {}) {
             return Promise.resolve({ data: null, error: resultsUpsertError });
           },
         ),
+        // applySingleSkip calls results.update().eq().eq()
+        update: vi.fn((_patch: Record<string, unknown>) => ({
+          eq: vi.fn((_col: string, _val: unknown) => ({
+            eq: vi.fn((_col2: string, val2: unknown) => {
+              resultsUpdateCalls.push({ userId: String(val2) });
+              return Promise.resolve({ data: null, error: resultsUpdateError });
+            }),
+          })),
+        })),
       };
     }
     throw new Error(`unexpected table: ${table}`);
@@ -268,6 +371,7 @@ function makeSupabaseMock(s: Scripted = {}) {
     supabase: { from } as unknown as RunScoringDeps["supabase"],
     voteUpdateCalls,
     resultsUpsertCalls,
+    resultsUpdateCalls,
     awardsUpsertCalls,
     roomUpdatePatches,
     roomUpdateGuards,
@@ -901,5 +1005,178 @@ describe("runScoring — broadcast failures are non-fatal", () => {
     expect(broadcastSpy).toHaveBeenCalledTimes(2);
     expect(warnSpy).toHaveBeenCalledTimes(2);
     warnSpy.mockRestore();
+  });
+});
+
+// ─── pre-cascade at scoring → announcing ─────────────────────────────────────
+
+describe("runScoring — pre-cascade skips absent users at scoring→announcing", () => {
+  /**
+   * Case 1: First two users absent, third present.
+   * Eligible order [U1, U2, U3] post-shuffle (identity).
+   * Pre-cascade should skip U1 and U2, land on U3.
+   */
+  it("skips first 2 absent users and sets announcing_user_id to order[2]", async () => {
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: { ...defaultRoomRow, announcement_mode: "live" },
+        error: null,
+      },
+      memberships: { data: THREE_USER_MEMBERSHIPS, error: null },
+      votesSelect: { data: THREE_USER_VOTES, error: null },
+      // U1 stale, U2 stale, U3 fresh
+      membershipSelects: [
+        { data: { last_seen_at: STALE_LAST_SEEN }, error: null },
+        { data: { last_seen_at: STALE_LAST_SEEN }, error: null },
+        { data: { last_seen_at: FRESH_LAST_SEEN }, error: null },
+      ],
+      usersByIdSelect: {
+        data: [
+          { id: U1, display_name: "Alice" },
+          { id: U2, display_name: "Bob" },
+        ],
+        error: null,
+      },
+    });
+    const broadcastSpy = vi.fn().mockResolvedValue(undefined);
+
+    const result = await runScoring(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock, {
+        broadcastRoomEvent: broadcastSpy,
+        shuffle: (arr) => [...arr], // identity — preserve membership order U1,U2,U3
+        now: () => FAKE_CASCADE_NOW,
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+
+    // Last rooms UPDATE must reflect the cascade result.
+    const announcingPatch = mock.roomUpdatePatches[1];
+    expect(announcingPatch).toMatchObject({
+      status: "announcing",
+      announcing_user_id: U3,
+      announce_skipped_user_ids: [U1, U2],
+      current_announce_idx: 0,
+    });
+
+    // applySingleSkip writes results.update for U1 and U2.
+    expect(mock.resultsUpdateCalls.map((c) => c.userId)).toEqual([U1, U2]);
+
+    // Two announce_skip broadcasts emitted AFTER room UPDATE, before status_changed.
+    const skipBroadcasts = broadcastSpy.mock.calls.filter(
+      ([, e]) => e.type === "announce_skip",
+    );
+    expect(skipBroadcasts).toHaveLength(2);
+    expect(skipBroadcasts[0][1]).toMatchObject({ type: "announce_skip", userId: U1 });
+    expect(skipBroadcasts[1][1]).toMatchObject({ type: "announce_skip", userId: U2 });
+
+    // status_changed:announcing broadcast still fires.
+    const statusBroadcasts = broadcastSpy.mock.calls.filter(
+      ([, e]) => e.type === "status_changed",
+    );
+    expect(statusBroadcasts.some(([, e]) => e.status === "announcing")).toBe(true);
+  });
+
+  /**
+   * Case 2: All users absent.
+   * announcing_user_id must be null, status still 'announcing'.
+   */
+  it("sets announcing_user_id=null when all users are absent, status stays announcing", async () => {
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: { ...defaultRoomRow, announcement_mode: "live" },
+        error: null,
+      },
+      memberships: { data: TWO_USER_MEMBERSHIPS, error: null },
+      // both stale
+      membershipSelects: [
+        { data: { last_seen_at: STALE_LAST_SEEN }, error: null },
+        { data: { last_seen_at: STALE_LAST_SEEN }, error: null },
+      ],
+      usersByIdSelect: {
+        data: [
+          { id: U1, display_name: "Alice" },
+          { id: U2, display_name: "Bob" },
+        ],
+        error: null,
+      },
+    });
+    const broadcastSpy = vi.fn().mockResolvedValue(undefined);
+
+    const result = await runScoring(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock, {
+        broadcastRoomEvent: broadcastSpy,
+        shuffle: (arr) => [...arr], // identity — U1, U2
+        now: () => FAKE_CASCADE_NOW,
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+
+    const announcingPatch = mock.roomUpdatePatches[1];
+    expect(announcingPatch).toMatchObject({
+      status: "announcing",
+      announcing_user_id: null,
+      announce_skipped_user_ids: [U1, U2],
+      current_announce_idx: 0,
+    });
+
+    // Both results marked announced.
+    expect(mock.resultsUpdateCalls.map((c) => c.userId)).toEqual([U1, U2]);
+
+    // Two announce_skip broadcasts.
+    const skipBroadcasts = broadcastSpy.mock.calls.filter(
+      ([, e]) => e.type === "announce_skip",
+    );
+    expect(skipBroadcasts).toHaveLength(2);
+  });
+
+  /**
+   * Case 3: First user present (golden path regression).
+   * No skips should occur; announcing_user_id = U1, no announce_skipped_user_ids.
+   */
+  it("golden path: first user present — no skips, no announce_skipped_user_ids", async () => {
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: { ...defaultRoomRow, announcement_mode: "live" },
+        error: null,
+      },
+      // U1 fresh
+      membershipSelects: [
+        { data: { last_seen_at: FRESH_LAST_SEEN }, error: null },
+      ],
+    });
+    const broadcastSpy = vi.fn().mockResolvedValue(undefined);
+
+    const result = await runScoring(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock, {
+        broadcastRoomEvent: broadcastSpy,
+        shuffle: (arr) => [...arr], // identity — U1, U2
+        now: () => FAKE_CASCADE_NOW,
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+
+    const announcingPatch = mock.roomUpdatePatches[1];
+    expect(announcingPatch).toMatchObject({
+      status: "announcing",
+      announcing_user_id: U1,
+      current_announce_idx: 0,
+    });
+    // No skipped field in the patch.
+    expect(announcingPatch).not.toHaveProperty("announce_skipped_user_ids");
+
+    // No announce_skip broadcasts.
+    const skipBroadcasts = broadcastSpy.mock.calls.filter(
+      ([, e]) => e.type === "announce_skip",
+    );
+    expect(skipBroadcasts).toHaveLength(0);
+
+    // No results.update calls from applySingleSkip.
+    expect(mock.resultsUpdateCalls).toHaveLength(0);
   });
 });

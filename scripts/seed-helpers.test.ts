@@ -5,6 +5,7 @@ import {
   SEED_PIN_PREFIX,
   SEED_STATES,
   SEED_USER_FIRST_NAMES,
+  buildAnnouncingCascadeAbsent,
   buildFullScores,
   buildHalfScores,
   buildSeedAvatarSeed,
@@ -128,6 +129,43 @@ describe("scripts/seed-helpers", () => {
       for (const k of Object.keys(half)) {
         expect(half[k]).toBe(full[k]);
       }
+    });
+  });
+
+  describe("buildAnnouncingCascadeAbsent", () => {
+    it("produces an announcing room with users B, C absent (last_seen_at 60s ago), A and D present", () => {
+      const now = new Date("2026-05-10T12:00:00.000Z");
+      const result = buildAnnouncingCascadeAbsent({ now });
+
+      expect(result.room.status).toBe("announcing");
+      expect(result.room.announcement_order).toHaveLength(4);
+      const [a, b, c, d] = result.room.announcement_order!;
+
+      const memById = new Map(
+        result.memberships.map((m) => [m.user_id, m]),
+      );
+
+      // A is the active announcer — fresh.
+      expect(memById.get(a)!.last_seen_at).not.toBeNull();
+      expect(
+        now.getTime() - new Date(memById.get(a)!.last_seen_at!).getTime(),
+      ).toBeLessThan(30_000);
+
+      // B and C are stale (>30 s ago).
+      expect(
+        now.getTime() - new Date(memById.get(b)!.last_seen_at!).getTime(),
+      ).toBeGreaterThan(30_000);
+      expect(
+        now.getTime() - new Date(memById.get(c)!.last_seen_at!).getTime(),
+      ).toBeGreaterThan(30_000);
+
+      // D is fresh.
+      expect(
+        now.getTime() - new Date(memById.get(d)!.last_seen_at!).getTime(),
+      ).toBeLessThan(30_000);
+
+      expect(result.room.announcing_user_id).toBe(a);
+      expect(result.room.current_announce_idx).toBe(0);
     });
   });
 

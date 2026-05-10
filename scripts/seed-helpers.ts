@@ -91,6 +91,85 @@ export function buildHalfScores(
   return half;
 }
 
+// ─── Pure builder: buildAnnouncingCascadeAbsent ──────────────────────────────
+
+export interface SeedUserRow {
+  id: string;
+  display_name: string;
+  avatar_seed: string;
+}
+
+export interface SeedMembershipRow {
+  user_id: string;
+  is_ready: boolean;
+  last_seen_at: string | null;
+}
+
+export interface SeedRoomRow {
+  status: string;
+  announcement_mode: string;
+  announcement_order: string[] | null;
+  announcing_user_id: string | null;
+  current_announce_idx: number | null;
+  announce_skipped_user_ids: string[];
+}
+
+export interface AnnouncingCascadeAbsentFixture {
+  users: SeedUserRow[];
+  room: SeedRoomRow;
+  memberships: SeedMembershipRow[];
+}
+
+export interface BuildAnnouncingCascadeAbsentOpts {
+  now?: Date;
+  pin?: string;
+}
+
+/**
+ * SPEC §10.2.1 — seed an announcing room that drives the cascade-skip
+ * path. Order [A, B, C, D]: A is the active announcer (fresh), B and C
+ * are absent (last_seen_at ~60s ago), D is fresh. After A finishes
+ * their reveal queue, the cascade skips B and C, lands on D.
+ *
+ * Pure function — no DB side-effects. The companion impure seeder in
+ * `seed-room.ts` calls this and persists the rows.
+ */
+export function buildAnnouncingCascadeAbsent(
+  opts: BuildAnnouncingCascadeAbsentOpts = {},
+): AnnouncingCascadeAbsentFixture {
+  const now = opts.now ?? new Date();
+  const fresh = new Date(now.getTime() - 5_000).toISOString();
+  const stale = new Date(now.getTime() - 60_000).toISOString();
+
+  // Build 4 deterministic seed users (indices 0–3).
+  const users: SeedUserRow[] = [0, 1, 2, 3].map((i) => ({
+    id: `cascade-absent-user-${i}`,
+    display_name: buildSeedDisplayName(i),
+    avatar_seed: buildSeedAvatarSeed(i),
+  }));
+
+  const [a, b, c, d] = users;
+  const order = [a.id, b.id, c.id, d.id];
+
+  const room: SeedRoomRow = {
+    status: "announcing",
+    announcement_mode: "live",
+    announcement_order: order,
+    announcing_user_id: a.id,
+    current_announce_idx: 0,
+    announce_skipped_user_ids: [],
+  };
+
+  const memberships: SeedMembershipRow[] = [
+    { user_id: a.id, is_ready: false, last_seen_at: fresh },
+    { user_id: b.id, is_ready: false, last_seen_at: stale },
+    { user_id: c.id, is_ready: false, last_seen_at: stale },
+    { user_id: d.id, is_ready: false, last_seen_at: fresh },
+  ];
+
+  return { users, room, memberships };
+}
+
 /**
  * The set of state names the seeder accepts. Adding a new state means
  * also adding the matching builder function in `seed-room.ts` and a
@@ -103,6 +182,7 @@ export const SEED_STATES = [
   "announcing-mid-queue-live",
   "announcing-instant-all-ready",
   "done-with-awards",
+  "announcing-cascade-absent",
 ] as const;
 
 export type SeedState = (typeof SEED_STATES)[number];

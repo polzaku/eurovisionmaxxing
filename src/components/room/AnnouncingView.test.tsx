@@ -39,6 +39,14 @@ vi.mock("@/components/room/DoneCard", () => ({
   ),
 }));
 
+// SkipBannerQueue uses next-intl — stub it out so AnnouncingView tests
+// don't need an intl provider. The null-render when events=[] is what
+// existing tests rely on; a banner stub is fine for the rare test that
+// triggers announce_skip.
+vi.mock("@/components/room/SkipBannerQueue", () => ({
+  default: () => null,
+}));
+
 // API helpers — controllable per-test via mockImplementation in beforeEach.
 const postAnnounceNextMock = vi.fn();
 const postAnnounceHandoffMock = vi.fn();

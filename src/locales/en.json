@@ -179,6 +179,13 @@
     "INVALID_TOKEN": "Your session has expired. Please rejoin.",
     "INTERNAL_ERROR": "Something went wrong on our end. Please try again."
   },
+  "announce": {
+    "skipBanner": {
+      "single": "{name} isn't here — their points are being skipped",
+      "coalesced": "{count} skipped: {names}",
+      "coalescedTrailing": "+{remaining}"
+    }
+  },
   "results": {
     "title": "Results",
     "placeholders": {

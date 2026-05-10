@@ -6,6 +6,8 @@ import { scoreRoom, type LeaderboardEntry } from "@/lib/scoring";
 import { computeAwards } from "@/lib/awards/computeAwards";
 import { ContestDataError } from "@/lib/contestants";
 import type { RoomEventPayload } from "@/lib/rooms/shared";
+import { isAbsent } from "@/lib/rooms/isAbsent";
+import { applySingleSkip } from "@/lib/rooms/applySingleSkip";
 
 export interface RunScoringInput {
   roomId: unknown;
@@ -346,7 +348,11 @@ export async function runScoring(
     announcement_order?: string[];
     announcing_user_id?: string | null;
     current_announce_idx?: number;
+    announce_skipped_user_ids?: string[];
   } = { status: "announcing" };
+
+  // Pre-cascade skipped list — populated below in live mode only.
+  const preSkipped: string[] = [];
 
   if (room.announcement_mode === "live") {
     // Eligible announcers: users with at least one points_awarded > 0 row.
@@ -358,9 +364,57 @@ export async function runScoring(
     const eligibleOrdered = userIds.filter((u) => eligible.has(u));
     const shuffle = deps.shuffle ?? defaultShuffle;
     const order = shuffle(eligibleOrdered);
+
+    // Pre-cascade: skip absent users from the front of the order so the
+    // room never enters 'announcing' with an absent first announcer (SPEC §10.2.1).
+    // Snapshot 'now' once — same instant used for all probes in this call.
+    const cascadeNow = (deps.now ?? (() => new Date()))();
+    let firstPresentIdx = order.length; // sentinel: all absent
+
+    for (let i = 0; i < order.length; i++) {
+      const candidateId = order[i];
+
+      const membershipQuery = await deps.supabase
+        .from("room_memberships")
+        .select("last_seen_at")
+        .eq("room_id", roomId)
+        .eq("user_id", candidateId)
+        .maybeSingle();
+
+      if (membershipQuery.error) {
+        return fail(
+          "INTERNAL_ERROR",
+          "Could not read membership for pre-cascade presence check.",
+          500,
+        );
+      }
+
+      const lastSeenAt = membershipQuery.data?.last_seen_at ?? null;
+
+      if (!isAbsent(lastSeenAt as string | null, cascadeNow)) {
+        // Present — stop here.
+        firstPresentIdx = i;
+        break;
+      }
+
+      // Absent — mark their results as announced before recording the skip.
+      const skipResult = await applySingleSkip(
+        { roomId, skippedUserId: candidateId },
+        { supabase: deps.supabase },
+      );
+      if (!skipResult.ok) {
+        return fail(skipResult.error.code, skipResult.error.message, 500);
+      }
+      preSkipped.push(candidateId);
+    }
+
     announcingPatch.announcement_order = order;
-    announcingPatch.announcing_user_id = order[0] ?? null;
+    announcingPatch.announcing_user_id =
+      firstPresentIdx < order.length ? order[firstPresentIdx] : null;
     announcingPatch.current_announce_idx = 0;
+    if (preSkipped.length > 0) {
+      announcingPatch.announce_skipped_user_ids = preSkipped;
+    }
   }
 
   const toAnnouncing = await deps.supabase
@@ -377,6 +431,37 @@ export async function runScoring(
       "Could not finalise scoring. Please try again.",
       500,
     );
+  }
+
+  // Emit announce_skip broadcasts for each pre-cascade skipped user, AFTER
+  // the room UPDATE commits. Non-fatal — state is already written.
+  if (preSkipped.length > 0) {
+    const usersQuery = await deps.supabase
+      .from("users")
+      .select("id, display_name")
+      .in("id", preSkipped);
+
+    const usersData = (usersQuery.data ?? []) as Array<{
+      id: string;
+      display_name: string;
+    }>;
+    const nameById = new Map(usersData.map((u) => [u.id, u.display_name]));
+
+    for (const skippedId of preSkipped) {
+      const displayName = nameById.get(skippedId) ?? skippedId;
+      try {
+        await deps.broadcastRoomEvent(roomId, {
+          type: "announce_skip",
+          userId: skippedId,
+          displayName,
+        });
+      } catch (err) {
+        console.warn(
+          `broadcast 'announce_skip' failed for room ${roomId} user ${skippedId}; state committed regardless:`,
+          err,
+        );
+      }
+    }
   }
 
   try {

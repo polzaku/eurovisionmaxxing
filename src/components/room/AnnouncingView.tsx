@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Avatar from "@/components/ui/Avatar";
 import DoneCard from "@/components/room/DoneCard";
+import SkipBannerQueue, {
+  type SkipEvent,
+} from "@/components/room/SkipBannerQueue";
 import AnnouncerRoster, {
   type RosterMember,
 } from "@/components/room/AnnouncerRoster";
@@ -126,6 +129,7 @@ export default function AnnouncingView({
     null,
   );
   const [finishedLocal, setFinishedLocal] = useState(false);
+  const [skipEvents, setSkipEvents] = useState<SkipEvent[]>([]);
 
   const roomId = room.id;
   const isOwner = currentUserId === room.ownerUserId;
@@ -183,7 +187,22 @@ export default function AnnouncingView({
       void refetch();
       return;
     }
-    if (event.type === "announce_skip" || event.type === "announce_skip_restored") {
+    if (event.type === "announce_skip") {
+      setSkipEvents((prev) => [
+        ...prev,
+        {
+          id: `${event.userId}-${Date.now()}`,
+          userId: event.userId,
+          displayName: event.displayName,
+          at: Date.now(),
+        },
+      ]);
+      // Refetch so the roster's skipped markers + restore CTA stay in
+      // sync with whichever admin made the change.
+      void refetch();
+      return;
+    }
+    if (event.type === "announce_skip_restored") {
       // Refetch so the roster's skipped markers + restore CTA stay in
       // sync with whichever admin made the change.
       void refetch();
@@ -307,6 +326,7 @@ export default function AnnouncingView({
 
   return (
     <main className="flex min-h-screen flex-col items-center px-4 py-8">
+      <SkipBannerQueue events={skipEvents} />
       <div className="max-w-xl w-full space-y-6 motion-safe:animate-fade-in">
         <header className="space-y-3 text-center">
           <h1 className="text-xl font-bold tracking-tight emx-wordmark">

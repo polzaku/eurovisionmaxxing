@@ -71,6 +71,8 @@ export default function PresentScreen({
   announcerPosition,
   announcerCount,
 }: PresentScreenProps) {
+  // TODO(R4): subscribe to `announce_skip` events here and render <SkipBannerQueue> for the TV surface.
+  // The TV-surface complement to the cascade-skip slice — landed alongside item #3 (/present "Awaiting an admin to continue…") when the present screen gains a broadcast subscriber.
   const t = useTranslations();
   const contestantById = new Map(contestants.map((c) => [c.id, c]));
 

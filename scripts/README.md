@@ -28,6 +28,7 @@ The seeder prints the room URL, the room PIN, and the owner's session payload. P
 | `voting-ending-mid-countdown` | A `status=voting_ending` room with `voting_ends_at` 30s in the future, half-scored votes. Admin sees `<EndVotingCountdownToast>` with Undo; guests see `<EndingPill>`. Either can let the timer elapse for runScoring. |
 | `announcing-mid-queue-live` | A `status=announcing`, `mode=live` room with all results computed. Order is `[owner → guest1 → guest2 → guest3]`. The first user has fully announced; the second user is mid-queue (3 of 5 reveals done); guests 2 + 3 haven't started. Tests the active-driver tap zone, "Up next" panel, /present TV view, owner-watching panel, roster. |
 | `announcing-instant-all-ready` | A `status=announcing`, `mode=instant` room. Every member is `is_ready=true` so the admin's "Reveal final results" CTA fires immediately. Operator can also test "Reveal anyway" + always-available admin override. |
+| `announcing-cascade-absent` | Live-mode announcing room: 4-user order [A, B, C, D]; A active, B + C absent (last_seen_at 60s ago), D present. Drives the R4 cascade-skip path on next advance. |
 | `done-with-awards` | A `status=done` room with 4 users, votes on every contestant, results rows, and 2 demo awards. Tests `<DoneCeremony>` + the post-awards CTA footer (Copy link · Copy summary · View full results · Create another) + `/results/{id}` static page. |
 
 ## Safety gates

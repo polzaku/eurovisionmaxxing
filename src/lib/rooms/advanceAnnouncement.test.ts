@@ -8,6 +8,9 @@ const VALID_ROOM_ID = "11111111-2222-4333-8444-555555555555";
 const OWNER_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
 const U1 = "10000000-0000-4000-8000-000000000001";
 const U2 = "20000000-0000-4000-8000-000000000002";
+const U3 = "30000000-0000-4000-8000-000000000003";
+const U4 = "40000000-0000-4000-8000-000000000004";
+const U5 = "50000000-0000-4000-8000-000000000005";
 
 const announcingRoom = {
   id: VALID_ROOM_ID,
@@ -16,6 +19,7 @@ const announcingRoom = {
   announcement_order: [U1, U2],
   announcing_user_id: U1,
   current_announce_idx: 0,
+  announce_skipped_user_ids: [],
 };
 
 // 5-contestant fixture mirrors the year-9999 test setup. Each user has 5
@@ -37,8 +41,17 @@ interface Scripted {
   roomSelect?: Mock;
   announcerResults?: Mock;
   resultsUpdate?: { error: { message: string } | null };
+  resultsUpdateError?: { message: string } | null;
   roomUpdate?: Mock;
   allResults?: Mock;
+  membershipSelects?: Array<{
+    data: { last_seen_at: string | null } | null;
+    error: { message: string } | null;
+  }>;
+  usersByIdSelect?: {
+    data: Array<{ id: string; display_name: string }> | null;
+    error: { message: string } | null;
+  };
 }
 
 function makeSupabaseMock(s: Scripted = {}) {
@@ -50,6 +63,24 @@ function makeSupabaseMock(s: Scripted = {}) {
     s.roomUpdate ?? { data: { id: VALID_ROOM_ID }, error: null };
   const allResults = s.allResults ?? { data: [], error: null };
 
+  // Queue of results update responses, consumed FIFO.
+  // First call = main reveal mark; subsequent calls = cascade applySingleSkip.
+  // If resultsUpdateError is set, the second call (cascade) returns that error.
+  const resultsUpdateQueue: Array<{ error: { message: string } | null }> =
+    s.resultsUpdateError !== undefined
+      ? [{ error: null }, { error: s.resultsUpdateError ?? null }]
+      : [];
+
+  // Queue of membership selects, popped FIFO per probe.
+  const membershipSelectQueue: Array<{
+    data: { last_seen_at: string | null } | null;
+    error: { message: string } | null;
+  }> = s.membershipSelects
+    ? [...s.membershipSelects]
+    : [];
+
+  const usersByIdSelect = s.usersByIdSelect ?? { data: [], error: null };
+
   const resultsUpdateCalls: Array<{
     patch: Record<string, unknown>;
     eqs: Array<{ col: string; val: unknown }>;
@@ -58,6 +89,7 @@ function makeSupabaseMock(s: Scripted = {}) {
     patch: Record<string, unknown>;
     eqs: Array<{ col: string; val: unknown }>;
   }> = [];
+  const broadcastCalls: Array<{ roomId: string; event: unknown }> = [];
 
   const from = vi.fn((table: string) => {
     if (table === "rooms") {
@@ -111,13 +143,46 @@ function makeSupabaseMock(s: Scripted = {}) {
               eqs.push({ col, val });
               return chain;
             }),
-            then: (...args: unknown[]) =>
-              Promise.resolve({ data: null, ...resultsUpdate }).then(
+            then: (...args: unknown[]) => {
+              const response =
+                resultsUpdateQueue.length > 0
+                  ? resultsUpdateQueue.shift()!
+                  : { ...resultsUpdate };
+              return Promise.resolve({ data: null, ...response }).then(
                 ...(args as [(v: unknown) => unknown]),
-              ),
+              );
+            },
           };
           return chain;
         }),
+      };
+    }
+    if (table === "room_memberships") {
+      // .select("last_seen_at").eq("room_id", ...).eq("user_id", ...).maybeSingle()
+      const selectChain = {
+        eq: vi.fn(() => selectChain),
+        maybeSingle: vi.fn(() => {
+          const next =
+            membershipSelectQueue.length > 0
+              ? membershipSelectQueue.shift()!
+              : { data: { last_seen_at: null }, error: null };
+          return Promise.resolve(next);
+        }),
+      };
+      return {
+        select: vi.fn(() => selectChain),
+      };
+    }
+    if (table === "users") {
+      // Handle both .select("display_name").eq(...).maybeSingle() (single user)
+      // and .select("id, display_name").in("id", [...]) (bulk).
+      const usersChain: Record<string, unknown> = {};
+      usersChain.eq = vi.fn(() => ({
+        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+      }));
+      usersChain.in = vi.fn(() => Promise.resolve(usersByIdSelect));
+      return {
+        select: vi.fn(() => usersChain),
       };
     }
     throw new Error(`unexpected table: ${table}`);
@@ -127,6 +192,7 @@ function makeSupabaseMock(s: Scripted = {}) {
     supabase: { from } as unknown as AdvanceAnnouncementDeps["supabase"],
     resultsUpdateCalls,
     roomUpdateCalls,
+    broadcastCalls,
   };
 }
 
@@ -134,9 +200,13 @@ function makeDeps(
   mock: ReturnType<typeof makeSupabaseMock>,
   overrides: Partial<AdvanceAnnouncementDeps> = {},
 ): AdvanceAnnouncementDeps {
+  const defaultBroadcast = vi.fn((roomId: string, event: unknown) => {
+    mock.broadcastCalls.push({ roomId, event });
+    return Promise.resolve(undefined);
+  });
   return {
     supabase: mock.supabase,
-    broadcastRoomEvent: vi.fn().mockResolvedValue(undefined),
+    broadcastRoomEvent: defaultBroadcast,
     ...overrides,
   };
 }
@@ -285,6 +355,8 @@ describe("advanceAnnouncement — happy path", () => {
       newRank: 1,
       nextAnnouncingUserId: U1,
       finished: false,
+      cascadeExhausted: false,
+      cascadedSkippedUserIds: [],
     });
 
     // results UPDATE marks announced=true on the right row.
@@ -327,20 +399,28 @@ describe("advanceAnnouncement — happy path", () => {
 
   it("rotates to the next announcer when the current one finishes their queue", async () => {
     // U1's queue has 5 entries; idx 4 is the last.
+    // U2 is next — probe its membership (fresh).
+    const NOW = new Date("2026-05-09T12:00:00.000Z");
+    const freshTs = new Date(NOW.getTime() - 5_000).toISOString();
     const mock = makeSupabaseMock({
       roomSelect: {
         data: { ...announcingRoom, current_announce_idx: 4 },
         error: null,
       },
+      membershipSelects: [{ data: { last_seen_at: freshTs }, error: null }],
+      usersByIdSelect: { data: [], error: null },
     });
     const result = await advanceAnnouncement(
       { roomId: VALID_ROOM_ID, userId: U1 },
       makeDeps(mock),
+      NOW,
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.nextAnnouncingUserId).toBe(U2);
     expect(result.finished).toBe(false);
+    expect(result.cascadedSkippedUserIds).toEqual([]);
+    expect(result.cascadeExhausted).toBe(false);
 
     // Room patch sets announcing_user_id = U2, idx = 0; status NOT changed.
     expect(mock.roomUpdateCalls[0].patch).toEqual({
@@ -370,6 +450,8 @@ describe("advanceAnnouncement — happy path", () => {
     if (!result.ok) return;
     expect(result.finished).toBe(true);
     expect(result.nextAnnouncingUserId).toBeNull();
+    expect(result.cascadedSkippedUserIds).toEqual([]);
+    expect(result.cascadeExhausted).toBe(false);
 
     // Room patch flips status to done.
     expect(mock.roomUpdateCalls[0].patch).toEqual({
@@ -488,5 +570,284 @@ describe("advanceAnnouncement — broadcast resilience", () => {
     expect(broadcastSpy).toHaveBeenCalledTimes(2);
     expect(warnSpy).toHaveBeenCalledTimes(2);
     warnSpy.mockRestore();
+  });
+});
+
+// ─── cascade-skip on rotation (SPEC §10.2.1) ────────────────────────────────
+
+describe("cascade-skip on rotation (SPEC §10.2.1)", () => {
+  // Shared "now" used across cascade tests.
+  const NOW = new Date("2026-05-09T12:00:00.000Z");
+  const staleTs = new Date(NOW.getTime() - 60_000).toISOString(); // 60 s ago → absent
+  const freshTs = new Date(NOW.getTime() - 5_000).toISOString(); // 5 s ago → present
+
+  it("Case 1: single skip on rotation — skips U2 (stale), lands on U3 (fresh)", async () => {
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          ...announcingRoom,
+          announcement_order: [U1, U2, U3],
+          announcing_user_id: U1,
+          current_announce_idx: 4, // last idx → triggers rotation
+          announce_skipped_user_ids: [],
+        },
+        error: null,
+      },
+      membershipSelects: [
+        { data: { last_seen_at: staleTs }, error: null }, // U2 → absent
+        { data: { last_seen_at: freshTs }, error: null }, // U3 → present
+      ],
+      usersByIdSelect: {
+        data: [{ id: U2, display_name: "Bob" }],
+        error: null,
+      },
+    });
+    const broadcastSpy = vi.fn().mockResolvedValue(undefined);
+    const result = await advanceAnnouncement(
+      { roomId: VALID_ROOM_ID, userId: U1 },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy }),
+      NOW,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.cascadedSkippedUserIds).toEqual([U2]);
+    expect(result.cascadeExhausted).toBe(false);
+    expect(result.nextAnnouncingUserId).toBe(U3);
+
+    // Room patch includes announce_skipped_user_ids and announcing_user_id = U3.
+    expect(mock.roomUpdateCalls[0].patch).toMatchObject({
+      announcing_user_id: U3,
+      announce_skipped_user_ids: [U2],
+    });
+    // No status patch.
+    expect(mock.roomUpdateCalls[0].patch.status).toBeUndefined();
+
+    // One announce_skip broadcast for U2, BEFORE announce_next / score_update.
+    expect(broadcastSpy).toHaveBeenCalledWith(VALID_ROOM_ID, {
+      type: "announce_skip",
+      userId: U2,
+      displayName: "Bob",
+    });
+    const skipCallIdx = broadcastSpy.mock.calls.findIndex(
+      (c) => (c[1] as { type: string }).type === "announce_skip",
+    );
+    const nextCallIdx = broadcastSpy.mock.calls.findIndex(
+      (c) => (c[1] as { type: string }).type === "announce_next",
+    );
+    expect(skipCallIdx).toBeLessThan(nextCallIdx);
+  });
+
+  it("Case 2: cascade through 3 absent, lands on U5 (fresh)", async () => {
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          ...announcingRoom,
+          announcement_order: [U1, U2, U3, U4, U5],
+          announcing_user_id: U1,
+          current_announce_idx: 4, // last idx
+          announce_skipped_user_ids: [],
+        },
+        error: null,
+      },
+      membershipSelects: [
+        { data: { last_seen_at: staleTs }, error: null }, // U2 → absent
+        { data: { last_seen_at: staleTs }, error: null }, // U3 → absent
+        { data: { last_seen_at: staleTs }, error: null }, // U4 → absent
+        { data: { last_seen_at: freshTs }, error: null }, // U5 → present
+      ],
+      usersByIdSelect: {
+        data: [
+          { id: U2, display_name: "Bob" },
+          { id: U3, display_name: "Carol" },
+          { id: U4, display_name: "Dave" },
+        ],
+        error: null,
+      },
+    });
+    const broadcastSpy = vi.fn().mockResolvedValue(undefined);
+    const result = await advanceAnnouncement(
+      { roomId: VALID_ROOM_ID, userId: U1 },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy }),
+      NOW,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.cascadedSkippedUserIds).toEqual([U2, U3, U4]);
+    expect(result.cascadeExhausted).toBe(false);
+    expect(result.nextAnnouncingUserId).toBe(U5);
+
+    expect(mock.roomUpdateCalls[0].patch).toMatchObject({
+      announcing_user_id: U5,
+      announce_skipped_user_ids: [U2, U3, U4],
+    });
+
+    // Three announce_skip broadcasts in order U2 → U3 → U4, all before announce_next.
+    const skipCalls = broadcastSpy.mock.calls.filter(
+      (c) => (c[1] as { type: string }).type === "announce_skip",
+    );
+    expect(skipCalls).toHaveLength(3);
+    expect(skipCalls[0][1]).toEqual({ type: "announce_skip", userId: U2, displayName: "Bob" });
+    expect(skipCalls[1][1]).toEqual({ type: "announce_skip", userId: U3, displayName: "Carol" });
+    expect(skipCalls[2][1]).toEqual({ type: "announce_skip", userId: U4, displayName: "Dave" });
+
+    const firstSkipIdx = broadcastSpy.mock.calls.findIndex(
+      (c) => (c[1] as { type: string }).type === "announce_skip",
+    );
+    const nextCallIdx = broadcastSpy.mock.calls.findIndex(
+      (c) => (c[1] as { type: string }).type === "announce_next",
+    );
+    expect(firstSkipIdx).toBeLessThan(nextCallIdx);
+  });
+
+  it("Case 3: cascade exhausts — all remaining are absent, show keeps going", async () => {
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          ...announcingRoom,
+          announcement_order: [U1, U2, U3],
+          announcing_user_id: U1,
+          current_announce_idx: 4, // last idx
+          announce_skipped_user_ids: [],
+        },
+        error: null,
+      },
+      membershipSelects: [
+        { data: { last_seen_at: staleTs }, error: null }, // U2 → absent
+        { data: { last_seen_at: staleTs }, error: null }, // U3 → absent
+      ],
+      usersByIdSelect: {
+        data: [
+          { id: U2, display_name: "Bob" },
+          { id: U3, display_name: "Carol" },
+        ],
+        error: null,
+      },
+    });
+    const broadcastSpy = vi.fn().mockResolvedValue(undefined);
+    const result = await advanceAnnouncement(
+      { roomId: VALID_ROOM_ID, userId: U1 },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy }),
+      NOW,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.cascadeExhausted).toBe(true);
+    expect(result.cascadedSkippedUserIds).toEqual([U2, U3]);
+    expect(result.nextAnnouncingUserId).toBeNull();
+
+    // announcing_user_id=null; status NOT set to done (stays 'announcing').
+    expect(mock.roomUpdateCalls[0].patch).toMatchObject({
+      announcing_user_id: null,
+      announce_skipped_user_ids: [U2, U3],
+    });
+    expect(mock.roomUpdateCalls[0].patch.status).toBeUndefined();
+
+    // Two announce_skip broadcasts.
+    const skipCalls = broadcastSpy.mock.calls.filter(
+      (c) => (c[1] as { type: string }).type === "announce_skip",
+    );
+    expect(skipCalls).toHaveLength(2);
+  });
+
+  it("returns 500 + does not commit room UPDATE when applySingleSkip fails mid-cascade", async () => {
+    const STALE = new Date(NOW.getTime() - 60_000).toISOString();
+    // U2 absent, U3 absent — but the results UPDATE for U2 fails. The
+    // cascade must stop, return 500, and NOT fire the room UPDATE
+    // (no partial-state corruption).
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          id: VALID_ROOM_ID,
+          status: "announcing",
+          owner_user_id: OWNER_ID,
+          announcement_order: [U1, U2, U3],
+          announcing_user_id: U1,
+          current_announce_idx: 0,
+          delegate_user_id: null,
+          announce_skipped_user_ids: [],
+        },
+        error: null,
+      },
+      announcerResults: {
+        data: [
+          { contestant_id: "c1", points_awarded: 12, rank: 1, announced: false },
+        ],
+        error: null,
+      },
+      membershipSelects: [
+        { data: { last_seen_at: STALE }, error: null }, // U2 absent
+      ],
+      // The first applySingleSkip (for U2) hits a results UPDATE error.
+      resultsUpdateError: { message: "boom" },
+    });
+
+    const result = await advanceAnnouncement(
+      { roomId: VALID_ROOM_ID, userId: OWNER_ID },
+      makeDeps(mock, { now: () => NOW }),
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("INTERNAL_ERROR");
+    expect(result.status).toBe(500);
+
+    // CRITICAL: the room UPDATE that would have set the
+    // announce_skipped_user_ids array must NOT have been called. The
+    // mock's roomUpdateCalls should be empty (or contain only the
+    // initial room reads, no UPDATEs).
+    const roomPatchUpdates = mock.roomUpdateCalls;
+    expect(roomPatchUpdates).toHaveLength(0);
+
+    // No announce_skip broadcasts (broadcasts only fire after commit).
+    const skipBroadcasts = (mock as any).broadcastCalls.filter(
+      (b: any) => b.event.type === "announce_skip",
+    );
+    expect(skipBroadcasts).toHaveLength(0);
+  });
+
+  it("Case 4: golden path — no skip needed, U2 is fresh", async () => {
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          ...announcingRoom,
+          announcement_order: [U1, U2],
+          announcing_user_id: U1,
+          current_announce_idx: 4, // last idx
+          announce_skipped_user_ids: [],
+        },
+        error: null,
+      },
+      membershipSelects: [
+        { data: { last_seen_at: freshTs }, error: null }, // U2 → present
+      ],
+      usersByIdSelect: { data: [], error: null },
+    });
+    const broadcastSpy = vi.fn().mockResolvedValue(undefined);
+    const result = await advanceAnnouncement(
+      { roomId: VALID_ROOM_ID, userId: U1 },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy }),
+      NOW,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.cascadedSkippedUserIds).toEqual([]);
+    expect(result.cascadeExhausted).toBe(false);
+    expect(result.nextAnnouncingUserId).toBe(U2);
+
+    // No announce_skipped_user_ids in patch (no cascade).
+    expect(mock.roomUpdateCalls[0].patch).toMatchObject({
+      announcing_user_id: U2,
+    });
+    expect(mock.roomUpdateCalls[0].patch.announce_skipped_user_ids).toBeUndefined();
+
+    // Zero announce_skip broadcasts.
+    const skipCalls = broadcastSpy.mock.calls.filter(
+      (c) => (c[1] as { type: string }).type === "announce_skip",
+    );
+    expect(skipCalls).toHaveLength(0);
   });
 });

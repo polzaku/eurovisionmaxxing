@@ -52,6 +52,7 @@ import {
   markLobbySeen,
   useLateJoinerVisibility,
 } from "@/hooks/useLateJoinerVisibility";
+import { useRoomHeartbeat } from "@/hooks/useRoomHeartbeat";
 
 interface MembershipShape {
   userId: string;
@@ -156,6 +157,10 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     if (!sessionUserId) return;
     markLobbySeen(roomId, sessionUserId);
   }, [phaseStatus, roomId, sessionUserId]);
+
+  // SPEC §10.2.1 — keep last_seen_at fresh so the advance-time cascade
+  // can determine whether the current announcer is absent.
+  useRoomHeartbeat(roomId, sessionUserId ?? null, true);
 
   const loadRoom = useCallback(async () => {
     const session = getSession();
