@@ -61,6 +61,16 @@ export type RoomEventPayload =
       userId: string;
       contestantId: string;
       deletedByUserId: string;
+    }
+  | {
+      type: "score_batch_revealed";
+      announcingUserId: string;
+      contestants: Array<{
+        contestantId: string;
+        points: number;
+        newTotal: number;
+        newRank: number;
+      }>;
     };
 
 type RoomRow = Database["public"]["Tables"]["rooms"]["Row"];

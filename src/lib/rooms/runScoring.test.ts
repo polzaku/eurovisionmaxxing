@@ -195,6 +195,20 @@ interface Scripted {
   membershipSelects?: Array<Result<{ last_seen_at: string | null } | null>>;
   /** Response for `users.select().in("id", [...])` — used for display-name bulk lookup. */
   usersByIdSelect?: Result<Array<{ id: string; display_name: string }>>;
+  /**
+   * Scripted response for the auto-batch results queue load:
+   * results.select("contestant_id, points_awarded, rank, announced").eq().eq().gt().order()
+   */
+  autoBatchQueueSelect?: Result<unknown>;
+  /** Error for the auto-batch results.update().eq().eq().in() call. */
+  autoBatchMarkError?: { message: string } | null;
+  /** Error for the auto-batch rooms.update({ current_announce_idx }) call. */
+  autoBatchIdxUpdateError?: { message: string } | null;
+  /**
+   * Scripted response for the auto-batch leaderboard load:
+   * results.select("contestant_id, points_awarded, announced").eq()
+   */
+  autoBatchLeaderboardSelect?: Result<unknown>;
 }
 
 // A "fresh" last_seen_at for presence checks — 5 seconds ago relative to FAKE_CASCADE_NOW.
@@ -225,6 +239,14 @@ function makeSupabaseMock(s: Scripted = {}) {
   const usersByIdSelect =
     s.usersByIdSelect ?? { data: [], error: null };
 
+  // Auto-batch scripted responses.
+  const autoBatchQueueSelect =
+    s.autoBatchQueueSelect ?? { data: [], error: null };
+  const autoBatchMarkError = s.autoBatchMarkError ?? null;
+  const autoBatchIdxUpdateError = s.autoBatchIdxUpdateError ?? null;
+  const autoBatchLeaderboardSelect =
+    s.autoBatchLeaderboardSelect ?? { data: [], error: null };
+
   // Spies.
   const voteUpdateCalls: Array<{ id: string; patch: Record<string, unknown> }> = [];
   const resultsUpsertCalls: Array<{
@@ -232,6 +254,7 @@ function makeSupabaseMock(s: Scripted = {}) {
     options: Record<string, unknown>;
   }> = [];
   const resultsUpdateCalls: Array<{ userId: string }> = [];
+  const resultsUpdateInCalls: Array<{ patch: Record<string, unknown>; contestantIds: unknown[] }> = [];
   const awardsUpsertCalls: Array<{
     rows: Record<string, unknown>[];
     options: Record<string, unknown>;
@@ -239,9 +262,13 @@ function makeSupabaseMock(s: Scripted = {}) {
   const roomUpdatePatches: Array<Record<string, unknown>> = [];
   const roomUpdateGuards: Array<Record<string, unknown>> = [];
 
-  // Tracks which "rooms.update" call is happening so we route to the right
-  // scripted response: the first is voting→scoring, the second is scoring→announcing.
+  // Tracks which "rooms.update" call is happening:
+  // 0 → voting→scoring, 1 → scoring→announcing, 2+ → auto-batch idx advance
   let roomUpdateCount = 0;
+
+  // Tracks how many times results.select has been called (to distinguish
+  // queue load from leaderboard load in the auto-batch block).
+  let resultsSelectCount = 0;
 
   // Tracks how many times room_memberships has been queried with .order() vs .maybeSingle()
   // so we can distinguish the bulk load from the per-user presence probes.
@@ -258,25 +285,63 @@ function makeSupabaseMock(s: Scripted = {}) {
         update: vi.fn((patch: Record<string, unknown>) => {
           roomUpdatePatches.push(patch);
           const callIndex = roomUpdateCount++;
-          const scripted = callIndex === 0 ? roomToScoring : roomToAnnouncing;
+          // callIndex 0 → voting→scoring, 1 → scoring→announcing,
+          // 2+ → auto-batch current_announce_idx advance (returns plain data/error).
+          if (callIndex === 0) {
+            return {
+              eq: vi.fn((_col: string, _val: unknown) => ({
+                in: vi.fn((col: string, vals: unknown[]) => {
+                  roomUpdateGuards.push({ [col]: vals });
+                  return {
+                    select: vi.fn(() => ({
+                      maybeSingle: vi.fn().mockResolvedValue(roomToScoring),
+                    })),
+                  };
+                }),
+                eq: vi.fn((col: string, val: unknown) => {
+                  roomUpdateGuards.push({ [col]: val });
+                  return {
+                    select: vi.fn(() => ({
+                      maybeSingle: vi.fn().mockResolvedValue(roomToScoring),
+                    })),
+                  };
+                }),
+              })),
+            };
+          }
+          if (callIndex === 1) {
+            return {
+              eq: vi.fn((_col: string, _val: unknown) => ({
+                in: vi.fn((col: string, vals: unknown[]) => {
+                  roomUpdateGuards.push({ [col]: vals });
+                  return {
+                    select: vi.fn(() => ({
+                      maybeSingle: vi.fn().mockResolvedValue(roomToAnnouncing),
+                    })),
+                  };
+                }),
+                eq: vi.fn((col: string, val: unknown) => {
+                  roomUpdateGuards.push({ [col]: val });
+                  return {
+                    select: vi.fn(() => ({
+                      maybeSingle: vi.fn().mockResolvedValue(roomToAnnouncing),
+                    })),
+                  };
+                }),
+              })),
+            };
+          }
+          // callIndex 2+: auto-batch idx advance — .eq().eq().eq().eq() (no select)
+          const idxError = autoBatchIdxUpdateError;
           return {
-            eq: vi.fn((_col: string, _val: unknown) => ({
-              in: vi.fn((col: string, vals: unknown[]) => {
-                roomUpdateGuards.push({ [col]: vals });
-                return {
-                  select: vi.fn(() => ({
-                    maybeSingle: vi.fn().mockResolvedValue(scripted),
-                  })),
-                };
-              }),
-              eq: vi.fn((col: string, val: unknown) => {
-                roomUpdateGuards.push({ [col]: val });
-                return {
-                  select: vi.fn(() => ({
-                    maybeSingle: vi.fn().mockResolvedValue(scripted),
-                  })),
-                };
-              }),
+            eq: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                eq: vi.fn(() => ({
+                  eq: vi.fn(() =>
+                    Promise.resolve({ data: null, error: idxError }),
+                  ),
+                })),
+              })),
             })),
           };
         }),
@@ -353,12 +418,46 @@ function makeSupabaseMock(s: Scripted = {}) {
             return Promise.resolve({ data: null, error: resultsUpsertError });
           },
         ),
-        // applySingleSkip calls results.update().eq().eq()
-        update: vi.fn((_patch: Record<string, unknown>) => ({
+        // results.select() is used by the auto-batch block for queue load and leaderboard load.
+        // First call → queue load (.eq().eq().gt().order())
+        // Second call → leaderboard load (.eq())
+        select: vi.fn(() => {
+          const callIdx = resultsSelectCount++;
+          if (callIdx === 0) {
+            // Queue load: .select(...).eq(room_id).eq(user_id).gt(...).order(...)
+            return {
+              eq: vi.fn(() => ({
+                eq: vi.fn(() => ({
+                  gt: vi.fn(() => ({
+                    order: vi.fn().mockResolvedValue(autoBatchQueueSelect),
+                  })),
+                })),
+              })),
+            };
+          }
+          // Leaderboard load: .select(...).eq(room_id)  → resolves directly
+          return {
+            eq: vi.fn().mockResolvedValue(autoBatchLeaderboardSelect),
+          };
+        }),
+        // applySingleSkip calls results.update().eq(room_id).eq(user_id) — awaits the inner .eq() result.
+        // auto-batch mark calls results.update().eq(room_id).eq(user_id).in(contestant_id, ids).
+        // Solution: inner .eq() returns a Promise with an extra .in() property attached.
+        update: vi.fn((patch: Record<string, unknown>) => ({
           eq: vi.fn((_col: string, _val: unknown) => ({
             eq: vi.fn((_col2: string, val2: unknown) => {
+              // Record the call (for applySingleSkip tracking).
               resultsUpdateCalls.push({ userId: String(val2) });
-              return Promise.resolve({ data: null, error: resultsUpdateError });
+              // Build a Promise that also exposes .in() for the auto-batch path.
+              const p = Promise.resolve({ data: null, error: resultsUpdateError }) as Promise<{
+                data: null;
+                error: { message: string } | null;
+              }> & { in: ReturnType<typeof vi.fn> };
+              p.in = vi.fn((_col3: string, ids: unknown[]) => {
+                resultsUpdateInCalls.push({ patch, contestantIds: ids });
+                return Promise.resolve({ data: null, error: autoBatchMarkError });
+              });
+              return p;
             }),
           })),
         })),
@@ -372,6 +471,7 @@ function makeSupabaseMock(s: Scripted = {}) {
     voteUpdateCalls,
     resultsUpsertCalls,
     resultsUpdateCalls,
+    resultsUpdateInCalls,
     awardsUpsertCalls,
     roomUpdatePatches,
     roomUpdateGuards,
@@ -1235,5 +1335,274 @@ describe("runScoring — pre-cascade skips absent users at scoring→announcing"
     expect(skipBroadcasts).toHaveLength(2);
     expect(skipBroadcasts[0][1]).toMatchObject({ type: "announce_skip", userId: U1, displayName: "Alice" });
     expect(skipBroadcasts[1][1]).toMatchObject({ type: "announce_skip", userId: U2, displayName: "Bob" });
+  });
+});
+
+// ─── short-style auto-batch (SPEC §10.2.2) ───────────────────────────────────
+
+// Simulated 10-contestant results queue for U1, sorted rank DESC as the DB
+// ORDER BY rank DESC would return them (rank 10 = idx 0, rank 1 = idx 9).
+// Points use Eurovision's 1-2-3-4-5-6-7-8-10-12 schedule.
+const TEN_ROW_QUEUE_DESC = [
+  { contestant_id: "2026-no", points_awarded: 1, rank: 10, announced: false },
+  { contestant_id: "2026-sw", points_awarded: 2, rank: 9, announced: false },
+  { contestant_id: "2026-it", points_awarded: 3, rank: 8, announced: false },
+  { contestant_id: "2026-de", points_awarded: 4, rank: 7, announced: false },
+  { contestant_id: "2026-fr", points_awarded: 5, rank: 6, announced: false },
+  { contestant_id: "2026-uk", points_awarded: 6, rank: 5, announced: false },
+  { contestant_id: "2026-es", points_awarded: 7, rank: 4, announced: false },
+  { contestant_id: "2026-pt", points_awarded: 8, rank: 3, announced: false },
+  { contestant_id: "2026-be", points_awarded: 10, rank: 2, announced: false },
+  { contestant_id: "2026-al", points_awarded: 12, rank: 1, announced: false },
+];
+
+// Post-batch leaderboard: all 10 rows with announced=true (simulates after mark).
+const TEN_ROW_LEADERBOARD_ANNOUNCED = TEN_ROW_QUEUE_DESC.map((r) => ({
+  contestant_id: r.contestant_id,
+  points_awarded: r.points_awarded,
+  announced: true,
+}));
+
+describe("runScoring — short-style auto-batch (SPEC §10.2.2)", () => {
+  /**
+   * Case A — Happy path: live + short, first announcer present.
+   * Expects: 9 rows marked announced=true, current_announce_idx advanced to 9,
+   * one score_batch_revealed broadcast with 9 contestants, fired BEFORE status_changed.
+   */
+  it("Case A — happy path: marks 9 rows, advances idx to 9, broadcasts score_batch_revealed before status_changed", async () => {
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          ...defaultRoomRow,
+          announcement_mode: "live",
+          announcement_style: "short",
+        },
+        error: null,
+      },
+      memberships: { data: TWO_USER_MEMBERSHIPS, error: null },
+      // U1 is present (first in identity-shuffle order).
+      membershipSelects: [
+        { data: { last_seen_at: FRESH_LAST_SEEN }, error: null },
+      ],
+      autoBatchQueueSelect: { data: TEN_ROW_QUEUE_DESC, error: null },
+      autoBatchLeaderboardSelect: {
+        data: TEN_ROW_LEADERBOARD_ANNOUNCED,
+        error: null,
+      },
+    });
+    const broadcastSpy = vi.fn().mockResolvedValue(undefined);
+
+    const result = await runScoring(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock, {
+        broadcastRoomEvent: broadcastSpy,
+        shuffle: (arr) => [...arr], // identity — U1 first
+        now: () => FAKE_CASCADE_NOW,
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+
+    // The batch mark UPDATE must have fired with all 9 non-rank-1 contestant IDs.
+    expect(mock.resultsUpdateInCalls).toHaveLength(1);
+    const batchCall = mock.resultsUpdateInCalls[0];
+    const expectedBatchIds = TEN_ROW_QUEUE_DESC.filter((r) => r.rank !== 1).map(
+      (r) => r.contestant_id,
+    );
+    expect(batchCall.contestantIds).toEqual(expectedBatchIds);
+    expect(batchCall.patch).toEqual({ announced: true });
+
+    // The third rooms UPDATE must advance current_announce_idx to 9 (rank-1 row index).
+    expect(mock.roomUpdatePatches).toHaveLength(3);
+    expect(mock.roomUpdatePatches[2]).toEqual({ current_announce_idx: 9 });
+
+    // Exactly one score_batch_revealed broadcast must have fired.
+    const batchBroadcasts = broadcastSpy.mock.calls.filter(
+      ([, e]) => e.type === "score_batch_revealed",
+    );
+    expect(batchBroadcasts).toHaveLength(1);
+    expect(batchBroadcasts[0][1]).toMatchObject({
+      type: "score_batch_revealed",
+      announcingUserId: U1,
+    });
+    expect(batchBroadcasts[0][1].contestants).toHaveLength(9);
+
+    // Broadcast order: no announce_skip, then score_batch_revealed, then status_changed.
+    const allBroadcastTypes = broadcastSpy.mock.calls.map(([, e]) => e.type);
+    const batchIdx = allBroadcastTypes.indexOf("score_batch_revealed");
+    const statusIdx = allBroadcastTypes.lastIndexOf("status_changed");
+    expect(batchIdx).toBeGreaterThan(-1);
+    expect(statusIdx).toBeGreaterThan(batchIdx);
+
+    // No announce_skip broadcasts (no pre-cascade skips).
+    const skipBroadcasts = broadcastSpy.mock.calls.filter(
+      ([, e]) => e.type === "announce_skip",
+    );
+    expect(skipBroadcasts).toHaveLength(0);
+  });
+
+  /**
+   * Case B — Cascade exhausts: all users absent under live + short.
+   * No announcer is chosen; auto-batch must not fire.
+   */
+  it("Case B — cascade exhausts (all absent): no batch mark, no score_batch_revealed broadcast", async () => {
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          ...defaultRoomRow,
+          announcement_mode: "live",
+          announcement_style: "short",
+        },
+        error: null,
+      },
+      memberships: { data: TWO_USER_MEMBERSHIPS, error: null },
+      // Both U1 and U2 are absent.
+      membershipSelects: [
+        { data: { last_seen_at: STALE_LAST_SEEN }, error: null },
+        { data: { last_seen_at: STALE_LAST_SEEN }, error: null },
+      ],
+      usersByIdSelect: {
+        data: [
+          { id: U1, display_name: "Alice" },
+          { id: U2, display_name: "Bob" },
+        ],
+        error: null,
+      },
+      autoBatchQueueSelect: { data: TEN_ROW_QUEUE_DESC, error: null },
+      autoBatchLeaderboardSelect: {
+        data: TEN_ROW_LEADERBOARD_ANNOUNCED,
+        error: null,
+      },
+    });
+    const broadcastSpy = vi.fn().mockResolvedValue(undefined);
+
+    const result = await runScoring(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock, {
+        broadcastRoomEvent: broadcastSpy,
+        shuffle: (arr) => [...arr],
+        now: () => FAKE_CASCADE_NOW,
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+
+    // No batch mark: auto-batch block must not execute.
+    expect(mock.resultsUpdateInCalls).toHaveLength(0);
+
+    // Only 2 rooms UPDATEs: voting→scoring and scoring→announcing. No idx advance.
+    expect(mock.roomUpdatePatches).toHaveLength(2);
+
+    // No score_batch_revealed broadcast.
+    const batchBroadcasts = broadcastSpy.mock.calls.filter(
+      ([, e]) => e.type === "score_batch_revealed",
+    );
+    expect(batchBroadcasts).toHaveLength(0);
+
+    // status_changed:announcing still fires.
+    const statusBroadcasts = broadcastSpy.mock.calls.filter(
+      ([, e]) => e.type === "status_changed",
+    );
+    expect(statusBroadcasts.some(([, e]) => e.status === "announcing")).toBe(true);
+
+    // announce_skip broadcasts still fire for absent users.
+    const skipBroadcasts = broadcastSpy.mock.calls.filter(
+      ([, e]) => e.type === "announce_skip",
+    );
+    expect(skipBroadcasts).toHaveLength(2);
+  });
+
+  /**
+   * Case C — Control: live + full style. Auto-batch must NOT fire even when
+   * all other conditions are met.
+   */
+  it("Case C — live + full style: no batch mark, no score_batch_revealed broadcast", async () => {
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          ...defaultRoomRow,
+          announcement_mode: "live",
+          announcement_style: "full",
+        },
+        error: null,
+      },
+      memberships: { data: TWO_USER_MEMBERSHIPS, error: null },
+      membershipSelects: [
+        { data: { last_seen_at: FRESH_LAST_SEEN }, error: null },
+      ],
+      autoBatchQueueSelect: { data: TEN_ROW_QUEUE_DESC, error: null },
+      autoBatchLeaderboardSelect: {
+        data: TEN_ROW_LEADERBOARD_ANNOUNCED,
+        error: null,
+      },
+    });
+    const broadcastSpy = vi.fn().mockResolvedValue(undefined);
+
+    const result = await runScoring(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock, {
+        broadcastRoomEvent: broadcastSpy,
+        shuffle: (arr) => [...arr],
+        now: () => FAKE_CASCADE_NOW,
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+
+    // No batch mark.
+    expect(mock.resultsUpdateInCalls).toHaveLength(0);
+
+    // Only 2 rooms UPDATEs.
+    expect(mock.roomUpdatePatches).toHaveLength(2);
+
+    // No score_batch_revealed broadcast.
+    const batchBroadcasts = broadcastSpy.mock.calls.filter(
+      ([, e]) => e.type === "score_batch_revealed",
+    );
+    expect(batchBroadcasts).toHaveLength(0);
+  });
+
+  /**
+   * Case D — Instant mode ignores announcement_style.
+   * Auto-batch must NOT fire regardless of announcement_style value.
+   */
+  it("Case D — instant mode with short style: no batch mark, no score_batch_revealed broadcast", async () => {
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          ...defaultRoomRow,
+          announcement_mode: "instant",
+          announcement_style: "short",
+        },
+        error: null,
+      },
+      autoBatchQueueSelect: { data: TEN_ROW_QUEUE_DESC, error: null },
+      autoBatchLeaderboardSelect: {
+        data: TEN_ROW_LEADERBOARD_ANNOUNCED,
+        error: null,
+      },
+    });
+    const broadcastSpy = vi.fn().mockResolvedValue(undefined);
+
+    const result = await runScoring(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock, {
+        broadcastRoomEvent: broadcastSpy,
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+
+    // No batch mark.
+    expect(mock.resultsUpdateInCalls).toHaveLength(0);
+
+    // Only 2 rooms UPDATEs.
+    expect(mock.roomUpdatePatches).toHaveLength(2);
+
+    // No score_batch_revealed broadcast.
+    const batchBroadcasts = broadcastSpy.mock.calls.filter(
+      ([, e]) => e.type === "score_batch_revealed",
+    );
+    expect(batchBroadcasts).toHaveLength(0);
   });
 });

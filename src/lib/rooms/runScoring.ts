@@ -8,6 +8,11 @@ import { ContestDataError } from "@/lib/contestants";
 import type { RoomEventPayload } from "@/lib/rooms/shared";
 import { isAbsent } from "@/lib/rooms/isAbsent";
 import { applySingleSkip } from "@/lib/rooms/applySingleSkip";
+import {
+  selectShortBatchRows,
+  twelvePointIdx,
+} from "./autoBatchShortStyle";
+import type { AnnouncerResultRow } from "./advanceAnnouncement";
 
 export interface RunScoringInput {
   roomId: unknown;
@@ -66,6 +71,7 @@ type RoomSelectRow = {
   event: string;
   categories: VotingCategory[];
   announcement_mode: string;
+  announcement_style: string;
   voting_ends_at: string | null;
 };
 
@@ -76,6 +82,49 @@ function defaultShuffle<T>(arr: T[]): T[] {
     [out[i], out[j]] = [out[j], out[i]];
   }
   return out;
+}
+
+/**
+ * Build the per-contestant payload for a score_batch_revealed broadcast.
+ * Computes each row's newTotal + competition rank from the post-batch
+ * leaderboard snapshot (only announced=true rows count toward totals).
+ */
+function buildBatchBroadcastPayload(
+  batchRows: AnnouncerResultRow[],
+  allResults: Array<{
+    contestant_id: string;
+    points_awarded: number;
+    announced: boolean;
+  }>,
+): Array<{
+  contestantId: string;
+  points: number;
+  newTotal: number;
+  newRank: number;
+}> {
+  const totals = new Map<string, number>();
+  for (const r of allResults) {
+    if (!r.announced) continue;
+    totals.set(
+      r.contestant_id,
+      (totals.get(r.contestant_id) ?? 0) + r.points_awarded,
+    );
+  }
+  const distinctSorted = [...new Set(totals.values())].sort((a, b) => b - a);
+  return batchRows.map((r) => {
+    const total = totals.get(r.contestant_id) ?? r.points_awarded;
+    let rank = 1;
+    for (const v of distinctSorted) {
+      if (v > total) rank += 1;
+      else break;
+    }
+    return {
+      contestantId: r.contestant_id,
+      points: r.points_awarded,
+      newTotal: total,
+      newRank: rank,
+    };
+  });
 }
 
 type VoteRow = Database["public"]["Tables"]["votes"]["Row"];
@@ -129,7 +178,7 @@ export async function runScoring(
   const roomQuery = await deps.supabase
     .from("rooms")
     .select(
-      "id, status, owner_user_id, year, event, categories, announcement_mode, voting_ends_at",
+      "id, status, owner_user_id, year, event, categories, announcement_mode, announcement_style, voting_ends_at",
     )
     .eq("id", roomId)
     .maybeSingle();
@@ -474,6 +523,120 @@ export async function runScoring(
           `broadcast 'announce_skip' failed for room ${roomId} user ${skippedId}; state committed regardless:`,
           err,
         );
+      }
+    }
+  }
+
+  // SPEC §10.2.2 — under live + short, the first present announcer's
+  // rank-2-through-10 rows auto-reveal at turn start, leaving only the
+  // rank-1 (12-point) row pending. Skipped when no announcer was chosen
+  // (cascade-exhausted) or style is 'full' (default).
+  if (
+    room.announcement_mode === "live" &&
+    room.announcement_style === "short" &&
+    announcingPatch.announcing_user_id
+  ) {
+    const firstAnnouncerId = announcingPatch.announcing_user_id;
+
+    // Load the announcer's reveal queue, sorted rank DESC (idx 0 = 1pt, idx 9 = 12pt).
+    const queueQuery = await deps.supabase
+      .from("results")
+      .select("contestant_id, points_awarded, rank, announced")
+      .eq("room_id", roomId)
+      .eq("user_id", firstAnnouncerId)
+      .gt("points_awarded", 0)
+      .order("rank", { ascending: false });
+
+    if (queueQuery.error) {
+      return fail(
+        "INTERNAL_ERROR",
+        "Could not load reveal queue for short-style auto-batch.",
+        500,
+      );
+    }
+    const queueRows = (queueQuery.data ?? []) as AnnouncerResultRow[];
+    const batchRows = selectShortBatchRows(queueRows);
+    const twelveIdx = twelvePointIdx(queueRows);
+
+    if (batchRows.length > 0 && twelveIdx !== null) {
+      const batchIds = batchRows.map((r) => r.contestant_id);
+      // Mark all 9 rows as announced in a single UPDATE.
+      const markBatch = await deps.supabase
+        .from("results")
+        .update({ announced: true })
+        .eq("room_id", roomId)
+        .eq("user_id", firstAnnouncerId)
+        .in("contestant_id", batchIds);
+
+      if (markBatch.error) {
+        return fail(
+          "INTERNAL_ERROR",
+          "Could not mark short-style auto-batch rows.",
+          500,
+        );
+      }
+
+      // Move current_announce_idx to the 12-point row's position.
+      const updateIdx = await deps.supabase
+        .from("rooms")
+        .update({ current_announce_idx: twelveIdx })
+        .eq("id", roomId)
+        .eq("status", "announcing")
+        .eq("announcing_user_id", firstAnnouncerId)
+        .eq("current_announce_idx", 0);
+
+      if (updateIdx.error) {
+        return fail(
+          "INTERNAL_ERROR",
+          "Could not advance index past auto-batch.",
+          500,
+        );
+      }
+
+      // Build the broadcast payload from the post-batch leaderboard.
+      const leaderboardQuery = await deps.supabase
+        .from("results")
+        .select("contestant_id, points_awarded, announced")
+        .eq("room_id", roomId);
+
+      if (leaderboardQuery.error) {
+        // Non-fatal — broadcast a payload using the batch rows' awarded
+        // points as fallback totals (degraded but consistent).
+        const fallbackPayload = batchRows.map((r) => ({
+          contestantId: r.contestant_id,
+          points: r.points_awarded,
+          newTotal: r.points_awarded,
+          newRank: 1,
+        }));
+        try {
+          await deps.broadcastRoomEvent(roomId, {
+            type: "score_batch_revealed",
+            announcingUserId: firstAnnouncerId,
+            contestants: fallbackPayload,
+          });
+        } catch (err) {
+          console.warn(
+            `broadcast 'score_batch_revealed' (fallback payload) failed for room ${roomId}; state committed regardless:`,
+            err,
+          );
+        }
+      } else {
+        const broadcastContestants = buildBatchBroadcastPayload(
+          batchRows,
+          leaderboardQuery.data ?? [],
+        );
+        try {
+          await deps.broadcastRoomEvent(roomId, {
+            type: "score_batch_revealed",
+            announcingUserId: firstAnnouncerId,
+            contestants: broadcastContestants,
+          });
+        } catch (err) {
+          console.warn(
+            `broadcast 'score_batch_revealed' failed for room ${roomId}; state committed regardless:`,
+            err,
+          );
+        }
       }
     }
   }
