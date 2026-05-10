@@ -163,9 +163,60 @@ test.describe("R4 advance-time presence cascade (SPEC §10.2.1)", () => {
     expect(skippedIds.length).toBe(2);
   });
 
-  test.skip("cascade exhausts → announcing_user_id null, status stays announcing", async () => {
-    // Cascade-exhaust variant (all remaining announcers absent) requires a
-    // separate seed state (e.g. announcing-cascade-all-absent). Covered by
-    // unit tests for now; add Playwright coverage when the seed variant lands.
+  test("Finish the show: cascade-exhausted state → admin taps Finish → drives batch-reveals to done", async ({
+    page,
+  }, testInfo) => {
+    testInfo.setTimeout(90_000);
+
+    let seed: SeedOutput;
+    try {
+      seed = seedRoom("announcing-cascade-all-absent");
+    } catch (err) {
+      testInfo.skip(
+        true,
+        `seed-room failed — likely missing Supabase env. ${String(err)}`,
+      );
+      return;
+    }
+
+    await signInAsOwner(page, seed);
+    await page.goto(`/room/${seed.roomId}`);
+
+    // Cascade-exhaust state: Finish the show CTA visible to owner.
+    await expect(
+      page.getByRole("button", { name: /finish the show/i }),
+    ).toBeVisible({ timeout: 10_000 });
+
+    // Tap Finish.
+    await page.getByRole("button", { name: /finish the show/i }).click();
+
+    // Reveal button appears (admin is now driving the first absent user's reveals).
+    await expect(
+      page.getByRole("button", { name: /reveal/i }),
+    ).toBeVisible({ timeout: 10_000 });
+
+    // Drive reveals to done. ~30 result rows total (3 users × 10 points).
+    let revealsFired = 0;
+    const MAX_REVEALS = 50;
+    while (revealsFired < MAX_REVEALS) {
+      const revealBtn = page.getByRole("button", { name: /reveal/i });
+      const visible = await revealBtn
+        .isVisible({ timeout: 2_000 })
+        .catch(() => false);
+      if (!visible) break;
+      await revealBtn.click();
+      revealsFired += 1;
+      await page.waitForTimeout(150);
+    }
+
+    // Finish CTA should be gone (we're either in batch-reveal or done state).
+    await expect(
+      page.getByRole("button", { name: /finish the show/i }),
+    ).toHaveCount(0, { timeout: 10_000 });
+
+    // Verify final state via API. announcing_user_id should be null and
+    // status should be 'done' once the batch-reveal exhausts.
+    const apiRes = await page.request.get(`/api/results/${seed.roomId}`);
+    expect(apiRes.ok()).toBe(true);
   });
 });

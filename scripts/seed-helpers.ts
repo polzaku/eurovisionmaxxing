@@ -170,6 +170,81 @@ export function buildAnnouncingCascadeAbsent(
   return { users, room, memberships };
 }
 
+export interface SeedResultRow {
+  user_id: string;
+  announced: boolean;
+  points_awarded: number;
+}
+
+export interface AnnouncingCascadeAllAbsentFixture {
+  users: SeedUserRow[];
+  room: SeedRoomRow & {
+    batch_reveal_mode: boolean;
+  };
+  memberships: SeedMembershipRow[];
+  results: SeedResultRow[];
+}
+
+export interface BuildAnnouncingCascadeAllAbsentOpts {
+  now?: Date;
+  pin?: string;
+}
+
+/**
+ * SPEC §10.2.1 — seed an announcing room in cascade-exhaust state.
+ * 3-user announcement order, all users stale (last_seen_at 60s ago),
+ * announcing_user_id=null, all in announce_skipped_user_ids,
+ * batch_reveal_mode=false, results.announced=false for everyone in
+ * the order. Drives the 'Finish the show' batch-reveal flow.
+ *
+ * Pure function — no DB side-effects. The companion impure seeder in
+ * `seed-room.ts` calls this and persists the rows.
+ */
+export function buildAnnouncingCascadeAllAbsent(
+  opts: BuildAnnouncingCascadeAllAbsentOpts = {},
+): AnnouncingCascadeAllAbsentFixture {
+  const now = opts.now ?? new Date();
+  const stale = new Date(now.getTime() - 60_000).toISOString();
+
+  // Build 3 deterministic seed users (indices 0–2).
+  const users: SeedUserRow[] = [0, 1, 2].map((i) => ({
+    id: `cascade-all-absent-user-${i}`,
+    display_name: buildSeedDisplayName(i),
+    avatar_seed: buildSeedAvatarSeed(i),
+  }));
+
+  const order = users.map((u) => u.id);
+
+  const room = {
+    status: "announcing",
+    announcement_mode: "live",
+    announcement_order: order,
+    announcing_user_id: null,
+    current_announce_idx: 0,
+    announce_skipped_user_ids: order,
+    batch_reveal_mode: false,
+  };
+
+  const memberships: SeedMembershipRow[] = users.map((u) => ({
+    user_id: u.id,
+    is_ready: false,
+    last_seen_at: stale,
+  }));
+
+  // Each user gets 10 result rows (Eurovision top-10 points: 1..10).
+  // All announced=false so 'Finish the show' has reveals to drive.
+  const POINTS = [12, 10, 8, 7, 6, 5, 4, 3, 2, 1];
+  const results: SeedResultRow[] = users.flatMap((u) =>
+    POINTS.map((pts) => ({
+      user_id: u.id,
+      announced: false,
+      points_awarded: pts,
+    })),
+  );
+
+  return { users, room, memberships, results };
+}
+
 /**
  * The set of state names the seeder accepts. Adding a new state means
  * also adding the matching builder function in `seed-room.ts` and a
@@ -183,6 +258,7 @@ export const SEED_STATES = [
   "announcing-instant-all-ready",
   "done-with-awards",
   "announcing-cascade-absent",
+  "announcing-cascade-all-absent",
 ] as const;
 
 export type SeedState = (typeof SEED_STATES)[number];
