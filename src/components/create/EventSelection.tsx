@@ -57,6 +57,17 @@ export default function EventSelection({
 
   const canProceed = contestants.kind === "ready";
 
+  // SPEC §5.3: semi-final running orders are published only after the
+  // allocation draw (~2 weeks before each semi). Before then the upstream
+  // API typically returns empty / mis-ordered data and the wizard cascades
+  // to ContestDataError. Surface this WHY to admins so they don't think the
+  // app is broken — only relevant for current-year semis.
+  const isCurrentYearSemi =
+    year === maxYear && (event === "semi1" || event === "semi2");
+  const showAllocationDrawCaveat =
+    isCurrentYearSemi &&
+    (contestants.kind === "error" || contestants.kind === "timeout");
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -144,6 +155,17 @@ export default function EventSelection({
           >
             {contestants.errorMessage ??
               "Loading is taking too long. Try again, or pick a different year/event."}
+          </p>
+        )}
+        {showAllocationDrawCaveat && (
+          <p
+            data-testid="allocation-draw-caveat"
+            className="mt-2 text-xs text-muted-foreground"
+          >
+            Tip: semi-final running orders are published only after the
+            allocation draw (typically ~2 weeks before each semi). If the draw
+            hasn&rsquo;t happened yet, try the Grand Final, pick a past year
+            for a practice room, or wait for the draw.
           </p>
         )}
       </div>

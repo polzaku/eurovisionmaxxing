@@ -286,4 +286,104 @@ describe("EventSelection", () => {
     fireEvent.click(screen.getByRole("button", { name: /Next/ }));
     expect(onNext).toHaveBeenCalledTimes(1);
   });
+
+  describe("allocation-draw-lag caveat (SPEC §5.3)", () => {
+    it("renders the caveat below the error alert for current-year semi-final 1", () => {
+      render(
+        <EventSelection
+          {...BASE_PROPS}
+          year={2026}
+          maxYear={2026}
+          event="semi1"
+          contestants={{ kind: "error" }}
+          onChange={vi.fn()}
+          onNext={vi.fn()}
+        />,
+      );
+      expect(screen.getByTestId("allocation-draw-caveat")).toHaveTextContent(
+        /allocation draw/i,
+      );
+    });
+
+    it("renders the caveat for current-year semi-final 2", () => {
+      render(
+        <EventSelection
+          {...BASE_PROPS}
+          year={2026}
+          maxYear={2026}
+          event="semi2"
+          contestants={{ kind: "error" }}
+          onChange={vi.fn()}
+          onNext={vi.fn()}
+        />,
+      );
+      expect(screen.getByTestId("allocation-draw-caveat")).toBeInTheDocument();
+    });
+
+    it("renders the caveat in timeout state for current-year semis", () => {
+      render(
+        <EventSelection
+          {...BASE_PROPS}
+          year={2026}
+          maxYear={2026}
+          event="semi1"
+          contestants={{ kind: "timeout", errorMessage: "x" }}
+          onChange={vi.fn()}
+          onNext={vi.fn()}
+        />,
+      );
+      expect(screen.getByTestId("allocation-draw-caveat")).toBeInTheDocument();
+    });
+
+    it("does NOT render the caveat for current-year Grand Final (lineup published earlier)", () => {
+      render(
+        <EventSelection
+          {...BASE_PROPS}
+          year={2026}
+          maxYear={2026}
+          event="final"
+          contestants={{ kind: "error" }}
+          onChange={vi.fn()}
+          onNext={vi.fn()}
+        />,
+      );
+      expect(
+        screen.queryByTestId("allocation-draw-caveat"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does NOT render the caveat for past-year semis (draw long since happened)", () => {
+      render(
+        <EventSelection
+          {...BASE_PROPS}
+          year={2024}
+          maxYear={2026}
+          event="semi1"
+          contestants={{ kind: "error" }}
+          onChange={vi.fn()}
+          onNext={vi.fn()}
+        />,
+      );
+      expect(
+        screen.queryByTestId("allocation-draw-caveat"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does NOT render the caveat outside error/timeout states", () => {
+      render(
+        <EventSelection
+          {...BASE_PROPS}
+          year={2026}
+          maxYear={2026}
+          event="semi1"
+          contestants={{ kind: "loading" }}
+          onChange={vi.fn()}
+          onNext={vi.fn()}
+        />,
+      );
+      expect(
+        screen.queryByTestId("allocation-draw-caveat"),
+      ).not.toBeInTheDocument();
+    });
+  });
 });
