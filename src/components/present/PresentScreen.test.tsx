@@ -374,6 +374,44 @@ describe("PresentScreen — cascade-exhausted (R4 #3)", () => {
   });
 });
 
+describe("PresentScreen — batch-reveal active (R4 #3)", () => {
+  it("renders 'Host is finishing the show' chip when batchRevealMode=true and announcer is set", () => {
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={[
+          { contestantId: "2026-se", totalPoints: 12, rank: 1 },
+        ]}
+        announcerDisplayName="Alice"
+        batchRevealMode={true}
+      />,
+    );
+    expect(screen.getByTestId("present-batch-reveal-chip")).toHaveTextContent(
+      "present.batchReveal.chip",
+    );
+    expect(screen.getByTestId("present-row-2026-se")).toBeInTheDocument();
+    expect(screen.getByText(/present\.announcing\.announcer/)).toBeInTheDocument();
+  });
+
+  it("does NOT render the chip when batchRevealMode=false (regression)", () => {
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={[
+          { contestantId: "2026-se", totalPoints: 12, rank: 1 },
+        ]}
+        announcerDisplayName="Alice"
+        batchRevealMode={false}
+      />,
+    );
+    expect(screen.queryByTestId("present-batch-reveal-chip")).toBeNull();
+  });
+});
+
 describe("PresentScreen — FLIP rank-shift animation (§10.3)", () => {
   // jsdom returns a zero-DOMRect for getBoundingClientRect by default,
   // so we mock it to drive deterministic dy values across rerenders.

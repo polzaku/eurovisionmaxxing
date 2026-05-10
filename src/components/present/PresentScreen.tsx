@@ -218,6 +218,7 @@ export default function PresentScreen({
               }
             : null
         }
+        isBatchReveal={batchRevealMode === true}
       />
       {skipEvents && skipEvents.length > 0 ? (
         <SkipBannerQueue events={skipEvents} />
@@ -236,6 +237,8 @@ interface PresentLeaderboardProps {
   announcerLabel: string;
   /** Empty string when there's no position info to show. */
   positionLabel: string;
+  /** R4 #3 — when true, render "Host is finishing the show" chip below announcer label. */
+  isBatchReveal?: boolean;
   /**
    * Pre-resolved copy for the "Up next" card. Null suppresses the card
    * entirely (e.g. status=done, or caller didn't pass announcement data).
@@ -274,7 +277,9 @@ function PresentLeaderboard({
   announcerLabel,
   positionLabel,
   pendingReveal,
+  isBatchReveal,
 }: PresentLeaderboardProps) {
+  const t = useTranslations();
   const rowRefs = useRef<Map<string, HTMLLIElement>>(new Map());
   const prevRectsRef = useRef<Map<string, DOMRect>>(new Map());
 
@@ -310,7 +315,18 @@ function PresentLeaderboard({
         </h1>
         <div className="flex flex-col items-end gap-1">
           {announcerDisplayName && status === "announcing" ? (
-            <p className="text-2xl text-muted-foreground">{announcerLabel}</p>
+            <>
+              <p className="text-2xl text-muted-foreground">{announcerLabel}</p>
+              {isBatchReveal ? (
+                <p
+                  data-testid="present-batch-reveal-chip"
+                  className="text-base text-accent"
+                  aria-live="polite"
+                >
+                  {t("present.batchReveal.chip")}
+                </p>
+              ) : null}
+            </>
           ) : null}
           {positionLabel ? (
             <p
