@@ -5,12 +5,13 @@
  * Usage:
  *   npm run seed:room -- <state>
  *
- * States (see SEED_STATES in `seed-helpers.ts`) — all 6 implemented:
+ * States (see SEED_STATES in `seed-helpers.ts`) — all 7 implemented:
  *   - lobby-with-3-guests
  *   - voting-half-done
  *   - voting-ending-mid-countdown
  *   - announcing-mid-queue-live
  *   - announcing-instant-all-ready
+ *   - announcing-cascade-absent
  *   - done-with-awards
  *
  * Each implemented state inserts a fresh room (PIN prefix `SEED`) plus
@@ -42,6 +43,7 @@ import type { Database } from "../src/types/database";
 import type { Contestant } from "../src/types";
 import {
   SEED_CATEGORIES,
+  buildAnnouncingCascadeAbsent,
   buildFullScores,
   buildHalfScores,
   buildSeedAvatarSeed,
@@ -72,6 +74,7 @@ function parseArgs(argv: readonly string[]): CliArgs {
         "  voting-ending-mid-countdown\n" +
         "  announcing-mid-queue-live\n" +
         "  announcing-instant-all-ready\n" +
+        "  announcing-cascade-absent\n" +
         "  done-with-awards\n",
     );
   }
@@ -621,12 +624,91 @@ async function seedAnnouncingInstantAllReady(db: Db): Promise<SeedReport> {
   };
 }
 
+async function seedAnnouncingCascadeAbsent(db: Db): Promise<SeedReport> {
+  // SPEC §10.2.1 — live-mode announcing room with 4 users in order [A, B, C, D].
+  // A is the active announcer (fresh last_seen_at). B and C are absent
+  // (last_seen_at 60s ago). D is fresh. On next admin advance, the cascade
+  // skips B and C and lands on D — the canonical R4 cascade-skip path.
+  const owner = await insertSeededUser(db, 0);
+  const guests = await Promise.all([
+    insertSeededUser(db, 1),
+    insertSeededUser(db, 2),
+    insertSeededUser(db, 3),
+  ]);
+  const allUsers = [owner, ...guests];
+  const now = new Date();
+
+  // Use the pure builder to get deterministic presence timestamps.
+  const fixture = buildAnnouncingCascadeAbsent({ now });
+  // Map fixture user indices to actual seeded user IDs.
+  const [a, b, c, d] = allUsers;
+  const order = [a.userId, b.userId, c.userId, d.userId];
+
+  const fresh = new Date(now.getTime() - 5_000).toISOString();
+  const stale = new Date(now.getTime() - 60_000).toISOString();
+
+  const presenceByIdx: Record<number, string> = { 0: fresh, 1: stale, 2: stale, 3: fresh };
+
+  const room = await insertSeededRoom(db, owner.userId, {
+    status: "announcing",
+    announcement_mode: "live",
+    announcement_order: order,
+    announcing_user_id: a.userId,
+    current_announce_idx: 0,
+    voting_ended_at: new Date(now.getTime() - 5 * 60_000).toISOString(),
+  });
+
+  for (let i = 0; i < allUsers.length; i++) {
+    const u = allUsers[i];
+    const { error } = await db.from("room_memberships").insert({
+      room_id: room.roomId,
+      user_id: u.userId,
+      is_ready: false,
+      ready_at: null,
+      last_seen_at: presenceByIdx[i],
+    });
+    if (error) bail(`Failed to insert membership: ${error.message}`);
+  }
+
+  const contestants = await fetchSeedContestants();
+  const { voteRows, resultRows } = buildFullVotesAndResults(
+    room.roomId,
+    allUsers,
+    contestants,
+  );
+  const { error: votesErr } = await db.from("votes").insert(voteRows);
+  if (votesErr) bail(`Failed to insert votes: ${votesErr.message}`);
+  const { error: resultsErr } = await db.from("results").insert(resultRows);
+  if (resultsErr) bail(`Failed to insert results: ${resultsErr.message}`);
+
+  // Suppress the unused fixture variable lint warning — it validates the pure builder shape.
+  void fixture;
+
+  return {
+    roomId: room.roomId,
+    pin: room.pin,
+    url: `/room/${room.roomId}`,
+    notes: [
+      `Status: announcing (live). Order: ${allUsers.map((u) => u.displayName).join(" → ")}.`,
+      `A (${a.displayName}) is the active announcer — last_seen_at 5s ago (fresh).`,
+      `B (${b.displayName}) and C (${c.displayName}) are absent — last_seen_at 60s ago (stale).`,
+      `D (${d.displayName}) is present — last_seen_at 5s ago (fresh).`,
+      `On next admin advance, the cascade skips B + C and lands on D (R4 §10.2.1).`,
+    ],
+    ownerSession: {
+      userId: owner.userId,
+      rejoinToken: owner.rejoinToken,
+    },
+  };
+}
+
 const STATE_BUILDERS: Record<SeedState, (db: Db) => Promise<SeedReport>> = {
   "lobby-with-3-guests": seedLobbyWith3Guests,
   "voting-half-done": seedVotingHalfDone,
   "voting-ending-mid-countdown": seedVotingEndingMidCountdown,
   "announcing-mid-queue-live": seedAnnouncingMidQueueLive,
   "announcing-instant-all-ready": seedAnnouncingInstantAllReady,
+  "announcing-cascade-absent": seedAnnouncingCascadeAbsent,
   "done-with-awards": seedDoneWithAwards,
 };
 
