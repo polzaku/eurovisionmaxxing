@@ -38,6 +38,11 @@ export type RoomEventPayload =
       announcingUserId: string;
     }
   | {
+      type: "batch_reveal_started";
+      announcingUserId: string;
+      displayName: string;
+    }
+  | {
       type: "score_update";
       contestantId: string;
       newTotal: number;
@@ -76,6 +81,7 @@ export function mapRoom(row: RoomRow): Room {
     currentAnnounceIdx: row.current_announce_idx,
     nowPerformingId: row.now_performing_id,
     allowNowPerforming: row.allow_now_performing,
+    batchRevealMode: row.batch_reveal_mode,
     votingEndsAt: row.voting_ends_at,
     votingEndedAt: row.voting_ended_at,
     createdAt: row.created_at,

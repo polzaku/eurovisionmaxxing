@@ -20,6 +20,7 @@ const announcingRoom = {
   announcing_user_id: U1,
   current_announce_idx: 0,
   announce_skipped_user_ids: [],
+  batch_reveal_mode: false,
 };
 
 // 5-contestant fixture mirrors the year-9999 test setup. Each user has 5
@@ -52,6 +53,7 @@ interface Scripted {
     data: Array<{ id: string; display_name: string }> | null;
     error: { message: string } | null;
   };
+  pendingByUser?: Map<string, { contestant_id: string } | null>;
 }
 
 function makeSupabaseMock(s: Scripted = {}) {
@@ -62,6 +64,7 @@ function makeSupabaseMock(s: Scripted = {}) {
   const roomUpdate =
     s.roomUpdate ?? { data: { id: VALID_ROOM_ID }, error: null };
   const allResults = s.allResults ?? { data: [], error: null };
+  const pendingByUser = s.pendingByUser ?? new Map<string, { contestant_id: string } | null>();
 
   // Queue of results update responses, consumed FIFO.
   // First call = main reveal mark; subsequent calls = cascade applySingleSkip.
@@ -90,6 +93,7 @@ function makeSupabaseMock(s: Scripted = {}) {
     eqs: Array<{ col: string; val: unknown }>;
   }> = [];
   const broadcastCalls: Array<{ roomId: string; event: unknown }> = [];
+  let membershipSelectsConsumed = 0;
 
   const from = vi.fn((table: string) => {
     if (table === "rooms") {
@@ -130,6 +134,25 @@ function makeSupabaseMock(s: Scripted = {}) {
             };
             return chain;
           }
+          // Batch-reveal pending check:
+          // .select("contestant_id").eq(...).eq("user_id", X).eq("announced", false).limit(1).maybeSingle()
+          if (cols === "contestant_id") {
+            let capturedUserId: string | null = null;
+            const pendingChain: Record<string, unknown> = {};
+            pendingChain.eq = vi.fn((col: string, val: unknown) => {
+              if (col === "user_id") capturedUserId = val as string;
+              return pendingChain;
+            });
+            pendingChain.limit = vi.fn(() => pendingChain);
+            pendingChain.maybeSingle = vi.fn(() => {
+              const found =
+                capturedUserId !== null && pendingByUser.has(capturedUserId)
+                  ? (pendingByUser.get(capturedUserId) ?? null)
+                  : null;
+              return Promise.resolve({ data: found, error: null });
+            });
+            return pendingChain;
+          }
           const chain = {
             eq: vi.fn(() => Promise.resolve(allResults)),
           };
@@ -162,6 +185,7 @@ function makeSupabaseMock(s: Scripted = {}) {
       const selectChain = {
         eq: vi.fn(() => selectChain),
         maybeSingle: vi.fn(() => {
+          membershipSelectsConsumed += 1;
           const next =
             membershipSelectQueue.length > 0
               ? membershipSelectQueue.shift()!
@@ -193,6 +217,7 @@ function makeSupabaseMock(s: Scripted = {}) {
     resultsUpdateCalls,
     roomUpdateCalls,
     broadcastCalls,
+    get membershipSelectsConsumed() { return membershipSelectsConsumed; },
   };
 }
 
@@ -779,6 +804,7 @@ describe("cascade-skip on rotation (SPEC §10.2.1)", () => {
       },
       membershipSelects: [
         { data: { last_seen_at: STALE }, error: null }, // U2 absent
+        { data: { last_seen_at: new Date(NOW.getTime() - 5_000).toISOString() }, error: null }, // U3 present → post-loop fires applySingleSkip for U2
       ],
       // The first applySingleSkip (for U2) hits a results UPDATE error.
       resultsUpdateError: { message: "boom" },
@@ -806,6 +832,57 @@ describe("cascade-skip on rotation (SPEC §10.2.1)", () => {
       (b: any) => b.event.type === "announce_skip",
     );
     expect(skipBroadcasts).toHaveLength(0);
+  });
+
+  it("does NOT call applySingleSkip when cascade exhausts (preserves pending for batch reveal)", async () => {
+    const STALE = new Date(NOW.getTime() - 60_000).toISOString();
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          id: VALID_ROOM_ID,
+          status: "announcing",
+          owner_user_id: OWNER_ID,
+          announcement_order: [U1, U2, U3],
+          announcing_user_id: U1,
+          current_announce_idx: 0,
+          delegate_user_id: null,
+          announce_skipped_user_ids: [],
+        },
+        error: null,
+      },
+      announcerResults: {
+        data: [{ contestant_id: "c1", points_awarded: 12, rank: 1, announced: false }],
+        error: null,
+      },
+      membershipSelects: [
+        { data: { last_seen_at: STALE }, error: null }, // U2 absent
+        { data: { last_seen_at: STALE }, error: null }, // U3 absent → exhausts
+      ],
+      usersByIdSelect: {
+        data: [{ id: U2, display_name: "Bob" }, { id: U3, display_name: "Carol" }],
+        error: null,
+      },
+    });
+
+    const result = await advanceAnnouncement(
+      { roomId: VALID_ROOM_ID, userId: OWNER_ID },
+      makeDeps(mock, { now: () => NOW }),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.cascadeExhausted).toBe(true);
+    expect(result.cascadedSkippedUserIds).toEqual([U2, U3]);
+    // CRITICAL: applySingleSkip is NOT called on exhaust path.
+    expect(mock.resultsUpdateCalls).toHaveLength(1); // only the main reveal mark
+    // The main reveal mark is for the current contestant, not a cascade skip.
+    // resultsUpdateCalls[0] is the initial results UPDATE (announced=true for c1).
+    // No cascade results updates should have been made.
+    // The key check: resultsUpdateCalls should have exactly 1 entry (the main mark).
+
+    const lastRoomUpdate = mock.roomUpdateCalls.at(-1);
+    expect(lastRoomUpdate?.patch.announcing_user_id).toBeNull();
+    expect(lastRoomUpdate?.patch.announce_skipped_user_ids).toEqual([U2, U3]);
   });
 
   it("Case 4: golden path — no skip needed, U2 is fresh", async () => {
@@ -849,5 +926,128 @@ describe("cascade-skip on rotation (SPEC §10.2.1)", () => {
       (c) => (c[1] as { type: string }).type === "announce_skip",
     );
     expect(skipCalls).toHaveLength(0);
+  });
+});
+
+// ─── batch-reveal mode (SPEC §10.2.1 'Finish the show') ──────────────────────
+
+describe("batch-reveal mode (SPEC §10.2.1 'Finish the show')", () => {
+  const NOW = new Date("2026-05-10T12:00:00.000Z");
+
+  it("rotates to next user with unrevealed results when current finishes queue (no presence check)", async () => {
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          id: VALID_ROOM_ID,
+          status: "announcing",
+          owner_user_id: OWNER_ID,
+          announcement_order: [U1, U2, U3],
+          announcing_user_id: U1,
+          current_announce_idx: 0,
+          delegate_user_id: null,
+          announce_skipped_user_ids: [U1, U2, U3],
+          batch_reveal_mode: true,
+        },
+        error: null,
+      },
+      announcerResults: {
+        data: [{ contestant_id: "c1", points_awarded: 12, rank: 1, announced: false }],
+        error: null,
+      },
+      // U2 has 1 unrevealed result; U3 query is not made (we stop on first match).
+      pendingByUser: new Map([[U2, { contestant_id: "cX" }]]),
+    });
+
+    const result = await advanceAnnouncement(
+      { roomId: VALID_ROOM_ID, userId: OWNER_ID },
+      makeDeps(mock, { now: () => NOW }),
+    );
+
+    expect(result.ok).toBe(true);
+    const lastRoomUpdate = mock.roomUpdateCalls.at(-1);
+    expect(lastRoomUpdate?.patch.announcing_user_id).toBe(U2);
+    // No membership_select calls — presence cascade skipped.
+    expect(mock.membershipSelectsConsumed).toBe(0);
+  });
+
+  it("silently skips users with all-announced results (no announce_skip broadcast)", async () => {
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          id: VALID_ROOM_ID,
+          status: "announcing",
+          owner_user_id: OWNER_ID,
+          announcement_order: [U1, U2, U3],
+          announcing_user_id: U1,
+          current_announce_idx: 0,
+          delegate_user_id: null,
+          announce_skipped_user_ids: [U1, U2, U3],
+          batch_reveal_mode: true,
+        },
+        error: null,
+      },
+      announcerResults: {
+        data: [{ contestant_id: "c1", points_awarded: 12, rank: 1, announced: false }],
+        error: null,
+      },
+      // U2 has no pending results (all announced); U3 has pending.
+      pendingByUser: new Map<string, { contestant_id: string } | null>([
+        [U2, null],
+        [U3, { contestant_id: "cZ" }],
+      ]),
+    });
+
+    const result = await advanceAnnouncement(
+      { roomId: VALID_ROOM_ID, userId: OWNER_ID },
+      makeDeps(mock, { now: () => NOW }),
+    );
+
+    expect(result.ok).toBe(true);
+    const lastRoomUpdate = mock.roomUpdateCalls.at(-1);
+    expect(lastRoomUpdate?.patch.announcing_user_id).toBe(U3);
+
+    const skipBroadcasts = (mock as any).broadcastCalls.filter(
+      (b: any) => b.event.type === "announce_skip",
+    );
+    expect(skipBroadcasts).toHaveLength(0);
+  });
+
+  it("flips status to 'done' and clears batch_reveal_mode when no more pending users", async () => {
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          id: VALID_ROOM_ID,
+          status: "announcing",
+          owner_user_id: OWNER_ID,
+          announcement_order: [U1, U2],
+          announcing_user_id: U1,
+          current_announce_idx: 0,
+          delegate_user_id: null,
+          announce_skipped_user_ids: [U1, U2],
+          batch_reveal_mode: true,
+        },
+        error: null,
+      },
+      announcerResults: {
+        data: [{ contestant_id: "c1", points_awarded: 12, rank: 1, announced: false }],
+        error: null,
+      },
+      // U2 has no pending results.
+      pendingByUser: new Map<string, { contestant_id: string } | null>([[U2, null]]),
+    });
+
+    const result = await advanceAnnouncement(
+      { roomId: VALID_ROOM_ID, userId: OWNER_ID },
+      makeDeps(mock, { now: () => NOW }),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.finished).toBe(true);
+
+    const lastRoomUpdate = mock.roomUpdateCalls.at(-1);
+    expect(lastRoomUpdate?.patch.announcing_user_id).toBeNull();
+    expect(lastRoomUpdate?.patch.status).toBe("done");
+    expect(lastRoomUpdate?.patch.batch_reveal_mode).toBe(false);
   });
 });

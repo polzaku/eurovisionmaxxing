@@ -16,6 +16,7 @@ import {
   postAnnounceHandoff,
   postAnnounceSkip,
   postAnnounceRestore,
+  postFinishShow,
 } from "@/lib/room/api";
 import { mapRoomError } from "@/lib/room/errors";
 import type { Contestant } from "@/types";
@@ -24,6 +25,7 @@ interface RoomShape {
   id: string;
   status: string;
   ownerUserId: string;
+  batchRevealMode?: boolean;
 }
 
 interface AnnouncingViewProps {
@@ -131,6 +133,8 @@ export default function AnnouncingView({
   const [finishedLocal, setFinishedLocal] = useState(false);
   const [skipEvents, setSkipEvents] = useState<SkipEvent[]>([]);
 
+  const [finishingShow, setFinishingShow] = useState(false);
+
   const roomId = room.id;
   const isOwner = currentUserId === room.ownerUserId;
   // Track presence on the room channel — used by the owner-only roster
@@ -143,6 +147,14 @@ export default function AnnouncingView({
   const adminHasTakenControl = !!delegateUserId;
   const isActiveDriver =
     !!announcement && (isDelegate || (isAnnouncer && !adminHasTakenControl));
+
+  const isBatchReveal = room.batchRevealMode === true;
+  // Cascade-exhaust: only when batchRevealMode is explicitly false (the field
+  // is present on the room shape) and the current announcement slot is empty.
+  const isCascadeExhausted =
+    room.status === "announcing" &&
+    room.batchRevealMode === false &&
+    !announcement?.announcingUserId;
 
   const contestantById = useRef(new Map(contestants.map((c) => [c.id, c])));
   contestantById.current = new Map(contestants.map((c) => [c.id, c]));
@@ -206,6 +218,12 @@ export default function AnnouncingView({
       // Refetch so the roster's skipped markers + restore CTA stay in
       // sync with whichever admin made the change.
       void refetch();
+      return;
+    }
+    if (event.type === "batch_reveal_started") {
+      // Host has taken over as batch announcer — swing out of cascade-exhaust
+      // into the batch-reveal active view by re-fetching room state.
+      onAnnouncementEnded?.();
     }
   });
 
@@ -295,6 +313,20 @@ export default function AnnouncingView({
     [currentUserId, isOwner, refetch, roomId],
   );
 
+  const onFinishShow = useCallback(async () => {
+    if (finishingShow) return;
+    setFinishingShow(true);
+    try {
+      await postFinishShow(roomId, currentUserId, {
+        fetch: window.fetch.bind(window),
+      });
+    } catch (err) {
+      console.warn("Finish the show failed:", err);
+    } finally {
+      setFinishingShow(false);
+    }
+  }, [roomId, currentUserId, finishingShow]);
+
   const flashContestant = justRevealed
     ? contestantById.current.get(justRevealed.contestantId)
     : null;
@@ -305,6 +337,38 @@ export default function AnnouncingView({
   // ─── Show-finished state — announcer-side optimistic flip ─────────────
   if (finishedLocal) {
     return <DoneCard roomId={roomId} />;
+  }
+
+  // ─── Cascade-exhaust state — all remaining announcers are absent ────────
+  if (isCascadeExhausted) {
+    if (isOwner) {
+      return (
+        <main className="flex min-h-screen flex-col items-center justify-center px-4 py-8">
+          <div className="emx-cascade-exhaust max-w-sm w-full space-y-4 text-center">
+            <h2 className="text-base text-muted-foreground">
+              All remaining announcers are absent — finish revealing on their behalf
+            </h2>
+            <button
+              type="button"
+              onClick={() => void onFinishShow()}
+              disabled={finishingShow}
+              className="emx-cta-primary w-full rounded-xl bg-primary px-6 py-4 text-lg font-semibold text-primary-foreground transition-all hover:scale-[1.01] hover:emx-glow-gold active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {finishingShow ? "Starting…" : "Finish the show"}
+            </button>
+          </div>
+        </main>
+      );
+    }
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center px-4 py-8">
+        <div className="emx-cascade-exhaust max-w-sm w-full text-center">
+          <p className="text-base text-muted-foreground">
+            Waiting for the host to continue…
+          </p>
+        </div>
+      </main>
+    );
   }
 
   const announcerName = announcement?.announcingDisplayName ?? "";
@@ -333,6 +397,14 @@ export default function AnnouncingView({
             Live announcement
           </h1>
           {headerCard}
+          {isBatchReveal && (
+            <span
+              className="emx-batch-reveal-chip inline-block rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
+              aria-live="polite"
+            >
+              Host is finishing the show
+            </span>
+          )}
           {announcement ? (
             <div className="space-y-1.5">
               <p className="text-xs font-medium text-muted-foreground tabular-nums">

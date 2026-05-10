@@ -44,6 +44,7 @@ import type { Contestant } from "../src/types";
 import {
   SEED_CATEGORIES,
   buildAnnouncingCascadeAbsent,
+  buildAnnouncingCascadeAllAbsent,
   buildFullScores,
   buildHalfScores,
   buildSeedAvatarSeed,
@@ -76,6 +77,7 @@ function parseArgs(argv: readonly string[]): CliArgs {
         "  announcing-mid-queue-live\n" +
         "  announcing-instant-all-ready\n" +
         "  announcing-cascade-absent\n" +
+        "  announcing-cascade-all-absent\n" +
         "  done-with-awards\n",
     );
   }
@@ -704,6 +706,81 @@ async function seedAnnouncingCascadeAbsent(db: Db): Promise<SeedReport> {
   };
 }
 
+async function seedAnnouncingCascadeAllAbsent(db: Db): Promise<SeedReport> {
+  // SPEC §10.2.1 — live-mode announcing room in cascade-exhaust state.
+  // 3 users in announcement_order, all absent (last_seen_at 60s ago),
+  // announcing_user_id=null, all in announce_skipped_user_ids,
+  // batch_reveal_mode=false. All results.announced=false so the admin
+  // sees the "Finish the show" CTA which drives the batch-reveal flow.
+  const owner = await insertSeededUser(db, 0);
+  const guests = await Promise.all([
+    insertSeededUser(db, 1),
+    insertSeededUser(db, 2),
+  ]);
+  const allUsers = [owner, ...guests];
+  const now = new Date();
+
+  // Use the pure builder to validate the fixture shape.
+  const fixture = buildAnnouncingCascadeAllAbsent({ now });
+  void fixture;
+
+  const order = allUsers.map((u) => u.userId);
+  const stale = new Date(now.getTime() - 60_000).toISOString();
+
+  const room = await insertSeededRoom(db, owner.userId, {
+    status: "announcing",
+    announcement_mode: "live",
+    announcement_order: order,
+    announcing_user_id: null,
+    current_announce_idx: 0,
+    announce_skipped_user_ids: order,
+    batch_reveal_mode: false,
+    voting_ended_at: new Date(now.getTime() - 5 * 60_000).toISOString(),
+  });
+
+  for (const u of allUsers) {
+    const { error } = await db.from("room_memberships").insert({
+      room_id: room.roomId,
+      user_id: u.userId,
+      is_ready: false,
+      ready_at: null,
+      last_seen_at: stale,
+    });
+    if (error) bail(`Failed to insert membership: ${error.message}`);
+  }
+
+  const contestants = await fetchSeedContestants();
+  const { voteRows, resultRows } = buildFullVotesAndResults(
+    room.roomId,
+    allUsers,
+    contestants,
+  );
+  // All results start announced=false so "Finish the show" has rows to reveal.
+  const unrevealedResults = resultRows.map((r) => ({ ...r, announced: false }));
+
+  const { error: votesErr } = await db.from("votes").insert(voteRows);
+  if (votesErr) bail(`Failed to insert votes: ${votesErr.message}`);
+  const { error: resultsErr } = await db.from("results").insert(unrevealedResults);
+  if (resultsErr) bail(`Failed to insert results: ${resultsErr.message}`);
+
+  return {
+    roomId: room.roomId,
+    pin: room.pin,
+    url: `/room/${room.roomId}`,
+    notes: [
+      `Status: announcing (live). Cascade-exhaust state — all 3 users absent.`,
+      `Order: ${allUsers.map((u) => u.displayName).join(" → ")}.`,
+      `announcing_user_id=null, all in announce_skipped_user_ids (R4 §10.2.1).`,
+      `All results.announced=false — admin sees "Finish the show" CTA.`,
+      `Tap "Finish the show" to enter batch-reveal mode and drive reveals to done.`,
+    ],
+    ownerSession: {
+      userId: owner.userId,
+      rejoinToken: owner.rejoinToken,
+    },
+  };
+}
+
 const STATE_BUILDERS: Record<SeedState, (db: Db) => Promise<SeedReport>> = {
   "lobby-with-3-guests": seedLobbyWith3Guests,
   "voting-half-done": seedVotingHalfDone,
@@ -711,6 +788,7 @@ const STATE_BUILDERS: Record<SeedState, (db: Db) => Promise<SeedReport>> = {
   "announcing-mid-queue-live": seedAnnouncingMidQueueLive,
   "announcing-instant-all-ready": seedAnnouncingInstantAllReady,
   "announcing-cascade-absent": seedAnnouncingCascadeAbsent,
+  "announcing-cascade-all-absent": seedAnnouncingCascadeAllAbsent,
   "done-with-awards": seedDoneWithAwards,
 };
 

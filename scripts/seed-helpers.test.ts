@@ -6,6 +6,7 @@ import {
   SEED_STATES,
   SEED_USER_FIRST_NAMES,
   buildAnnouncingCascadeAbsent,
+  buildAnnouncingCascadeAllAbsent,
   buildFullScores,
   buildHalfScores,
   buildSeedAvatarSeed,
@@ -166,6 +167,35 @@ describe("scripts/seed-helpers", () => {
 
       expect(result.room.announcing_user_id).toBe(a);
       expect(result.room.current_announce_idx).toBe(0);
+    });
+  });
+
+  describe("buildAnnouncingCascadeAllAbsent", () => {
+    it("produces an announcing room in cascade-exhaust state with all users absent and unrevealed", () => {
+      const now = new Date("2026-05-10T12:00:00.000Z");
+      const result = buildAnnouncingCascadeAllAbsent({ now });
+
+      expect(result.room.status).toBe("announcing");
+      expect(result.room.announcing_user_id).toBeNull();
+      expect(result.room.batch_reveal_mode).toBe(false);
+      expect(result.room.announcement_order).toHaveLength(3);
+      expect(result.room.announce_skipped_user_ids).toHaveLength(3);
+
+      // All users stale.
+      for (const m of result.memberships) {
+        if (m.last_seen_at !== null) {
+          expect(
+            now.getTime() - new Date(m.last_seen_at).getTime(),
+          ).toBeGreaterThan(30_000);
+        }
+      }
+
+      // CRITICAL: results for users in the order have announced=false
+      // so 'Finish the show' has something to reveal.
+      const orderIds = new Set(result.room.announcement_order ?? []);
+      const orderResults = result.results.filter((r) => orderIds.has(r.user_id));
+      expect(orderResults.length).toBeGreaterThan(0);
+      expect(orderResults.every((r) => r.announced === false)).toBe(true);
     });
   });
 

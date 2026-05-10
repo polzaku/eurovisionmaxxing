@@ -85,6 +85,15 @@ For existing projects, run the per-migration SQL listed in the changelog below i
 
 ### Changelog
 
+- **2026-05-10 — Phase R4 "Finish the show":** added `rooms.batch_reveal_mode BOOLEAN NOT NULL DEFAULT FALSE`. Set true when an admin enters batch-reveal mode after cascade exhausts. Re-apply via SQL Editor:
+
+  ```sql
+  ALTER TABLE rooms
+    ADD COLUMN IF NOT EXISTS batch_reveal_mode BOOLEAN NOT NULL DEFAULT FALSE;
+  ```
+
+  Backfill unnecessary — the column defaults to false, keeping existing rooms in single-reveal mode.
+
 - **2026-05-10 — Phase R4 advance-time presence check:** added `room_memberships.last_seen_at TIMESTAMPTZ` (nullable, default NULL) to detect absent announcers at rotation time (SPEC §10.2.1). Clients heartbeat this every 15 s on `<RoomPage>`; the cascade-skip path reads it to skip absent announcers. Apply with:
 
   ```sql

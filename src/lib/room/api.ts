@@ -348,6 +348,32 @@ export async function refreshContestantsApi(
 }
 
 /**
+ * Owner-only "finish the show" (SPEC §10.2.1 / R4). Validates the room is in
+ * cascade-exhaust state, picks the first skipped user with unrevealed results,
+ * sets them as the active batch announcer, and broadcasts batch_reveal_started.
+ */
+export interface FinishShowSuccess {
+  announcingUserId: string;
+  displayName: string;
+}
+
+export async function postFinishShow(
+  roomId: string,
+  userId: string,
+  deps: Deps,
+): Promise<ApiOk<FinishShowSuccess> | ApiFail> {
+  return runRequest<FinishShowSuccess>(
+    () =>
+      deps.fetch(`/api/rooms/${roomId}/finish-show`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ userId }),
+      }),
+    (body) => body as FinishShowSuccess,
+  );
+}
+
+/**
  * SPEC §6.1 / TODO A2 — owner-only switch of `announcement_mode` between
  * 'live' and 'instant' while the room is still in the lobby.
  */

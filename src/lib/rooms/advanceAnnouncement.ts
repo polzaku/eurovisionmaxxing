@@ -67,6 +67,7 @@ type RoomRow = {
   current_announce_idx: number | null;
   delegate_user_id: string | null;
   announce_skipped_user_ids: string[] | null;
+  batch_reveal_mode: boolean;
 };
 
 type AnnouncerResultRow = {
@@ -125,7 +126,7 @@ export async function advanceAnnouncement(
   const roomQuery = await deps.supabase
     .from("rooms")
     .select(
-      "id, status, owner_user_id, announcement_order, announcing_user_id, current_announce_idx, delegate_user_id, announce_skipped_user_ids",
+      "id, status, owner_user_id, announcement_order, announcing_user_id, current_announce_idx, delegate_user_id, announce_skipped_user_ids, batch_reveal_mode",
     )
     .eq("id", roomId)
     .maybeSingle();
@@ -230,67 +231,110 @@ export async function advanceAnnouncement(
   const cascadedSkippedUserIds: string[] = [];
 
   if (isLastForAnnouncer) {
-    const announcers = room.announcement_order;
-    const pos = announcers.indexOf(currentAnnouncer);
-    const nextPos = pos + 1;
-    if (pos >= 0 && nextPos < announcers.length) {
-      // Rotate to the next user — but first cascade-check for absence.
-      // Snapshot "now" once so all probes in this call use the same instant.
-      const now = nowOverride ?? (deps.now ? deps.now() : new Date());
-
-      let probePos = nextPos;
-      let foundPresent = false;
+    if (room.batch_reveal_mode) {
+      // SPEC §10.2.1 — batch-reveal rotation: walk announcement_order
+      // forward, skipping users with all-announced results. No presence
+      // check (admin is driving for absent users).
+      const announcers = room.announcement_order;
+      const pos = announcers.indexOf(currentAnnouncer);
+      let probePos = pos + 1;
+      let foundPending = false;
 
       while (probePos < announcers.length) {
         const candidateId = announcers[probePos];
-
-        // Query this candidate's membership last_seen_at.
-        const membershipQuery = await deps.supabase
-          .from("room_memberships")
-          .select("last_seen_at")
+        const pendingQuery = await deps.supabase
+          .from("results")
+          .select("contestant_id")
           .eq("room_id", roomId)
           .eq("user_id", candidateId)
+          .eq("announced", false)
+          .limit(1)
           .maybeSingle();
 
-        const lastSeenAt =
-          membershipQuery.data?.last_seen_at ?? null;
-        const absent = isAbsent(lastSeenAt as string | null, now);
-
-        if (absent) {
-          // Mark their results as announced. If the DB write fails
-          // mid-cascade, abort cleanly — do NOT push to the in-memory
-          // cascade list and do NOT proceed to the room UPDATE, since
-          // those would lock in a partial-state corruption (room claims
-          // they were skipped but their results.announced flags didn't flip).
-          const skipResult = await applySingleSkip(
-            { roomId, skippedUserId: candidateId },
-            { supabase: deps.supabase },
+        if (pendingQuery.error) {
+          return fail(
+            "INTERNAL_ERROR",
+            "Could not query pending results in batch-reveal.",
+            500,
           );
-          if (!skipResult.ok) {
-            return fail(skipResult.error.code, skipResult.error.message, 500);
-          }
-          cascadedSkippedUserIds.push(candidateId);
-          probePos += 1;
-        } else {
-          // Present — this is our next announcer.
+        }
+        if (pendingQuery.data) {
           nextAnnouncingUserId = candidateId;
           nextIdx = 0;
-          foundPresent = true;
+          foundPending = true;
           break;
         }
+        // No pending → silently skip. Don't push to cascadedSkippedUserIds
+        // (no announce_skip broadcast); just advance.
+        probePos += 1;
       }
 
-      if (!foundPresent) {
-        // All candidates exhausted — cascade exhausted.
-        cascadeExhausted = true;
+      if (!foundPending) {
         nextAnnouncingUserId = null;
         nextIdx = 0;
-        // Do NOT set finishedShow — status stays 'announcing'.
+        finishedShow = true;
       }
     } else {
-      nextAnnouncingUserId = null;
-      nextIdx = 0;
-      finishedShow = true;
+      const announcers = room.announcement_order;
+      const pos = announcers.indexOf(currentAnnouncer);
+      const nextPos = pos + 1;
+      if (pos >= 0 && nextPos < announcers.length) {
+        // Rotate to the next user — but first cascade-check for absence.
+        // Snapshot "now" once so all probes in this call use the same instant.
+        const now = nowOverride ?? (deps.now ? deps.now() : new Date());
+
+        let probePos = nextPos;
+        let foundPresent = false;
+
+        while (probePos < announcers.length) {
+          const candidateId = announcers[probePos];
+
+          // Query this candidate's membership last_seen_at.
+          const membershipQuery = await deps.supabase
+            .from("room_memberships")
+            .select("last_seen_at")
+            .eq("room_id", roomId)
+            .eq("user_id", candidateId)
+            .maybeSingle();
+
+          const lastSeenAt =
+            membershipQuery.data?.last_seen_at ?? null;
+          const absent = isAbsent(lastSeenAt as string | null, now);
+
+          if (absent) {
+            cascadedSkippedUserIds.push(candidateId);
+            probePos += 1;
+          } else {
+            // Present — this is our next announcer.
+            nextAnnouncingUserId = candidateId;
+            nextIdx = 0;
+            foundPresent = true;
+            break;
+          }
+        }
+
+        if (foundPresent) {
+          // SPEC §10.2.1 line 967 — silent-mark only when show continues.
+          for (const skippedUserId of cascadedSkippedUserIds) {
+            const skipResult = await applySingleSkip(
+              { roomId, skippedUserId },
+              { supabase: deps.supabase },
+            );
+            if (!skipResult.ok) {
+              return fail(skipResult.error.code, skipResult.error.message, 500);
+            }
+          }
+        } else {
+          cascadeExhausted = true;
+          nextAnnouncingUserId = null;
+          nextIdx = 0;
+          // SPEC §10.2.1 line 981 — keep pending for batch reveal. No silent-mark.
+        }
+      } else {
+        nextAnnouncingUserId = null;
+        nextIdx = 0;
+        finishedShow = true;
+      }
     }
   }
 
@@ -300,11 +344,17 @@ export async function advanceAnnouncement(
     current_announce_idx: number;
     announce_skipped_user_ids?: string[];
     status?: string;
+    batch_reveal_mode?: boolean;
   } = {
     announcing_user_id: nextAnnouncingUserId,
     current_announce_idx: nextIdx,
   };
-  if (finishedShow) roomPatch.status = "done";
+  if (finishedShow) {
+    roomPatch.status = "done";
+    if (room.batch_reveal_mode) {
+      roomPatch.batch_reveal_mode = false;
+    }
+  }
 
   // If the cascade accumulated any skipped users, append them to the existing list.
   if (cascadedSkippedUserIds.length > 0) {

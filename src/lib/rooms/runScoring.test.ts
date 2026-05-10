@@ -1123,14 +1123,17 @@ describe("runScoring — pre-cascade skips absent users at scoring→announcing"
       current_announce_idx: 0,
     });
 
-    // Both results marked announced.
-    expect(mock.resultsUpdateCalls.map((c) => c.userId)).toEqual([U1, U2]);
+    // Pre-cascade exhausts → applySingleSkip must NOT be called.
+    // Points stay announced=false for the 'Finish the show' batch reveal.
+    expect(mock.resultsUpdateCalls).toHaveLength(0);
 
-    // Two announce_skip broadcasts.
+    // Two announce_skip broadcasts — banners fire even on cascade-exhaust path.
     const skipBroadcasts = broadcastSpy.mock.calls.filter(
       ([, e]) => e.type === "announce_skip",
     );
     expect(skipBroadcasts).toHaveLength(2);
+    expect(skipBroadcasts[0][1]).toMatchObject({ type: "announce_skip", userId: U1, displayName: "Alice" });
+    expect(skipBroadcasts[1][1]).toMatchObject({ type: "announce_skip", userId: U2, displayName: "Bob" });
   });
 
   /**
@@ -1178,5 +1181,59 @@ describe("runScoring — pre-cascade skips absent users at scoring→announcing"
 
     // No results.update calls from applySingleSkip.
     expect(mock.resultsUpdateCalls).toHaveLength(0);
+  });
+
+  /**
+   * Case 4: Pre-cascade exhausts (all absent) — applySingleSkip NOT called.
+   * Covers SPEC §10.2.1 line 981: points stay announced=false for batch reveal.
+   */
+  it("does NOT call applySingleSkip when pre-cascade exhausts (preserves pending for batch reveal)", async () => {
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: { ...defaultRoomRow, announcement_mode: "live" },
+        error: null,
+      },
+      memberships: { data: TWO_USER_MEMBERSHIPS, error: null },
+      membershipSelects: [
+        { data: { last_seen_at: STALE_LAST_SEEN }, error: null },
+        { data: { last_seen_at: STALE_LAST_SEEN }, error: null },
+      ],
+      usersByIdSelect: {
+        data: [
+          { id: U1, display_name: "Alice" },
+          { id: U2, display_name: "Bob" },
+        ],
+        error: null,
+      },
+    });
+    const broadcastSpy = vi.fn().mockResolvedValue(undefined);
+
+    const result = await runScoring(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
+      makeDeps(mock, {
+        broadcastRoomEvent: broadcastSpy,
+        shuffle: (arr) => [...arr],
+        now: () => FAKE_CASCADE_NOW,
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+    // CRITICAL: pre-cascade exhausts → no applySingleSkip calls.
+    // Points stay announced=false for the 'Finish the show' batch reveal.
+    expect(mock.resultsUpdateCalls).toHaveLength(0);
+
+    const finalRoomUpdate = mock.roomUpdatePatches[1];
+    expect(finalRoomUpdate?.announcing_user_id).toBeNull();
+    expect(finalRoomUpdate?.status).toBe("announcing");
+    expect(finalRoomUpdate?.announce_skipped_user_ids).toEqual([U1, U2]);
+
+    // announce_skip broadcasts MUST fire even on cascade-exhaust path.
+    // Banners inform guests "X isn't here" — separate from the batch reveal UX.
+    const skipBroadcasts = broadcastSpy.mock.calls.filter(
+      ([, e]) => e.type === "announce_skip",
+    );
+    expect(skipBroadcasts).toHaveLength(2);
+    expect(skipBroadcasts[0][1]).toMatchObject({ type: "announce_skip", userId: U1, displayName: "Alice" });
+    expect(skipBroadcasts[1][1]).toMatchObject({ type: "announce_skip", userId: U2, displayName: "Bob" });
   });
 });

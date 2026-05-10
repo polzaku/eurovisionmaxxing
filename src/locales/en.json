@@ -184,6 +184,12 @@
       "single": "{name} isn't here — their points are being skipped",
       "coalesced": "{count} skipped: {names}",
       "coalescedTrailing": "+{remaining}"
+    },
+    "finishTheShow": {
+      "ownerCta": "Finish the show",
+      "ownerSubtitle": "All remaining announcers are absent — finish revealing on their behalf",
+      "guestWaiting": "Waiting for the host to continue…",
+      "batchRevealChip": "Host is finishing the show"
     }
   },
   "results": {
