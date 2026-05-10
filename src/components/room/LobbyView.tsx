@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Avatar from "@/components/ui/Avatar";
+import { useRoomPresence } from "@/hooks/useRoomPresence";
 import Button from "@/components/ui/Button";
 import QrCode from "@/components/ui/QrCode";
 import CategoriesPreview from "@/components/room/CategoriesPreview";
@@ -73,6 +74,9 @@ interface LobbyViewProps {
   onChangeCategories?: (
     categories: { name: string; weight: number; hint?: string }[],
   ) => Promise<void>;
+  /** SPEC §6.6.2 — required for the live presence channel subscription. */
+  roomId: string;
+  currentUserId: string;
 }
 
 function useCopiedFlag(): [boolean, () => void] {
@@ -100,11 +104,15 @@ export default function LobbyView({
   announcementMode,
   onChangeAnnouncementMode,
   onChangeCategories,
+  roomId,
+  currentUserId,
 }: LobbyViewProps) {
   const [pinCopied, markPinCopied] = useCopiedFlag();
   const [linkCopied, markLinkCopied] = useCopiedFlag();
   const [modeBusy, setModeBusy] = useState(false);
   const [templateBusy, setTemplateBusy] = useState(false);
+
+  const presenceUserIds = useRoomPresence(roomId, currentUserId);
 
   const currentNameSet = useMemo(
     () => categoryNameSet(categories),
@@ -335,20 +343,36 @@ export default function LobbyView({
             Who&rsquo;s here ({memberships.length})
           </h2>
           <div className="grid grid-cols-3 gap-4">
-            {memberships.map((m) => (
-              <div
-                key={m.userId}
-                className="flex flex-col items-center text-center space-y-1"
-              >
-                <Avatar seed={m.avatarSeed} size={64} />
-                <p className="text-sm font-medium truncate w-full">
-                  {m.displayName}
-                  {m.userId === ownerUserId && (
-                    <span className="ml-1 text-xs text-primary">★</span>
-                  )}
-                </p>
-              </div>
-            ))}
+            {memberships.map((m) => {
+              const isOnline = presenceUserIds.has(m.userId);
+              return (
+                <div
+                  key={m.userId}
+                  data-testid={`lobby-member-${m.userId}`}
+                  data-online={isOnline ? "true" : "false"}
+                  className={`flex flex-col items-center text-center space-y-1 transition-opacity ${
+                    isOnline ? "" : "opacity-50"
+                  }`}
+                >
+                  <div className="relative">
+                    <Avatar seed={m.avatarSeed} size={64} />
+                    <span
+                      aria-hidden
+                      title={isOnline ? "Online" : "Offline"}
+                      className={`absolute bottom-0 right-0 inline-block w-3 h-3 rounded-full border-2 border-card ${
+                        isOnline ? "bg-emerald-500" : "bg-muted-foreground/40"
+                      }`}
+                    />
+                  </div>
+                  <p className="text-sm font-medium truncate w-full">
+                    {m.displayName}
+                    {m.userId === ownerUserId && (
+                      <span className="ml-1 text-xs text-primary">★</span>
+                    )}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </section>
 
