@@ -3,6 +3,12 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+vi.mock("@/hooks/useRoomPresence", () => ({
+  useRoomPresence: vi.fn(),
+}));
+
+import { useRoomPresence } from "@/hooks/useRoomPresence";
+
 // Locale mock — RefreshContestantsButton uses useTranslations.
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string, params?: Record<string, unknown>) =>
@@ -73,9 +79,13 @@ interface RenderOpts {
   onChangeCategories?: (
     categories: { name: string; weight: number; hint?: string }[],
   ) => Promise<void>;
+  roomId?: string;
+  currentUserId?: string;
+  presenceUserIds?: Set<string>;
 }
 
 function renderLobby(opts: RenderOpts = {}) {
+  vi.mocked(useRoomPresence).mockReturnValue(opts.presenceUserIds ?? new Set());
   const onStartVoting = vi.fn();
   const onCopyPin = vi.fn();
   const onCopyLink = vi.fn();
@@ -95,6 +105,8 @@ function renderLobby(opts: RenderOpts = {}) {
       announcementMode={opts.announcementMode}
       onChangeAnnouncementMode={opts.onChangeAnnouncementMode}
       onChangeCategories={opts.onChangeCategories}
+      roomId={opts.roomId ?? "r-1"}
+      currentUserId={opts.currentUserId ?? ALICE.userId}
     />
   );
   return { ...render(ui), onStartVoting, onCopyPin, onCopyLink };
@@ -409,5 +421,36 @@ describe("<LobbyView>", () => {
     expect(
       screen.queryByTestId("lobby-present-link"),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("<LobbyView> — presence indicators (R2 #239)", () => {
+  it("renders online treatment for members in the presence Set", () => {
+    renderLobby({
+      memberships: [ALICE],
+      presenceUserIds: new Set([ALICE.userId]),
+    });
+    const row = screen.getByTestId(`lobby-member-${ALICE.userId}`);
+    expect(row).toHaveAttribute("data-online", "true");
+    expect(row).not.toHaveClass("opacity-50");
+  });
+
+  it("renders offline treatment (opacity-50) for members not in the presence Set", () => {
+    renderLobby({
+      memberships: [BOB],
+      presenceUserIds: new Set(),
+    });
+    const row = screen.getByTestId(`lobby-member-${BOB.userId}`);
+    expect(row).toHaveAttribute("data-online", "false");
+    expect(row).toHaveClass("opacity-50");
+  });
+
+  it("preserves owner star regardless of online state", () => {
+    renderLobby({
+      memberships: [ALICE],
+      ownerUserId: ALICE.userId,
+      presenceUserIds: new Set(),
+    });
+    expect(screen.getByText("★")).toBeInTheDocument();
   });
 });

@@ -596,6 +596,8 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         onChangeCategories={
           isAdmin ? handleChangeCategories : undefined
         }
+        roomId={roomId}
+        currentUserId={session?.userId ?? ""}
       />
     );
   }
