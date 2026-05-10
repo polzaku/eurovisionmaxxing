@@ -356,6 +356,10 @@
     }
   },
   "lobby": {
+    "countdown": {
+      "label": "",
+      "fallback": ""
+    },
     "refreshContestants": {
       "button": "",
       "busy": "",
