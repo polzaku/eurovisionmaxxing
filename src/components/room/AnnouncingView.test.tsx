@@ -52,12 +52,14 @@ const postAnnounceNextMock = vi.fn();
 const postAnnounceHandoffMock = vi.fn();
 const postAnnounceSkipMock = vi.fn();
 const postAnnounceRestoreMock = vi.fn();
+const postFinishShowMock = vi.fn();
 
 vi.mock("@/lib/room/api", () => ({
   postAnnounceNext: (...args: unknown[]) => postAnnounceNextMock(...args),
   postAnnounceHandoff: (...args: unknown[]) => postAnnounceHandoffMock(...args),
   postAnnounceSkip: (...args: unknown[]) => postAnnounceSkipMock(...args),
   postAnnounceRestore: (...args: unknown[]) => postAnnounceRestoreMock(...args),
+  postFinishShow: (...args: unknown[]) => postFinishShowMock(...args),
 }));
 
 import AnnouncingView from "./AnnouncingView";
@@ -707,5 +709,142 @@ describe("<AnnouncingView> — owner-only announcer roster", () => {
         screen.getByTestId(`roster-row-${CAROL_ID}`),
       ).toHaveAttribute("data-skipped", "true");
     });
+  });
+});
+
+// ─── R4 #2 cascade-exhaust + batch-reveal chip ───────────────────────────────
+
+describe("<AnnouncingView> — cascade-exhaust state (R4 #2 'Finish the show')", () => {
+  function makeCascadeExhaustedFetch(overrides: Record<string, unknown> = {}) {
+    // Fetch returns announcement=null to simulate cascade-exhausted state
+    // (no active announcer).
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        status: "announcing",
+        leaderboard: [],
+        announcement: null,
+        ...overrides,
+      }),
+    } as unknown as Response);
+  }
+
+  function makeBatchRevealFetch() {
+    // Fetch returns an active announcement (Bob) so the announcer header renders.
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => RESULTS_RESPONSE_BODY,
+    } as unknown as Response);
+  }
+
+  const CASCADE_ROOM = {
+    id: ROOM_ID,
+    status: "announcing",
+    ownerUserId: OWNER_ID,
+    batchRevealMode: false,
+  };
+
+  const BATCH_REVEAL_ROOM = {
+    id: ROOM_ID,
+    status: "announcing",
+    ownerUserId: OWNER_ID,
+    batchRevealMode: true,
+  };
+
+  beforeEach(() => {
+    postFinishShowMock.mockReset();
+    makeCascadeExhaustedFetch();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("renders 'Finish the show' CTA for owner when announcingUserId is null and batchRevealMode is false", async () => {
+    render(
+      <AnnouncingView
+        room={CASCADE_ROOM}
+        contestants={[]}
+        currentUserId={OWNER_ID}
+      />,
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /finish the show/i }),
+      ).toBeVisible(),
+    );
+  });
+
+  it("renders waiting copy for non-owner in cascade-exhaust", async () => {
+    render(
+      <AnnouncingView
+        room={CASCADE_ROOM}
+        contestants={[]}
+        currentUserId="00000000-0000-4000-8000-000000000099"
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByText(/waiting for the host/i)).toBeVisible(),
+    );
+    expect(
+      screen.queryByRole("button", { name: /finish the show/i }),
+    ).toBeNull();
+  });
+
+  it("does NOT render the Finish CTA when batchRevealMode is true (already in batch-reveal)", async () => {
+    makeBatchRevealFetch();
+    render(
+      <AnnouncingView
+        room={BATCH_REVEAL_ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={OWNER_ID}
+      />,
+    );
+    // Wait for render to settle after the fetch
+    await waitFor(() =>
+      expect(screen.getByText("Austria")).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByRole("button", { name: /finish the show/i }),
+    ).toBeNull();
+  });
+
+  it("renders the 'Host is finishing the show' chip when batchRevealMode is true", async () => {
+    makeBatchRevealFetch();
+    render(
+      <AnnouncingView
+        room={BATCH_REVEAL_ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={OWNER_ID}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByText(/host is finishing the show/i)).toBeVisible(),
+    );
+  });
+
+  it("clicking 'Finish the show' calls postFinishShow with (roomId, userId, deps)", async () => {
+    postFinishShowMock.mockResolvedValue({ ok: true, data: { announcingUserId: ANNOUNCER_ID, displayName: "Alice" } });
+    const user = userEvent.setup();
+    render(
+      <AnnouncingView
+        room={CASCADE_ROOM}
+        contestants={[]}
+        currentUserId={OWNER_ID}
+      />,
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /finish the show/i }),
+      ).toBeVisible(),
+    );
+    await user.click(screen.getByRole("button", { name: /finish the show/i }));
+    await waitFor(() =>
+      expect(postFinishShowMock).toHaveBeenCalledWith(
+        ROOM_ID,
+        OWNER_ID,
+        expect.objectContaining({ fetch: expect.any(Function) }),
+      ),
+    );
   });
 });
