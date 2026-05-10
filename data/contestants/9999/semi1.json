@@ -1,5 +1,8 @@
-[
-  { "country": "Sweden",         "artist": "Test Artist 1", "song": "The Quick Test",          "runningOrder": 1 },
-  { "country": "Ukraine",        "artist": "Test Artist 2", "song": "Tymchasovo",              "runningOrder": 2 },
-  { "country": "Italy",          "artist": "Test Artist 3", "song": "Provando",                "runningOrder": 3 }
-]
+{
+  "broadcastStartUtc": "2026-05-16T19:00:00Z",
+  "contestants": [
+    { "country": "Sweden",         "artist": "Test Artist 1", "song": "The Quick Test",          "runningOrder": 1 },
+    { "country": "Ukraine",        "artist": "Test Artist 2", "song": "Tymchasovo",              "runningOrder": 2 },
+    { "country": "Italy",          "artist": "Test Artist 3", "song": "Provando",                "runningOrder": 3 }
+  ]
+}

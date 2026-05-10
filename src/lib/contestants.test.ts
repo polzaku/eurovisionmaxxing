@@ -64,16 +64,35 @@ describe("fetchContestants — test-fixture year", () => {
   });
 });
 
+describe("fetchContestants — wrapper-shape JSON support (R2 #238)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("loads contestants from wrapper-shape JSON file (test fixture)", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const contestants = await fetchContestants(TEST_FIXTURE_YEAR, "final");
+    expect(Array.isArray(contestants)).toBe(true);
+    expect(contestants.length).toBeGreaterThan(0);
+    expect(contestants[0]).toMatchObject({
+      country: expect.any(String),
+      artist: expect.any(String),
+      song: expect.any(String),
+      runningOrder: expect.any(Number),
+    });
+  });
+});
+
 describe("fetchContestantsMeta — test-fixture year", () => {
   beforeEach(() => {});
   afterEach(() => {
     vi.unstubAllEnvs();
   });
 
-  it("returns { broadcastStartUtc: null } for the bare-array fixture in dev", async () => {
+  it("returns broadcastStartUtc from wrapper-shape fixture in dev", async () => {
     vi.stubEnv("NODE_ENV", "development");
     const meta = await fetchContestantsMeta(9999, "final");
-    expect(meta).toEqual({ broadcastStartUtc: null });
+    expect(meta).toEqual({ broadcastStartUtc: "2026-05-16T19:00:00Z" });
   });
 
   it("throws ContestDataError for year 9999 in production", async () => {

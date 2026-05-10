@@ -1,4 +1,7 @@
-[
-  { "country": "France",         "artist": "Test Artist 4", "song": "Démo Démo",               "runningOrder": 1 },
-  { "country": "United Kingdom", "artist": "Test Artist 5", "song": "Just A Smoke Test",       "runningOrder": 2 }
-]
+{
+  "broadcastStartUtc": "2026-05-16T19:00:00Z",
+  "contestants": [
+    { "country": "France",         "artist": "Test Artist 4", "song": "Démo Démo",               "runningOrder": 1 },
+    { "country": "United Kingdom", "artist": "Test Artist 5", "song": "Just A Smoke Test",       "runningOrder": 2 }
+  ]
+}

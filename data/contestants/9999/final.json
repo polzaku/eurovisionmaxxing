@@ -1,7 +1,10 @@
-[
-  { "country": "Sweden",         "artist": "Test Artist 1", "song": "The Quick Test",          "runningOrder": 1 },
-  { "country": "Ukraine",        "artist": "Test Artist 2", "song": "Tymchasovo",              "runningOrder": 2 },
-  { "country": "Italy",          "artist": "Test Artist 3", "song": "Provando",                "runningOrder": 3 },
-  { "country": "France",         "artist": "Test Artist 4", "song": "Démo Démo",               "runningOrder": 4 },
-  { "country": "United Kingdom", "artist": "Test Artist 5", "song": "Just A Smoke Test",       "runningOrder": 5 }
-]
+{
+  "broadcastStartUtc": "2026-05-16T19:00:00Z",
+  "contestants": [
+    { "country": "Sweden",         "artist": "Test Artist 1", "song": "The Quick Test",          "runningOrder": 1 },
+    { "country": "Ukraine",        "artist": "Test Artist 2", "song": "Tymchasovo",              "runningOrder": 2 },
+    { "country": "Italy",          "artist": "Test Artist 3", "song": "Provando",                "runningOrder": 3 },
+    { "country": "France",         "artist": "Test Artist 4", "song": "Démo Démo",               "runningOrder": 4 },
+    { "country": "United Kingdom", "artist": "Test Artist 5", "song": "Just A Smoke Test",       "runningOrder": 5 }
+  ]
+}
