@@ -303,6 +303,14 @@
       "dark": ""
     }
   },
+  "roster": {
+    "reshuffle": {
+      "idleCta": "",
+      "busyCta": "",
+      "errorInProgress": "",
+      "errorGeneric": ""
+    }
+  },
   "scoring": {
     "title": "",
     "subtitle": ""
