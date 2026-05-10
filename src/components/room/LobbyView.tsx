@@ -11,6 +11,8 @@ import RefreshContestantsButton, {
   type RefreshDiff,
 } from "@/components/room/RefreshContestantsButton";
 import { VOTING_TEMPLATES } from "@/lib/templates";
+import type { Contestant } from "@/types";
+import ContestantPrimerCarousel from "@/components/room/ContestantPrimerCarousel";
 
 const PREDEFINED_TEMPLATES = VOTING_TEMPLATES.filter((t) => t.id !== "custom");
 
@@ -84,6 +86,9 @@ interface LobbyViewProps {
    * timestamp, the countdown ticks down to that target.
    */
   broadcastStartUtc?: string | null;
+  /** SPEC §6.6.3 — surfaced via the contestant primer carousel.
+   * Empty array suppresses the carousel section. */
+  contestants: Contestant[];
 }
 
 function useCopiedFlag(): [boolean, () => void] {
@@ -114,6 +119,7 @@ export default function LobbyView({
   roomId,
   currentUserId,
   broadcastStartUtc,
+  contestants,
 }: LobbyViewProps) {
   const [pinCopied, markPinCopied] = useCopiedFlag();
   const [linkCopied, markLinkCopied] = useCopiedFlag();
@@ -386,6 +392,14 @@ export default function LobbyView({
               );
             })}
           </div>
+        </section>
+
+        <section className="space-y-3">
+          <ContestantPrimerCarousel
+            contestants={contestants}
+            categories={categories}
+            roomId={roomId}
+          />
         </section>
 
         <section className="space-y-3">

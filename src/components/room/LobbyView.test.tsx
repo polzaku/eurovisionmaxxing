@@ -42,6 +42,7 @@ vi.mock("@/components/ui/Avatar", () => ({
   ),
 }));
 
+import type { Contestant } from "@/types";
 import LobbyView, {
   type LobbyMember,
   type LobbyCategory,
@@ -83,6 +84,7 @@ interface RenderOpts {
   currentUserId?: string;
   presenceUserIds?: Set<string>;
   broadcastStartUtc?: string | null;
+  contestants?: Contestant[];
 }
 
 function renderLobby(opts: RenderOpts = {}) {
@@ -109,6 +111,7 @@ function renderLobby(opts: RenderOpts = {}) {
       roomId={opts.roomId ?? "r-1"}
       currentUserId={opts.currentUserId ?? ALICE.userId}
       broadcastStartUtc={opts.broadcastStartUtc}
+      contestants={opts.contestants ?? []}
     />
   );
   return { ...render(ui), onStartVoting, onCopyPin, onCopyLink };
@@ -468,5 +471,30 @@ describe("<LobbyView> — presence indicators (R2 #239)", () => {
       presenceUserIds: new Set(),
     });
     expect(screen.getByText("★")).toBeInTheDocument();
+  });
+});
+
+describe("<LobbyView> — primer carousel section (R2 #240)", () => {
+  it("renders the contestant primer carousel when contestants array is non-empty", () => {
+    const fixture: Contestant[] = [
+      {
+        id: "9999-se",
+        country: "Sweden",
+        countryCode: "se",
+        flagEmoji: "🇸🇪",
+        artist: "Felicia",
+        song: "My System",
+        runningOrder: 1,
+        event: "final",
+        year: 9999,
+      },
+    ];
+    renderLobby({ contestants: fixture });
+    expect(screen.getByTestId("contestant-primer-carousel")).toBeInTheDocument();
+  });
+
+  it("hides the carousel section when contestants array is empty", () => {
+    renderLobby({ contestants: [] });
+    expect(screen.queryByTestId("contestant-primer-carousel")).toBeNull();
   });
 });

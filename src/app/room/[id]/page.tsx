@@ -602,6 +602,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         roomId={roomId}
         currentUserId={session?.userId ?? ""}
         broadcastStartUtc={phase.broadcastStartUtc}
+        contestants={phase.contestants}
       />
     );
   }
