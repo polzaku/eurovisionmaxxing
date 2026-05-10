@@ -779,6 +779,7 @@ describe("cascade-skip on rotation (SPEC §10.2.1)", () => {
       },
       membershipSelects: [
         { data: { last_seen_at: STALE }, error: null }, // U2 absent
+        { data: { last_seen_at: new Date(NOW.getTime() - 5_000).toISOString() }, error: null }, // U3 present → post-loop fires applySingleSkip for U2
       ],
       // The first applySingleSkip (for U2) hits a results UPDATE error.
       resultsUpdateError: { message: "boom" },
@@ -806,6 +807,57 @@ describe("cascade-skip on rotation (SPEC §10.2.1)", () => {
       (b: any) => b.event.type === "announce_skip",
     );
     expect(skipBroadcasts).toHaveLength(0);
+  });
+
+  it("does NOT call applySingleSkip when cascade exhausts (preserves pending for batch reveal)", async () => {
+    const STALE = new Date(NOW.getTime() - 60_000).toISOString();
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          id: VALID_ROOM_ID,
+          status: "announcing",
+          owner_user_id: OWNER_ID,
+          announcement_order: [U1, U2, U3],
+          announcing_user_id: U1,
+          current_announce_idx: 0,
+          delegate_user_id: null,
+          announce_skipped_user_ids: [],
+        },
+        error: null,
+      },
+      announcerResults: {
+        data: [{ contestant_id: "c1", points_awarded: 12, rank: 1, announced: false }],
+        error: null,
+      },
+      membershipSelects: [
+        { data: { last_seen_at: STALE }, error: null }, // U2 absent
+        { data: { last_seen_at: STALE }, error: null }, // U3 absent → exhausts
+      ],
+      usersByIdSelect: {
+        data: [{ id: U2, display_name: "Bob" }, { id: U3, display_name: "Carol" }],
+        error: null,
+      },
+    });
+
+    const result = await advanceAnnouncement(
+      { roomId: VALID_ROOM_ID, userId: OWNER_ID },
+      makeDeps(mock, { now: () => NOW }),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.cascadeExhausted).toBe(true);
+    expect(result.cascadedSkippedUserIds).toEqual([U2, U3]);
+    // CRITICAL: applySingleSkip is NOT called on exhaust path.
+    expect(mock.resultsUpdateCalls).toHaveLength(1); // only the main reveal mark
+    // The main reveal mark is for the current contestant, not a cascade skip.
+    // resultsUpdateCalls[0] is the initial results UPDATE (announced=true for c1).
+    // No cascade results updates should have been made.
+    // The key check: resultsUpdateCalls should have exactly 1 entry (the main mark).
+
+    const lastRoomUpdate = mock.roomUpdateCalls.at(-1);
+    expect(lastRoomUpdate?.patch.announcing_user_id).toBeNull();
+    expect(lastRoomUpdate?.patch.announce_skipped_user_ids).toEqual([U2, U3]);
   });
 
   it("Case 4: golden path — no skip needed, U2 is fresh", async () => {

@@ -257,18 +257,6 @@ export async function advanceAnnouncement(
         const absent = isAbsent(lastSeenAt as string | null, now);
 
         if (absent) {
-          // Mark their results as announced. If the DB write fails
-          // mid-cascade, abort cleanly — do NOT push to the in-memory
-          // cascade list and do NOT proceed to the room UPDATE, since
-          // those would lock in a partial-state corruption (room claims
-          // they were skipped but their results.announced flags didn't flip).
-          const skipResult = await applySingleSkip(
-            { roomId, skippedUserId: candidateId },
-            { supabase: deps.supabase },
-          );
-          if (!skipResult.ok) {
-            return fail(skipResult.error.code, skipResult.error.message, 500);
-          }
           cascadedSkippedUserIds.push(candidateId);
           probePos += 1;
         } else {
@@ -280,12 +268,22 @@ export async function advanceAnnouncement(
         }
       }
 
-      if (!foundPresent) {
-        // All candidates exhausted — cascade exhausted.
+      if (foundPresent) {
+        // SPEC §10.2.1 line 967 — silent-mark only when show continues.
+        for (const skippedUserId of cascadedSkippedUserIds) {
+          const skipResult = await applySingleSkip(
+            { roomId, skippedUserId },
+            { supabase: deps.supabase },
+          );
+          if (!skipResult.ok) {
+            return fail(skipResult.error.code, skipResult.error.message, 500);
+          }
+        }
+      } else {
         cascadeExhausted = true;
         nextAnnouncingUserId = null;
         nextIdx = 0;
-        // Do NOT set finishedShow — status stays 'announcing'.
+        // SPEC §10.2.1 line 981 — keep pending for batch reveal. No silent-mark.
       }
     } else {
       nextAnnouncingUserId = null;
