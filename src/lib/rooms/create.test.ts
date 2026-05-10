@@ -14,6 +14,7 @@ const validInput = {
   event: "final" as const,
   categories: validCategories,
   announcementMode: "instant" as const,
+  announcementStyle: "full" as const,
   allowNowPerforming: false,
   userId: "user-owner",
 };
@@ -116,6 +117,7 @@ function rowFor(overrides: Record<string, unknown> = {}) {
       owner_user_id: "user-owner",
       status: "lobby",
       announcement_mode: "instant",
+      announcement_style: "full",
       announcement_order: null,
       announcing_user_id: null,
       current_announce_idx: 0,
@@ -148,6 +150,7 @@ describe("createRoom — happy path", () => {
         ownerUserId: "user-owner",
         status: "lobby",
         announcementMode: "instant",
+        announcementStyle: "full",
         announcementOrder: null,
         announcingUserId: null,
         currentAnnounceIdx: 0,
@@ -449,6 +452,58 @@ describe("createRoom — categories validation", () => {
       makeDeps(mock)
     );
     expect(result).toMatchObject({ ok: false, error: { code: "INVALID_CATEGORY" } });
+  });
+});
+
+// ─── announcementStyle validation ────────────────────────────────────────────
+
+describe("createRoom — announcementStyle validation", () => {
+  it("defaults to 'full' when announcementStyle is undefined; INSERT and returned room both have 'full'", async () => {
+    const mock = makeSupabaseMock({ roomsInserts: [rowFor({ announcement_style: "full" })] });
+    const deps = makeDeps(mock);
+
+    const result = await createRoom({ ...validInput, announcementStyle: undefined }, deps);
+
+    expect(result).toMatchObject({ ok: true, room: { announcementStyle: "full" } });
+    expect(mock.roomsInsertRows[0]).toMatchObject({ announcement_style: "full" });
+  });
+
+  it("passes through 'short' when announcementStyle is 'short'", async () => {
+    const mock = makeSupabaseMock({ roomsInserts: [rowFor({ announcement_style: "short" })] });
+    const deps = makeDeps(mock);
+
+    const result = await createRoom({ ...validInput, announcementStyle: "short" }, deps);
+
+    expect(result).toMatchObject({ ok: true, room: { announcementStyle: "short" } });
+    expect(mock.roomsInsertRows[0]).toMatchObject({ announcement_style: "short" });
+  });
+
+  it("rejects an unknown announcementStyle string as INVALID_ANNOUNCEMENT_STYLE 400", async () => {
+    const mock = makeSupabaseMock();
+    const result = await createRoom(
+      { ...validInput, announcementStyle: "invalid" },
+      makeDeps(mock)
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 400,
+      error: { code: "INVALID_ANNOUNCEMENT_STYLE", field: "announcementStyle" },
+    });
+    expect(mock.roomsInsertSpy).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-string announcementStyle (number) as INVALID_ANNOUNCEMENT_STYLE 400", async () => {
+    const mock = makeSupabaseMock();
+    const result = await createRoom(
+      { ...validInput, announcementStyle: 123 },
+      makeDeps(mock)
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 400,
+      error: { code: "INVALID_ANNOUNCEMENT_STYLE", field: "announcementStyle" },
+    });
+    expect(mock.roomsInsertSpy).not.toHaveBeenCalled();
   });
 });
 

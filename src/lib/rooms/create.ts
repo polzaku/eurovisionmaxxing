@@ -11,6 +11,7 @@ export interface CreateRoomInput {
   event: unknown;
   categories: unknown;
   announcementMode: unknown;
+  announcementStyle: unknown;
   allowNowPerforming: unknown;
   userId: unknown;
 }
@@ -39,6 +40,7 @@ export type CreateRoomResult = CreateRoomSuccess | CreateRoomFailure;
 
 const EVENT_VALUES = ["semi1", "semi2", "final"] as const;
 const MODE_VALUES = ["live", "instant"] as const;
+const STYLE_VALUES = ["full", "short"] as const;
 const MIN_YEAR = 2000;
 
 type RoomRow = Database["public"]["Tables"]["rooms"]["Row"];
@@ -56,6 +58,7 @@ interface ValidInput {
   year: number;
   event: (typeof EVENT_VALUES)[number];
   announcementMode: (typeof MODE_VALUES)[number];
+  announcementStyle: (typeof STYLE_VALUES)[number];
   allowNowPerforming: boolean;
   userId: string;
   categories: VotingCategory[];
@@ -137,6 +140,26 @@ function validateInput(
     };
   }
 
+  let announcementStyle: (typeof STYLE_VALUES)[number];
+  if (input.announcementStyle === undefined) {
+    announcementStyle = "full";
+  } else if (
+    typeof input.announcementStyle === "string" &&
+    (STYLE_VALUES as readonly string[]).includes(input.announcementStyle)
+  ) {
+    announcementStyle = input.announcementStyle as (typeof STYLE_VALUES)[number];
+  } else {
+    return {
+      ok: false,
+      failure: fail(
+        "INVALID_ANNOUNCEMENT_STYLE",
+        "announcementStyle must be one of full, short.",
+        400,
+        "announcementStyle"
+      ),
+    };
+  }
+
   const catResult = validateCategories(input.categories);
   if (!catResult.ok) {
     return {
@@ -157,6 +180,7 @@ function validateInput(
       year: input.year as number,
       event: input.event as (typeof EVENT_VALUES)[number],
       announcementMode: input.announcementMode as (typeof MODE_VALUES)[number],
+      announcementStyle,
       allowNowPerforming: input.allowNowPerforming,
       userId: input.userId,
       categories: normalized,
@@ -194,6 +218,7 @@ async function insertRoomWithPin(
         categories: valid.categories,
         owner_user_id: valid.userId,
         announcement_mode: valid.announcementMode,
+        announcement_style: valid.announcementStyle,
         allow_now_performing: valid.allowNowPerforming,
       })
       .select()

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
-import type { Room } from "@/types";
+import type { Room, AnnouncementStyle } from "@/types";
 import type { ApiErrorCode } from "@/lib/api-errors";
 import { mapRoom, type RoomEventPayload } from "@/lib/rooms/shared";
 
@@ -10,6 +10,8 @@ export interface UpdateAnnouncementModeInput {
   roomId: unknown;
   userId: unknown;
   mode: unknown;
+  /** Optional style patch (SPEC §10.2.2). Mode stays required; style is optional. */
+  style?: unknown;
 }
 
 export interface UpdateAnnouncementModeDeps {
@@ -58,6 +60,9 @@ function fail(
  * is still in the lobby (no announcement state machine running yet).
  * Year + event remain immutable; categories edits are deferred to V1.1.
  *
+ * Now also accepts an optional `style` patch (SPEC §10.2.2). Mode stays
+ * required for backwards compatibility; style is purely additive.
+ *
  * No new RoomEvent variant — clients react via the existing
  * `status_changed` refetch path on next load. (Mode change in lobby is
  * a low-frequency event; broadcasting status_changed forces a clean
@@ -84,6 +89,18 @@ export async function updateAnnouncementMode(
       "mode must be 'live' or 'instant'.",
       400,
       "mode",
+    );
+  }
+
+  if (
+    input.style !== undefined &&
+    (typeof input.style !== "string" || (input.style !== "full" && input.style !== "short"))
+  ) {
+    return fail(
+      "INVALID_ANNOUNCEMENT_STYLE",
+      "announcementStyle must be one of full, short.",
+      400,
+      "style",
     );
   }
 
@@ -122,9 +139,16 @@ export async function updateAnnouncementMode(
     );
   }
 
+  const updatePatch: { announcement_mode: AnnouncementMode; announcement_style?: AnnouncementStyle } = {
+    announcement_mode: mode,
+  };
+  if (input.style !== undefined) {
+    updatePatch.announcement_style = input.style as AnnouncementStyle;
+  }
+
   const updateResult = await deps.supabase
     .from("rooms")
-    .update({ announcement_mode: mode })
+    .update(updatePatch)
     .eq("id", roomId)
     .select()
     .single();

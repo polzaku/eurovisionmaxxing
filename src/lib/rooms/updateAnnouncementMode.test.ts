@@ -24,6 +24,7 @@ const updatedRow = {
   owner_user_id: VALID_USER_ID,
   status: "lobby",
   announcement_mode: "instant",
+  announcement_style: "full",
   announcement_order: null,
   announcing_user_id: null,
   current_announce_idx: 0,
@@ -203,5 +204,51 @@ describe("updateAnnouncementMode", () => {
       expect(result.error.code).toBe("INTERNAL_ERROR");
       expect(result.status).toBe(500);
     }
+  });
+
+  // ─── announcement_style patch ─────────────────────────────────────────────
+
+  it("no style provided: UPDATE patch contains only announcement_mode", async () => {
+    const mock = makeSupabaseMock();
+    await updateAnnouncementMode(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID, mode: "live" },
+      makeDeps(mock),
+    );
+    expect(mock.updatePatches).toEqual([{ announcement_mode: "live" }]);
+  });
+
+  it("style: 'short' provided: UPDATE patch contains both announcement_mode and announcement_style", async () => {
+    const mock = makeSupabaseMock();
+    await updateAnnouncementMode(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID, mode: "live", style: "short" },
+      makeDeps(mock),
+    );
+    expect(mock.updatePatches).toEqual([
+      { announcement_mode: "live", announcement_style: "short" },
+    ]);
+  });
+
+  it("rejects invalid style string with INVALID_ANNOUNCEMENT_STYLE 400, field 'style'", async () => {
+    const mock = makeSupabaseMock();
+    const result = await updateAnnouncementMode(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID, mode: "live", style: "invalid" },
+      makeDeps(mock),
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 400,
+      error: { code: "INVALID_ANNOUNCEMENT_STYLE", field: "style" },
+    });
+  });
+
+  it("accepts mode: 'instant', style: 'full' — both written to UPDATE patch", async () => {
+    const mock = makeSupabaseMock();
+    await updateAnnouncementMode(
+      { roomId: VALID_ROOM_ID, userId: VALID_USER_ID, mode: "instant", style: "full" },
+      makeDeps(mock),
+    );
+    expect(mock.updatePatches).toEqual([
+      { announcement_mode: "instant", announcement_style: "full" },
+    ]);
   });
 });
