@@ -15,7 +15,8 @@
     "pre-push": "npm run type-check && npm run lint && npm run test",
     "prepare": "git config core.hooksPath .githooks || true",
     "seed:room": "tsx --env-file=.env.local scripts/seed-room.ts",
-    "seed:cleanup": "tsx --env-file=.env.local scripts/cleanup-seed-rooms.ts"
+    "seed:cleanup": "tsx --env-file=.env.local scripts/cleanup-seed-rooms.ts",
+    "fetch-contestants": "tsx scripts/fetch-contestants.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.0",
