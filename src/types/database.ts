@@ -49,6 +49,7 @@ export interface Database {
           announce_skipped_user_ids: string[];
           now_performing_id: string | null;
           allow_now_performing: boolean;
+          batch_reveal_mode: boolean;
           voting_ends_at: string | null;
           voting_ended_at: string | null;
           created_at: string;
@@ -69,6 +70,7 @@ export interface Database {
           announce_skipped_user_ids?: string[];
           now_performing_id?: string | null;
           allow_now_performing?: boolean;
+          batch_reveal_mode?: boolean;
           voting_ends_at?: string | null;
           voting_ended_at?: string | null;
         };
@@ -86,6 +88,7 @@ export interface Database {
           announce_skipped_user_ids?: string[];
           now_performing_id?: string | null;
           allow_now_performing?: boolean;
+          batch_reveal_mode?: boolean;
           voting_ends_at?: string | null;
           voting_ended_at?: string | null;
         };

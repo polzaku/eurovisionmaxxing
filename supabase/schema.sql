@@ -37,6 +37,7 @@ CREATE TABLE rooms (
   announce_skipped_user_ids UUID[] NOT NULL DEFAULT '{}', -- §10.2.1: announcers the admin has manually skipped (absent at their turn)
   now_performing_id     VARCHAR(20),            -- contestant id currently performing
   allow_now_performing  BOOLEAN DEFAULT FALSE,
+  batch_reveal_mode     BOOLEAN NOT NULL DEFAULT FALSE,
   voting_ends_at        TIMESTAMPTZ,            -- §6.3.1: deadline for the 5-s undo window; set on voting → voting_ending; cleared on undo
   voting_ended_at       TIMESTAMPTZ,            -- §6.3.1: audit timestamp written when voting_ending → scoring fires
   created_at            TIMESTAMPTZ DEFAULT NOW()
@@ -45,6 +46,7 @@ CREATE TABLE rooms (
 -- Existing-database migrations (run via Supabase SQL Editor on rooms with existing data):
 --   ALTER TABLE rooms ADD COLUMN IF NOT EXISTS delegate_user_id UUID REFERENCES users(id);
 --   ALTER TABLE rooms ADD COLUMN IF NOT EXISTS announce_skipped_user_ids UUID[] NOT NULL DEFAULT '{}';
+--   ALTER TABLE rooms ADD COLUMN IF NOT EXISTS batch_reveal_mode BOOLEAN NOT NULL DEFAULT FALSE;
 --   ALTER TABLE room_memberships ADD COLUMN IF NOT EXISTS scores_locked_at TIMESTAMPTZ;
 --   ALTER TABLE room_memberships ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
 --

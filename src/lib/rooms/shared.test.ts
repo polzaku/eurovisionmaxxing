@@ -22,6 +22,7 @@ describe("mapRoom", () => {
       announce_skipped_user_ids: [],
       now_performing_id: null,
       allow_now_performing: false,
+      batch_reveal_mode: false,
       voting_ends_at: null,
       voting_ended_at: null,
       created_at: "2026-04-19T12:00:00Z",
@@ -40,6 +41,7 @@ describe("mapRoom", () => {
       currentAnnounceIdx: 0,
       nowPerformingId: null,
       allowNowPerforming: false,
+      batchRevealMode: false,
       votingEndsAt: null,
       votingEndedAt: null,
       createdAt: "2026-04-19T12:00:00Z",
@@ -63,6 +65,7 @@ describe("mapRoom", () => {
       announce_skipped_user_ids: [],
       now_performing_id: "2025-ua",
       allow_now_performing: true,
+      batch_reveal_mode: false,
       voting_ends_at: null,
       voting_ended_at: null,
       created_at: "2026-04-19T12:00:00Z",
@@ -73,5 +76,6 @@ describe("mapRoom", () => {
     expect(mapped.currentAnnounceIdx).toBe(3);
     expect(mapped.nowPerformingId).toBe("2025-ua");
     expect(mapped.allowNowPerforming).toBe(true);
+    expect(mapped.batchRevealMode).toBe(false);
   });
 });

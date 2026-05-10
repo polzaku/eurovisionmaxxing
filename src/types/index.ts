@@ -59,6 +59,7 @@ export interface Room {
   currentAnnounceIdx: number;
   nowPerformingId: string | null; // contestant id currently performing
   allowNowPerforming: boolean;
+  batchRevealMode: boolean;
   votingEndsAt: string | null;
   votingEndedAt: string | null;
   createdAt: string;
@@ -154,6 +155,8 @@ export type RoomEvent =
       announcementOrder: string[];
       announcingUserId: string;
     }
+  /** R4 #2 — admin entered batch-reveal mode after cascade exhausts. */
+  | { type: "batch_reveal_started"; announcingUserId: string; displayName: string }
   | { type: "announce_turn"; userId: string }
   | { type: "score_update"; contestantId: string; newTotal: number; newRank: number }
   | {
