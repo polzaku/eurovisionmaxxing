@@ -163,6 +163,39 @@ test.describe("R4 advance-time presence cascade (SPEC §10.2.1)", () => {
     expect(skippedIds.length).toBe(2);
   });
 
+  test("/present renders 'Awaiting an admin to continue…' on cascade-exhausted room", async ({
+    page,
+  }, testInfo) => {
+    let seed: SeedOutput;
+    try {
+      seed = seedRoom("announcing-cascade-all-absent");
+    } catch (err) {
+      testInfo.skip(
+        true,
+        `seed-room failed — likely missing Supabase env. ${String(err)}`,
+      );
+      return;
+    }
+
+    // No sign-in needed — present screen has no owner concept.
+    await page.goto(`/room/${seed.roomId}/present`);
+
+    // Polling cycle on /present picks up the cascade-exhaust state from
+    // /api/results within ~2s. The new R4 #3 render branch shows
+    // "Awaiting an admin to continue…" centered.
+    await expect(
+      page.getByText("Awaiting an admin to continue"),
+    ).toBeVisible({ timeout: 10_000 });
+
+    // The waiting screen also has the data attribute the test can
+    // assert on directly — belt-and-braces.
+    await expect(page.getByTestId("present-screen")).toHaveAttribute(
+      "data-cascade-exhausted",
+      "true",
+      { timeout: 5_000 },
+    );
+  });
+
   test("Finish the show: cascade-exhausted state → admin taps Finish → drives batch-reveals to done", async ({
     page,
   }, testInfo) => {
