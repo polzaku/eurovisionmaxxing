@@ -289,6 +289,13 @@
     "done": {
       "title": "Final results"
     },
+    "cascadeExhausted": {
+      "title": "Awaiting an admin to continue…",
+      "subtitle": "All announcers are away. The host will resume when they're back."
+    },
+    "batchReveal": {
+      "chip": "Host is finishing the show"
+    },
     "fullscreen": {
       "enter": "Enter fullscreen",
       "aria": "Fullscreen prompt",

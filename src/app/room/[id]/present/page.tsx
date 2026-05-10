@@ -11,6 +11,7 @@ import PresentScreen, {
 import FullscreenPrompt from "@/components/present/FullscreenPrompt";
 import type { Contestant } from "@/types";
 import type { LeaderboardEntry } from "@/lib/results/formatRoomSummary";
+import type { SkipEvent } from "@/components/room/SkipBannerQueue";
 
 interface RoomShape {
   id: string;
@@ -19,6 +20,7 @@ interface RoomShape {
   ownerUserId: string;
   announcementMode?: string;
   announcingUserId?: string | null;
+  batchRevealMode: boolean;
 }
 
 interface MembershipShape {
@@ -67,6 +69,7 @@ export default function PresentPage({ params }: { params: { id: string } }) {
   const roomId = params.id;
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
   const [results, setResults] = useState<ResultsShape | null>(null);
+  const [skipEvents, setSkipEvents] = useState<SkipEvent[]>([]);
 
   // Force-dark — restore prior theme on unmount so the user's theme
   // toggle pick is honoured back on /room/{id} or /results/{id}.
@@ -143,6 +146,18 @@ export default function PresentPage({ params }: { params: { id: string } }) {
   useRoomRealtime(roomId, (event) => {
     if (event.type === "status_changed" || event.type === "voting_ending") {
       void load();
+    } else if (event.type === "batch_reveal_started") {
+      void load();
+    } else if (event.type === "announce_skip") {
+      setSkipEvents((prev) => [
+        ...prev,
+        {
+          id: `${event.userId}-${Date.now()}`,
+          userId: event.userId,
+          displayName: event.displayName,
+          at: Date.now(),
+        },
+      ]);
     }
   });
 
@@ -184,6 +199,8 @@ export default function PresentPage({ params }: { params: { id: string } }) {
         }
         announcerPosition={results?.announcement?.announcerPosition}
         announcerCount={results?.announcement?.announcerCount}
+        batchRevealMode={phase.room.batchRevealMode}
+        skipEvents={skipEvents}
       />
       <FullscreenPrompt />
     </>

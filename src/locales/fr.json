@@ -1,1 +1,463 @@
-{}
+{
+  "common": {
+    "app": {
+      "name": "",
+      "tagline": "",
+      "description": "",
+      "metaDescription": "",
+      "featuresLine": ""
+    },
+    "cta": {
+      "startRoom": "",
+      "joinRoom": ""
+    }
+  },
+  "onboarding": {
+    "metaTitle": "",
+    "displayName": {
+      "label": "",
+      "placeholder": "",
+      "hint": ""
+    },
+    "avatar": {
+      "title": "",
+      "tapHint": "",
+      "shuffleAria": "",
+      "shuffleLabel": "",
+      "changeAria": ""
+    },
+    "submit": {
+      "idle": "",
+      "busy": "",
+      "error": ""
+    }
+  },
+  "templates": {
+    "classic": {
+      "name": "",
+      "description": ""
+    },
+    "spectacle": {
+      "name": "",
+      "description": ""
+    },
+    "bangerTest": {
+      "name": "",
+      "description": ""
+    },
+    "custom": {
+      "name": "",
+      "description": ""
+    },
+    "infoButtonAria": ""
+  },
+  "announcementMode": {
+    "live": {
+      "tagline": "",
+      "long": ""
+    },
+    "instant": {
+      "tagline": "",
+      "long": ""
+    },
+    "infoButtonAria": ""
+  },
+  "categories": {
+    "vocals": {
+      "name": "",
+      "hint": ""
+    },
+    "music": {
+      "name": "",
+      "hint": ""
+    },
+    "outfit": {
+      "name": "",
+      "hint": ""
+    },
+    "stagePerformance": {
+      "name": "",
+      "hint": ""
+    },
+    "vibes": {
+      "name": "",
+      "hint": ""
+    },
+    "drama": {
+      "name": "",
+      "hint": ""
+    },
+    "costumeCommitment": {
+      "name": "",
+      "hint": ""
+    },
+    "stagingChaos": {
+      "name": "",
+      "hint": ""
+    },
+    "gayPanicLevel": {
+      "name": "",
+      "hint": ""
+    },
+    "quotability": {
+      "name": "",
+      "hint": ""
+    },
+    "catchiness": {
+      "name": "",
+      "hint": ""
+    },
+    "danceability": {
+      "name": "",
+      "hint": ""
+    },
+    "production": {
+      "name": "",
+      "hint": ""
+    },
+    "lyrics": {
+      "name": "",
+      "hint": ""
+    },
+    "originality": {
+      "name": "",
+      "hint": ""
+    }
+  },
+  "voting": {
+    "scoredChip": {
+      "partial": "",
+      "all": ""
+    },
+    "missed": {
+      "button": "",
+      "buttonAria": "",
+      "cardLabel": "",
+      "estimatedLabel": "",
+      "perCategoryLabel": "",
+      "rescoreButton": "",
+      "toast": {
+        "body": "",
+        "undo": "",
+        "dismissAria": ""
+      }
+    },
+    "hotTake": {
+      "addPill": "",
+      "addPillAria": "",
+      "fieldAria": "",
+      "placeholder": "",
+      "counter": ""
+    },
+    "status": {
+      "scored": "",
+      "unscored": ""
+    },
+    "scale": {
+      "1": "",
+      "5": "",
+      "10": "",
+      "openAria": "",
+      "closeAria": "",
+      "title": ""
+    },
+    "hint": {
+      "toggleAria": {
+        "collapsed": "",
+        "expanded": ""
+      },
+      "onboarding": ""
+    },
+    "jumpTo": {
+      "footerButton": "",
+      "footerButtonAria": "",
+      "title": "",
+      "closeAria": "",
+      "currentSuffix": "",
+      "status": {
+        "unscored": "",
+        "scored": "",
+        "missed": ""
+      }
+    },
+    "endOfVoting": {
+      "allScored": "",
+      "allScoredFallback": "",
+      "missedSome": "",
+      "unscoredCount": "",
+      "roomMomentum": "",
+      "rescoreCta": "",
+      "jumpToCta": "",
+      "host": {
+        "allDone": "",
+        "mostDone": "",
+        "selfDoneOnly": "",
+        "selfDoneOnlyNoCount": "",
+        "endVotingCta": ""
+      }
+    },
+    "endVoting": {
+      "button": "",
+      "modal": {
+        "title": "",
+        "body": "",
+        "confirm": "",
+        "cancel": ""
+      },
+      "countdown": {
+        "body": "",
+        "finalising": "",
+        "undo": ""
+      },
+      "guest": {
+        "body": ""
+      }
+    }
+  },
+  "errors": {
+    "INVALID_BODY": "",
+    "INVALID_DISPLAY_NAME": "",
+    "INVALID_AVATAR_SEED": "",
+    "INVALID_ROOM_ID": "",
+    "ROOM_NOT_FOUND": "",
+    "USER_NOT_FOUND": "",
+    "INVALID_TOKEN": "",
+    "INTERNAL_ERROR": ""
+  },
+  "announce": {
+    "skipBanner": {
+      "single": "",
+      "coalesced": "",
+      "coalescedTrailing": ""
+    },
+    "finishTheShow": {
+      "ownerCta": "",
+      "ownerSubtitle": "",
+      "guestWaiting": "",
+      "batchRevealChip": ""
+    }
+  },
+  "results": {
+    "title": "",
+    "placeholders": {
+      "lobby": "",
+      "lobbyCountdown": "",
+      "voting": "",
+      "votingCta": "",
+      "scoring": "",
+      "roomNotFound": ""
+    },
+    "announcing": {
+      "banner": ""
+    },
+    "headings": {
+      "leaderboard": "",
+      "breakdowns": "",
+      "hotTakes": "",
+      "awards": "",
+      "categoryAwards": "",
+      "personalityAwards": ""
+    },
+    "leaderboard": {
+      "points": "",
+      "noPoints": "",
+      "drillDownToggleAria": "",
+      "drillDownHeading": "",
+      "drillDownEmpty": "",
+      "drillDownGive": ""
+    },
+    "hotTake": {
+      "edited": "",
+      "deleteAria": "",
+      "deleteConfirmTitle": "",
+      "deleteConfirmBody": "",
+      "deleteConfirmAction": "",
+      "deleteSubmitting": "",
+      "deleteCancel": "",
+      "deleteError": ""
+    },
+    "breakdown": {
+      "gave": ""
+    },
+    "copySummary": {
+      "idle": "",
+      "done": ""
+    },
+    "summary": {
+      "topLine": "",
+      "fullResults": ""
+    },
+    "eventTitle": {
+      "final": "",
+      "semi1": "",
+      "semi2": ""
+    }
+  },
+  "theme": {
+    "system": "",
+    "light": "",
+    "dark": "",
+    "toggleAria": {
+      "system": "",
+      "light": "",
+      "dark": ""
+    }
+  },
+  "scoring": {
+    "title": "",
+    "subtitle": ""
+  },
+  "room": {
+    "catchingUp": ""
+  },
+  "present": {
+    "lobby": {
+      "eyebrow": "",
+      "callToJoin": "",
+      "memberCount": ""
+    },
+    "voting": {
+      "eyebrow": "",
+      "title": ""
+    },
+    "votingEnding": {
+      "title": ""
+    },
+    "announcing": {
+      "title": "",
+      "announcer": "",
+      "position": "",
+      "upNext": "",
+      "upNextDetail": "",
+      "queueExhausted": ""
+    },
+    "done": {
+      "title": ""
+    },
+    "cascadeExhausted": {
+      "title": "",
+      "subtitle": ""
+    },
+    "batchReveal": {
+      "chip": ""
+    },
+    "fullscreen": {
+      "enter": "",
+      "aria": "",
+      "dismissAria": ""
+    }
+  },
+  "lobby": {
+    "refreshContestants": {
+      "button": "",
+      "busy": "",
+      "upToDate": "",
+      "summary": "",
+      "error": ""
+    }
+  },
+  "instantAnnounce": {
+    "lede": "",
+    "ownResults": {
+      "title": "",
+      "subtitle": "",
+      "empty": "",
+      "revealTwelveButton": "",
+      "revealTwelveSkip": "",
+      "twelveLabel": ""
+    },
+    "ready": {
+      "button": "",
+      "subtitle": "",
+      "busy": "",
+      "waiting": ""
+    },
+    "admin": {
+      "readyCount": "",
+      "hostHeading": "",
+      "hostSubtitle": "",
+      "revealAll": "",
+      "revealAllSublineReady": "",
+      "revealAllSublineWaiting": "",
+      "revealAnyway": "",
+      "revealAnywaySublineHalf": "",
+      "revealAnywaySublineCountdown": "",
+      "revealAnywaySublineDisabled": "",
+      "override": "",
+      "overrideSubline": "",
+      "overrideConfirmTitle": "",
+      "overrideConfirmBody": "",
+      "overrideConfirmCancel": "",
+      "overrideConfirmGo": ""
+    },
+    "ceremony": {
+      "subtitle": "",
+      "redirectingIn": "",
+      "stayHere": "",
+      "seeFullResults": ""
+    }
+  },
+  "awards": {
+    "jointCaption": "",
+    "neighbourhoodCaption": "",
+    "explainerToggle": "",
+    "ceremony": {
+      "title": "",
+      "nextAward": "",
+      "nextAwardAria": "",
+      "advanceHint": ""
+    },
+    "endOfShow": {
+      "copyLink": "",
+      "copyLinkConfirm": "",
+      "copySummary": "",
+      "copySummaryConfirm": "",
+      "viewFullResults": "",
+      "createAnother": ""
+    },
+    "explainers": {
+      "harshest_critic": "",
+      "biggest_stan": "",
+      "hive_mind_master": "",
+      "most_contrarian": "",
+      "neighbourhood_voters": "",
+      "the_dark_horse": "",
+      "fashion_stan": "",
+      "the_enabler": ""
+    },
+    "personality": {
+      "biggest_stan": {
+        "name": "",
+        "stat": ""
+      },
+      "harshest_critic": {
+        "name": "",
+        "stat": ""
+      },
+      "most_contrarian": {
+        "name": "",
+        "stat": ""
+      },
+      "hive_mind_master": {
+        "name": "",
+        "stat": ""
+      },
+      "neighbourhood_voters": {
+        "name": "",
+        "stat": ""
+      },
+      "the_dark_horse": {
+        "name": "",
+        "stat": ""
+      },
+      "fashion_stan": {
+        "name": "",
+        "stat": ""
+      },
+      "the_enabler": {
+        "name": "",
+        "stat": ""
+      }
+    }
+  }
+}
