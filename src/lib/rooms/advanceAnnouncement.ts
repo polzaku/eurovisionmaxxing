@@ -70,7 +70,7 @@ type RoomRow = {
   batch_reveal_mode: boolean;
 };
 
-type AnnouncerResultRow = {
+export type AnnouncerResultRow = {
   contestant_id: string;
   points_awarded: number;
   rank: number;
