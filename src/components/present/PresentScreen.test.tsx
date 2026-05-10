@@ -10,6 +10,7 @@ vi.mock("next-intl", () => ({
 
 import PresentScreen from "./PresentScreen";
 import type { Contestant } from "@/types";
+import type { SkipEvent } from "@/components/room/SkipBannerQueue";
 
 function mkContestant(code: string, country: string, runningOrder: number): Contestant {
   return {
@@ -313,6 +314,63 @@ describe("PresentScreen — announcing", () => {
     );
     const card = screen.getByTestId("present-pending-reveal");
     expect(card.textContent).toContain('"country":"2026-xx"');
+  });
+});
+
+describe("PresentScreen — cascade-exhausted (R4 #3)", () => {
+  it("renders 'Awaiting an admin' title when status=announcing, no announcerDisplayName, batchRevealMode=false", () => {
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={[]}
+        batchRevealMode={false}
+      />,
+    );
+    expect(screen.getByTestId("present-screen")).toHaveAttribute("data-cascade-exhausted", "true");
+    expect(screen.getByText("present.cascadeExhausted.title")).toBeInTheDocument();
+    expect(screen.getByText("present.cascadeExhausted.subtitle")).toBeInTheDocument();
+  });
+
+  it("suppresses leaderboard rows in cascade-exhaust state", () => {
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={[{ contestantId: "2026-se", totalPoints: 12, rank: 1 }]}
+        batchRevealMode={false}
+      />,
+    );
+    expect(screen.queryByTestId("present-row-2026-se")).toBeNull();
+  });
+
+  it("renders SkipBannerQueue when skipEvents is non-empty", () => {
+    const skipEvents: SkipEvent[] = [{ id: "u1-100", userId: "u1", displayName: "Alice", at: 100 }];
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        batchRevealMode={false}
+        skipEvents={skipEvents}
+      />,
+    );
+    expect(screen.getByRole("status")).toBeInTheDocument();
+  });
+
+  it("does not render SkipBannerQueue when skipEvents is empty", () => {
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        batchRevealMode={false}
+        skipEvents={[]}
+      />,
+    );
+    expect(screen.queryByRole("status")).toBeNull();
   });
 });
 

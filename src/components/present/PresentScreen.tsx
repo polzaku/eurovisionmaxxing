@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import type { Contestant } from "@/types";
 import type { LeaderboardEntry } from "@/lib/results/formatRoomSummary";
+import SkipBannerQueue, { type SkipEvent } from "@/components/room/SkipBannerQueue";
 
 export type PresentStatus =
   | "lobby"
@@ -36,6 +37,10 @@ interface PresentScreenProps {
   announcerPosition?: number;
   /** Total number of eligible announcers in `announcement_order`. */
   announcerCount?: number;
+  /** When false and no announcer is active, renders the cascade-exhaust waiting state. */
+  batchRevealMode?: boolean;
+  /** Incoming skip events to render as a banner train via SkipBannerQueue. */
+  skipEvents?: SkipEvent[];
 }
 
 const RANK_MEDAL: Record<number, string> = {
@@ -70,11 +75,35 @@ export default function PresentScreen({
   pendingReveal,
   announcerPosition,
   announcerCount,
+  batchRevealMode,
+  skipEvents,
 }: PresentScreenProps) {
-  // TODO(R4): subscribe to `announce_skip` events here and render <SkipBannerQueue> for the TV surface.
-  // The TV-surface complement to the cascade-skip slice — landed alongside item #3 (/present "Awaiting an admin to continue…") when the present screen gains a broadcast subscriber.
   const t = useTranslations();
   const contestantById = new Map(contestants.map((c) => [c.id, c]));
+
+  const isCascadeExhausted =
+    status === "announcing" && !announcerDisplayName && batchRevealMode === false;
+
+  if (isCascadeExhausted) {
+    return (
+      <main
+        data-testid="present-screen"
+        data-status="announcing"
+        data-cascade-exhausted="true"
+        className="flex min-h-screen flex-col items-center justify-center px-12 py-12 text-center"
+      >
+        <p className="text-2xl text-muted-foreground">
+          {t("present.cascadeExhausted.subtitle")}
+        </p>
+        <p className="mt-6 text-7xl font-bold">
+          {t("present.cascadeExhausted.title")}
+        </p>
+        {skipEvents && skipEvents.length > 0 ? (
+          <SkipBannerQueue events={skipEvents} />
+        ) : null}
+      </main>
+    );
+  }
 
   if (status === "lobby") {
     return (
@@ -153,42 +182,47 @@ export default function PresentScreen({
     : null;
 
   return (
-    <PresentLeaderboard
-      status={status}
-      rows={rows}
-      contestantById={contestantById}
-      announcerDisplayName={announcerDisplayName}
-      titleAnnouncing={t("present.announcing.title")}
-      titleDone={t("present.done.title")}
-      announcerLabel={
-        announcerDisplayName
-          ? t("present.announcing.announcer", { name: announcerDisplayName })
-          : ""
-      }
-      positionLabel={
-        showPosition
-          ? t("present.announcing.position", {
-              position: announcerPosition,
-              total: announcerCount,
-            })
-          : ""
-      }
-      pendingReveal={
-        status === "announcing" && pendingReveal !== undefined
-          ? {
-              upNext: t("present.announcing.upNext"),
-              detail: pendingReveal
-                ? t("present.announcing.upNextDetail", {
-                    points: pendingReveal.points,
-                    country: pendingContestant?.country ?? pendingReveal.contestantId,
-                  })
-                : t("present.announcing.queueExhausted"),
-              flagEmoji: pendingContestant?.flagEmoji ?? "🏳️",
-              hasReveal: pendingReveal !== null,
-            }
-          : null
-      }
-    />
+    <>
+      <PresentLeaderboard
+        status={status}
+        rows={rows}
+        contestantById={contestantById}
+        announcerDisplayName={announcerDisplayName}
+        titleAnnouncing={t("present.announcing.title")}
+        titleDone={t("present.done.title")}
+        announcerLabel={
+          announcerDisplayName
+            ? t("present.announcing.announcer", { name: announcerDisplayName })
+            : ""
+        }
+        positionLabel={
+          showPosition
+            ? t("present.announcing.position", {
+                position: announcerPosition,
+                total: announcerCount,
+              })
+            : ""
+        }
+        pendingReveal={
+          status === "announcing" && pendingReveal !== undefined
+            ? {
+                upNext: t("present.announcing.upNext"),
+                detail: pendingReveal
+                  ? t("present.announcing.upNextDetail", {
+                      points: pendingReveal.points,
+                      country: pendingContestant?.country ?? pendingReveal.contestantId,
+                    })
+                  : t("present.announcing.queueExhausted"),
+                flagEmoji: pendingContestant?.flagEmoji ?? "🏳️",
+                hasReveal: pendingReveal !== null,
+              }
+            : null
+        }
+      />
+      {skipEvents && skipEvents.length > 0 ? (
+        <SkipBannerQueue events={skipEvents} />
+      ) : null}
+    </>
   );
 }
 
