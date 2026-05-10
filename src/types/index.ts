@@ -22,6 +22,9 @@ export interface Contestant {
   runningOrder: number; // 1-indexed
   event: EventType;
   year: number;
+  /** Optional external deep-link to a song preview (e.g., YouTube). Surfaced
+   * in the lobby contestant primer carousel (SPEC §6.6.3). */
+  artistPreviewUrl?: string;
 }
 
 // ─── Room ────────────────────────────────────────────────────────────────────

@@ -23,6 +23,7 @@ interface ApiContestant {
   artist: string;
   song: string;
   runningOrder: number;
+  artistPreviewUrl?: string;
   [key: string]: unknown;
 }
 
@@ -64,7 +65,9 @@ function isApiContestant(item: unknown): item is ApiContestant {
     typeof c.country === "string" &&
     typeof c.artist === "string" &&
     typeof c.song === "string" &&
-    typeof c.runningOrder === "number"
+    typeof c.runningOrder === "number" &&
+    (c.artistPreviewUrl === undefined ||
+      typeof c.artistPreviewUrl === "string")
   );
 }
 
@@ -98,7 +101,7 @@ function mapApiToContestant(
   event: EventType
 ): Contestant {
   const code = getCountryCode(item.country);
-  return {
+  const result: Contestant = {
     id: `${year}-${code}`,
     country: item.country,
     countryCode: code,
@@ -109,6 +112,10 @@ function mapApiToContestant(
     event,
     year,
   };
+  if (item.artistPreviewUrl !== undefined) {
+    result.artistPreviewUrl = item.artistPreviewUrl;
+  }
+  return result;
 }
 
 export interface FetchContestantsOptions {
