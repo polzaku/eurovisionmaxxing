@@ -258,6 +258,14 @@
       "dark": "Theme: Dark (tap for System)"
     }
   },
+  "roster": {
+    "reshuffle": {
+      "idleCta": "🎲 Re-shuffle order",
+      "busyCta": "Re-shuffling…",
+      "errorInProgress": "Reveals have started — re-shuffle is no longer available.",
+      "errorGeneric": "Couldn't re-shuffle. Try again?"
+    }
+  },
   "scoring": {
     "title": "Tallying results…",
     "subtitle": "Hold tight — we're crunching the numbers."
