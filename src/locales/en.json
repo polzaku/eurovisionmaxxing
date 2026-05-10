@@ -315,6 +315,12 @@
       "label": "Showtime in",
       "fallback": "Ready whenever you are."
     },
+    "primer": {
+      "title": "Tonight's lineup",
+      "tapHint": "Tap any card to see category hints",
+      "previewSong": "Preview on YouTube",
+      "flagAria": "{country} flag"
+    },
     "refreshContestants": {
       "button": "Refresh contestants",
       "busy": "Refreshing…",

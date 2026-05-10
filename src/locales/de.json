@@ -360,6 +360,12 @@
       "label": "",
       "fallback": ""
     },
+    "primer": {
+      "title": "",
+      "tapHint": "",
+      "previewSong": "",
+      "flagAria": ""
+    },
     "refreshContestants": {
       "button": "",
       "busy": "",
