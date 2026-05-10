@@ -986,14 +986,14 @@ The `rooms.announcement_order` array is computed once at the `scoring → announ
 
 #### 10.2.2 Short reveal style — Eurovision 2025-faithful
 
-When a `live`-mode room is configured with `announcement_style = 'short'` (see §6.1), the per-user reveal flow compresses to match the Eurovision 2025 broadcast format: only the **12-point reveal** is live; ranks 1–8 and 10 are added to the scoreboard automatically the moment that user's turn begins.
+When a `live`-mode room is configured with `announcement_style = 'short'` (see §6.1), the per-user reveal flow compresses to match the Eurovision 2025 broadcast format: only the **12-point reveal** is live; points 1–8 and 10 are added to the scoreboard automatically the moment that user's turn begins.
 
 This style is opt-in. Default remains `full` (the 1 → 12 flow in §10.2). The choice is set at room creation in §6.1 and is editable in lobby-edit until status leaves `lobby`.
 
 **Per-user turn flow (short style):**
 
 1. The pointer advances to the next user in `rooms.announcement_order`.
-2. Server immediately writes their points-awarded rows for ranks 1–8 and 10 with `announced = true` (a single batch UPDATE, broadcast as one `score_update` event with all eight contestants in the payload). On all surfaces, the live leaderboard re-sorts in one animation step.
+2. Server immediately writes their points-awarded rows for points 1–8 and 10 with `announced = true` (a single batch UPDATE, broadcast as one `score_batch_revealed` event with all nine contestants in the payload). On all surfaces, the live leaderboard re-sorts in one animation step.
 3. Server holds at this point. The 12-point row stays `announced = false` until the live tap.
 4. The announcer's screen now shows a **single CTA: "Reveal 12 points"**. They are expected to tap it *simultaneously with announcing it live* on the TV — the on-screen reveal is intentionally synchronous with their voice, not preceded by it.
 5. On tap → server flips the 12-point row to `announced = true`, broadcasts `announce_next` with `points = 12`, and all surfaces render the reveal animation (large country flag/emoji, country name, artist, song — see surface table below).
@@ -1003,21 +1003,21 @@ This style is opt-in. Default remains `full` (the 1 → 12 flow in §10.2). The 
 
 | Surface | When points 1–8 + 10 land (auto-batch) | When announcer taps "Reveal 12 points" |
 |---|---|---|
-| **Announcer's phone** | Their personal scoresheet shows ranks 1–8 + 10 ticked off in one beat (they don't have to do anything). Below it: a single **"Reveal 12 points"** primary CTA (full-width, min 56 px tall) — disabled briefly during the auto-batch animation, then enabled. | The button compresses into a confirmed state ("Revealed ✓"), the rest of the screen replaces with the same 12-point flag/country/artist/song splash the TV shows, scaled for phone. |
-| **Present (TV) screen** | Top: *"[User] is announcing"* with avatar. Middle: live leaderboard re-sorts to reflect the eight new points (one rank-shift animation). Bottom: ticker text *"Awaiting their 12 points…"* | Middle: large country flag emoji + country name + artist + song fill the centre of the screen for ~3s. Leaderboard pushes to a smaller strip during the splash. After dwell, returns to leaderboard layout for the next turn. |
-| **Other guests' phones** | Compact live leaderboard updates inline (8 rows shifting). Top label: *"[User] is announcing"*. | Compact leaderboard updates with the 12-point delta, plus a transient toast at the top: *"[User] gave 12 to [Country] [flag]"*. Toast auto-dismisses after 3s. |
+| **Announcer's phone** | Their personal scoresheet shows points 1–8 + 10 ticked off in one beat (they don't have to do anything). Below it: a single **"Reveal 12 points"** primary CTA (full-width, min 56 px tall) — disabled briefly during the auto-batch animation, then enabled. | The button compresses into a confirmed state ("Revealed ✓"), the rest of the screen replaces with the same 12-point flag/country/artist/song splash the TV shows, scaled for phone. |
+| **Present (TV) screen** | Top: *"[User] is announcing"* with avatar. Middle: live leaderboard re-sorts to reflect the nine new points (one rank-shift animation). Bottom: ticker text *"Awaiting their 12 points…"* | Middle: large country flag emoji + country name + artist + song fill the centre of the screen for ~3s. Leaderboard pushes to a smaller strip during the splash. After dwell, returns to leaderboard layout for the next turn. |
+| **Other guests' phones** | Compact live leaderboard updates inline (9 rows shifting). Top label: *"[User] is announcing"*. | Compact leaderboard updates with the 12-point delta, plus a transient toast at the top: *"[User] gave 12 to [Country] [flag]"*. Toast auto-dismisses after 3s. |
 
 **Why simultaneous tap-and-speak (not tap-then-speak):** the Eurovision broadcast moment IS the spokesperson saying *"…and 12 points goes to…"* with the on-screen graphic appearing in sync. Pre-tapping breaks the dramatic timing; post-tapping breaks it the other way. The CTA is therefore framed in the announcer's UI as *"Tap when you say it"* (microcopy under the button) so first-time announcers know.
 
 **Realtime mechanism (delta from §10.2):**
-- Two distinct broadcast events per turn: one `score_update` for the auto-batch (eight contestants), one `announce_next` for the live 12-point reveal.
+- Two distinct broadcast events per turn: one `score_batch_revealed` for the auto-batch (nine contestants), one `announce_next` for the live 12-point reveal.
 - All other state (`announcing_user_id`, `delegate_user_id`, `current_announce_idx`, `announce_skipped_user_ids`) is identical to §10.2.
 - Server is still authoritative; no client drives state.
 
 **Edge cases (delta from §10.2.1):**
 - **Absent announcer at their turn:** the auto-batch still fires (their 1–8+10 still go to the scoreboard so the room sees the contribution), but the 12-point row is suppressed and added to `announce_skipped_user_ids` per §10.2.1. Admin can restore them later from the roster.
 - **All users absent simultaneously / batch-reveal mode:** when "Finish the show" is engaged, the admin reveals only the 12-point row per remaining absent user (the auto-batch having already fired for each). One admin tap per user, not 12 — matching the short-style cadence.
-- **Mid-turn admin handoff:** the delegate's screen takes over the same "Reveal 12 points" CTA. Auto-batch never re-fires (server-state idempotent on the eight-row UPDATE).
+- **Mid-turn admin handoff:** the delegate's screen takes over the same "Reveal 12 points" CTA. Auto-batch never re-fires (server-state idempotent on the nine-row UPDATE).
 
 **Host-facing guide:**
 
