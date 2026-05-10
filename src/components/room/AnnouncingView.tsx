@@ -240,6 +240,13 @@ export default function AnnouncingView({
       void refetch();
       return;
     }
+    if (event.type === "announcement_order_reshuffled") {
+      // Server reshuffled the announcement order. Refetch room state so
+      // the new active announcer + roster + position labels render
+      // correctly for everyone in the room.
+      onAnnouncementEnded?.();
+      return;
+    }
     if (event.type === "batch_reveal_started") {
       // Host has taken over as batch announcer — swing out of cascade-exhaust
       // into the batch-reveal active view by re-fetching room state.
