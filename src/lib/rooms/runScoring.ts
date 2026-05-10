@@ -447,8 +447,9 @@ export async function runScoring(
 
   // Emit announce_skip broadcasts for each pre-cascade skipped user, AFTER
   // the room UPDATE commits. Non-fatal — state is already written.
-  // Only emit when a present user was found; all-absent path defers to batch reveal.
-  if (preSkipped.length > 0 && preSkipFoundPresent) {
+  // Unconditional: banners fire even on cascade-exhaust (all-absent) path.
+  // applySingleSkip is still gated on preSkipFoundPresent (spec §10.2.1 line 981).
+  if (preSkipped.length > 0) {
     const usersQuery = await deps.supabase
       .from("users")
       .select("id, display_name")

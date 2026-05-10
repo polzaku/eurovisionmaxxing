@@ -1127,11 +1127,13 @@ describe("runScoring — pre-cascade skips absent users at scoring→announcing"
     // Points stay announced=false for the 'Finish the show' batch reveal.
     expect(mock.resultsUpdateCalls).toHaveLength(0);
 
-    // No announce_skip broadcasts when all absent (batch reveal path).
+    // Two announce_skip broadcasts — banners fire even on cascade-exhaust path.
     const skipBroadcasts = broadcastSpy.mock.calls.filter(
       ([, e]) => e.type === "announce_skip",
     );
-    expect(skipBroadcasts).toHaveLength(0);
+    expect(skipBroadcasts).toHaveLength(2);
+    expect(skipBroadcasts[0][1]).toMatchObject({ type: "announce_skip", userId: U1, displayName: "Alice" });
+    expect(skipBroadcasts[1][1]).toMatchObject({ type: "announce_skip", userId: U2, displayName: "Bob" });
   });
 
   /**
@@ -1196,11 +1198,20 @@ describe("runScoring — pre-cascade skips absent users at scoring→announcing"
         { data: { last_seen_at: STALE_LAST_SEEN }, error: null },
         { data: { last_seen_at: STALE_LAST_SEEN }, error: null },
       ],
+      usersByIdSelect: {
+        data: [
+          { id: U1, display_name: "Alice" },
+          { id: U2, display_name: "Bob" },
+        ],
+        error: null,
+      },
     });
+    const broadcastSpy = vi.fn().mockResolvedValue(undefined);
 
     const result = await runScoring(
       { roomId: VALID_ROOM_ID, userId: VALID_USER_ID },
       makeDeps(mock, {
+        broadcastRoomEvent: broadcastSpy,
         shuffle: (arr) => [...arr],
         now: () => FAKE_CASCADE_NOW,
       }),
@@ -1208,11 +1219,21 @@ describe("runScoring — pre-cascade skips absent users at scoring→announcing"
 
     expect(result.ok).toBe(true);
     // CRITICAL: pre-cascade exhausts → no applySingleSkip calls.
+    // Points stay announced=false for the 'Finish the show' batch reveal.
     expect(mock.resultsUpdateCalls).toHaveLength(0);
 
     const finalRoomUpdate = mock.roomUpdatePatches[1];
     expect(finalRoomUpdate?.announcing_user_id).toBeNull();
     expect(finalRoomUpdate?.status).toBe("announcing");
     expect(finalRoomUpdate?.announce_skipped_user_ids).toEqual([U1, U2]);
+
+    // announce_skip broadcasts MUST fire even on cascade-exhaust path.
+    // Banners inform guests "X isn't here" — separate from the batch reveal UX.
+    const skipBroadcasts = broadcastSpy.mock.calls.filter(
+      ([, e]) => e.type === "announce_skip",
+    );
+    expect(skipBroadcasts).toHaveLength(2);
+    expect(skipBroadcasts[0][1]).toMatchObject({ type: "announce_skip", userId: U1, displayName: "Alice" });
+    expect(skipBroadcasts[1][1]).toMatchObject({ type: "announce_skip", userId: U2, displayName: "Bob" });
   });
 });
