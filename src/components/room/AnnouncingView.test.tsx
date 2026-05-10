@@ -5,10 +5,19 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
-// useRoomRealtime is a side-effect-only subscription; for these tests we
-// only care about the initial fetch + manual user actions.
+// useRoomRealtime: capture the callback so tests can fire broadcast events.
+import type { RoomEvent } from "@/types";
+
+let capturedRoomEventHandler: ((event: RoomEvent) => void) | null = null;
+
+function fireRoomEvent(event: RoomEvent) {
+  capturedRoomEventHandler?.(event);
+}
+
 vi.mock("@/hooks/useRoomRealtime", () => ({
-  useRoomRealtime: () => {},
+  useRoomRealtime: (_roomId: string, handler: (event: RoomEvent) => void) => {
+    capturedRoomEventHandler = handler;
+  },
 }));
 
 // useRoomPresence is the §10.2 step 7 presence hook. The default mock
@@ -47,12 +56,85 @@ vi.mock("@/components/room/SkipBannerQueue", () => ({
   default: () => null,
 }));
 
+// AnnouncerRoster uses next-intl — stub with a minimal implementation that
+// preserves all the data-testid attributes the tests assert on.
+vi.mock("@/components/room/AnnouncerRoster", () => ({
+  default: ({
+    members,
+    presenceUserIds,
+    currentAnnouncerId,
+    skippedUserIds,
+    onRestore,
+    restoringUserId,
+    onReshuffle,
+    reshuffling,
+    canReshuffle,
+  }: {
+    members: Array<{ userId: string; displayName: string; avatarSeed: string }>;
+    presenceUserIds: Set<string>;
+    currentAnnouncerId?: string | null;
+    skippedUserIds?: Set<string>;
+    onRestore?: (userId: string) => void;
+    restoringUserId?: string | null;
+    onReshuffle?: () => void;
+    reshuffling?: boolean;
+    canReshuffle?: boolean;
+  }) => {
+    if (!members || members.length === 0) return null;
+    return (
+      <section data-testid="announcer-roster">
+        {onReshuffle && canReshuffle ? (
+          <button
+            type="button"
+            onClick={onReshuffle}
+            disabled={reshuffling}
+            data-testid="roster-reshuffle"
+            aria-label="Re-shuffle the announcement order"
+          >
+            {reshuffling ? "Re-shuffling\u2026" : "Re-shuffle order"}
+          </button>
+        ) : null}
+        <ul>
+          {members.map((m) => {
+            const isOnline = presenceUserIds.has(m.userId);
+            const isAnnouncer = m.userId === currentAnnouncerId;
+            const isSkipped = !!skippedUserIds?.has(m.userId);
+            return (
+              <li
+                key={m.userId}
+                data-testid={`roster-row-${m.userId}`}
+                data-online={isOnline ? "true" : "false"}
+                data-current-announcer={isAnnouncer ? "true" : "false"}
+                data-skipped={isSkipped ? "true" : "false"}
+              >
+                {m.displayName}
+                {isSkipped && onRestore ? (
+                  <button
+                    type="button"
+                    onClick={() => onRestore(m.userId)}
+                    disabled={restoringUserId === m.userId}
+                    data-testid={`roster-restore-${m.userId}`}
+                    aria-label={`Restore ${m.displayName}`}
+                  >
+                    {restoringUserId === m.userId ? "Restoring\u2026" : "Restore"}
+                  </button>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    );
+  },
+}));
+
 // API helpers — controllable per-test via mockImplementation in beforeEach.
 const postAnnounceNextMock = vi.fn();
 const postAnnounceHandoffMock = vi.fn();
 const postAnnounceSkipMock = vi.fn();
 const postAnnounceRestoreMock = vi.fn();
 const postFinishShowMock = vi.fn();
+const patchAnnouncementOrderMock = vi.fn();
 
 vi.mock("@/lib/room/api", () => ({
   postAnnounceNext: (...args: unknown[]) => postAnnounceNextMock(...args),
@@ -60,6 +142,8 @@ vi.mock("@/lib/room/api", () => ({
   postAnnounceSkip: (...args: unknown[]) => postAnnounceSkipMock(...args),
   postAnnounceRestore: (...args: unknown[]) => postAnnounceRestoreMock(...args),
   postFinishShow: (...args: unknown[]) => postFinishShowMock(...args),
+  patchAnnouncementOrder: (...args: unknown[]) =>
+    patchAnnouncementOrderMock(...args),
 }));
 
 import AnnouncingView from "./AnnouncingView";
@@ -846,5 +930,129 @@ describe("<AnnouncingView> — cascade-exhaust state (R4 #2 'Finish the show')",
         expect.objectContaining({ fetch: expect.any(Function) }),
       ),
     );
+  });
+});
+
+// ─── R4 #4 re-shuffle order button (AnnouncingView wiring) ───────────────────
+
+describe("AnnouncingView — re-shuffle order button (R4 #4)", () => {
+  beforeEach(() => {
+    patchAnnouncementOrderMock.mockReset();
+    mockResultsFetch();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const ROSTER = [
+    { userId: OWNER_ID, displayName: "Admin", avatarSeed: "x" },
+    { userId: ANNOUNCER_ID, displayName: "Alice", avatarSeed: "a" },
+  ];
+
+  it("owner sees the re-shuffle button when announcement state is fresh (no advance yet)", () => {
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={[]}
+        currentUserId={OWNER_ID}
+        members={ROSTER}
+        announcement={{
+          announcingUserId: ANNOUNCER_ID,
+          announcingDisplayName: "Alice",
+          announcingAvatarSeed: "a",
+          currentAnnounceIdx: 0,
+          pendingReveal: { contestantId: "c1", points: 1 },
+          queueLength: 10,
+          delegateUserId: null,
+          announcerPosition: 1,
+          announcerCount: 3,
+          skippedUserIds: [],
+        }}
+      />,
+    );
+    expect(screen.getByTestId("roster-reshuffle")).toBeInTheDocument();
+  });
+
+  it("owner does NOT see the button after first reveal (currentAnnounceIdx > 0)", () => {
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={[]}
+        currentUserId={OWNER_ID}
+        members={ROSTER}
+        announcement={{
+          announcingUserId: ANNOUNCER_ID,
+          announcingDisplayName: "Alice",
+          announcingAvatarSeed: "a",
+          currentAnnounceIdx: 1,
+          pendingReveal: { contestantId: "c2", points: 2 },
+          queueLength: 10,
+          delegateUserId: null,
+          announcerPosition: 1,
+          announcerCount: 3,
+          skippedUserIds: [],
+        }}
+      />,
+    );
+    expect(screen.queryByTestId("roster-reshuffle")).toBeNull();
+  });
+
+  it("owner does NOT see the button after rotation (announcerPosition > 1)", () => {
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={[]}
+        currentUserId={OWNER_ID}
+        members={ROSTER}
+        announcement={{
+          announcingUserId: ANNOUNCER_ID,
+          announcingDisplayName: "Alice",
+          announcingAvatarSeed: "a",
+          currentAnnounceIdx: 0,
+          pendingReveal: { contestantId: "c1", points: 1 },
+          queueLength: 10,
+          delegateUserId: null,
+          announcerPosition: 2,
+          announcerCount: 3,
+          skippedUserIds: [],
+        }}
+      />,
+    );
+    expect(screen.queryByTestId("roster-reshuffle")).toBeNull();
+  });
+});
+
+// ─── R4 Task 4 — announcement_order_reshuffled broadcast subscriber ───────────
+
+describe("AnnouncingView — announcement_order_reshuffled broadcast (R4 #4 task 4)", () => {
+  beforeEach(() => {
+    capturedRoomEventHandler = null;
+    mockResultsFetch();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("announcement_order_reshuffled event triggers refetch via onAnnouncementEnded", async () => {
+    const onAnnouncementEnded = vi.fn();
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={[]}
+        currentUserId={OWNER_ID}
+        onAnnouncementEnded={onAnnouncementEnded}
+      />,
+    );
+    // Wait for the component to mount and register the handler.
+    await waitFor(() => expect(capturedRoomEventHandler).not.toBeNull());
+    onAnnouncementEnded.mockClear();
+    fireRoomEvent({
+      type: "announcement_order_reshuffled",
+      announcementOrder: ["u1", "u2", "u3"],
+      announcingUserId: "u1",
+    });
+    expect(onAnnouncementEnded).toHaveBeenCalled();
   });
 });
