@@ -83,6 +83,29 @@ describe("fetchContestants — wrapper-shape JSON support (R2 #238)", () => {
   });
 });
 
+describe("contestants — artistPreviewUrl pass-through (R2 #240)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("preserves artistPreviewUrl on the domain Contestant when JSON includes it", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const contestants = await fetchContestants(TEST_FIXTURE_YEAR, "final");
+    const withPreview = contestants.find((c) => c.artistPreviewUrl);
+    expect(withPreview).toBeDefined();
+    expect(typeof withPreview!.artistPreviewUrl).toBe("string");
+    expect(withPreview!.artistPreviewUrl).toMatch(/^https?:\/\//);
+  });
+
+  it("leaves artistPreviewUrl undefined on contestants where the JSON entry omits it", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const contestants = await fetchContestants(TEST_FIXTURE_YEAR, "final");
+    const withoutPreview = contestants.find((c) => !c.artistPreviewUrl);
+    expect(withoutPreview).toBeDefined();
+    expect(withoutPreview!.artistPreviewUrl).toBeUndefined();
+  });
+});
+
 describe("fetchContestantsMeta — test-fixture year", () => {
   beforeEach(() => {});
   afterEach(() => {

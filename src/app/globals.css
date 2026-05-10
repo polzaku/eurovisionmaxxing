@@ -198,6 +198,38 @@
   .emx-glow-pink {
     filter: drop-shadow(0 0 16px color-mix(in oklab, var(--hot-pink) 45%, transparent));
   }
+
+  /* Flip-card animation container for contestant primer carousel */
+  .emx-flip-card {
+    perspective: 1000px;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .emx-flip-card__inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 400ms ease;
+    transform-style: preserve-3d;
+  }
+
+  .emx-flip-card.is-flipped .emx-flip-card__inner {
+    transform: rotateY(180deg);
+  }
+
+  .emx-flip-card__face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  .emx-flip-card__back {
+    transform: rotateY(180deg);
+  }
 }
 
 /*
@@ -211,5 +243,9 @@
   .animate-rank-shift,
   .animate-shimmer {
     animation: none;
+  }
+
+  .emx-flip-card__inner {
+    transition: none;
   }
 }
