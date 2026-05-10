@@ -85,7 +85,7 @@ describe("<ContestantPrimerCarousel>", () => {
       />,
     );
     expect(screen.getByText(/1/)).toBeInTheDocument();
-    expect(screen.getByText(SE.country)).toBeInTheDocument();
+    expect(screen.getAllByText(SE.country)).toHaveLength(2); // front + back
     expect(screen.getByText(SE.artist)).toBeInTheDocument();
     expect(screen.getByText(SE.song)).toBeInTheDocument();
   });

@@ -129,12 +129,11 @@ function PrimerCard({
           aria-hidden={!flipped}
         >
           <div className="flex items-center gap-2 mb-1">
-            <span
-              className="text-2xl"
-              role="img"
-              aria-label={contestant.country}
-            >
+            <span className="text-2xl" aria-hidden>
               {contestant.flagEmoji}
+            </span>
+            <span className="text-sm font-semibold truncate">
+              {contestant.country}
             </span>
           </div>
           <ul className="space-y-1 text-xs flex-1">
