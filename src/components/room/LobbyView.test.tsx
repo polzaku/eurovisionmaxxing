@@ -82,6 +82,7 @@ interface RenderOpts {
   roomId?: string;
   currentUserId?: string;
   presenceUserIds?: Set<string>;
+  broadcastStartUtc?: string | null;
 }
 
 function renderLobby(opts: RenderOpts = {}) {
@@ -107,6 +108,7 @@ function renderLobby(opts: RenderOpts = {}) {
       onChangeCategories={opts.onChangeCategories}
       roomId={opts.roomId ?? "r-1"}
       currentUserId={opts.currentUserId ?? ALICE.userId}
+      broadcastStartUtc={opts.broadcastStartUtc}
     />
   );
   return { ...render(ui), onStartVoting, onCopyPin, onCopyLink };
@@ -421,6 +423,20 @@ describe("<LobbyView>", () => {
     expect(
       screen.queryByTestId("lobby-present-link"),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("<LobbyView> — countdown section (R2 #238)", () => {
+  it("renders <LobbyCountdown> in fallback state when broadcastStartUtc is null", () => {
+    renderLobby({ broadcastStartUtc: null });
+    const countdown = screen.getByTestId("lobby-countdown");
+    expect(countdown).toHaveAttribute("data-state", "fallback");
+  });
+
+  it("renders <LobbyCountdown> in ticking state when broadcastStartUtc is a future ISO timestamp", () => {
+    renderLobby({ broadcastStartUtc: "2099-01-01T00:00:00.000Z" });
+    const countdown = screen.getByTestId("lobby-countdown");
+    expect(countdown).toHaveAttribute("data-state", "ticking");
   });
 });
 

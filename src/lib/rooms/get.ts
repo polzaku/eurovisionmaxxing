@@ -21,6 +21,11 @@ export interface VoteView {
 export interface GetRoomDeps {
   supabase: SupabaseClient<Database>;
   fetchContestants: (year: number, event: EventType) => Promise<Contestant[]>;
+  /** SPEC §6.6.1 — read broadcastStartUtc from the JSON wrapper if present. */
+  fetchContestantsMeta: (
+    year: number,
+    event: EventType,
+  ) => Promise<{ broadcastStartUtc: string | null }>;
 }
 
 export interface MembershipView {
@@ -37,6 +42,9 @@ export interface GetRoomData {
   memberships: MembershipView[];
   contestants: Contestant[];
   votes: VoteView[];
+  /** SPEC §6.6.1 — null when the JSON file uses the legacy flat-array
+   * shape or doesn't carry the field. */
+  broadcastStartUtc: string | null;
 }
 
 export interface GetRoomSuccess {
@@ -137,6 +145,15 @@ export async function getRoom(
     throw err;
   }
 
+  let broadcastStartUtc: string | null = null;
+  try {
+    const meta = await deps.fetchContestantsMeta(room.year, room.event);
+    broadcastStartUtc = meta.broadcastStartUtc;
+  } catch {
+    // Metadata is best-effort — falling back to null when the file is
+    // missing/malformed mirrors the contestant fallback chain.
+  }
+
   let votes: VoteView[] = [];
   if (input.userId !== undefined) {
     if (typeof input.userId !== "string" || !UUID_REGEX.test(input.userId)) {
@@ -166,5 +183,5 @@ export async function getRoom(
     }
   }
 
-  return { ok: true, data: { room, memberships, contestants, votes } };
+  return { ok: true, data: { room, memberships, contestants, votes, broadcastStartUtc } };
 }

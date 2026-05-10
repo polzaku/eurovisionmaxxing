@@ -76,6 +76,7 @@ vi.mock("@/lib/contestants", async () => {
         year: 2026,
       },
     ]),
+    fetchContestantsMeta: vi.fn().mockResolvedValue({ broadcastStartUtc: null }),
   };
 });
 

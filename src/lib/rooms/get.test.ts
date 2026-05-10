@@ -130,6 +130,7 @@ function makeDeps(
   return {
     supabase: mock.supabase,
     fetchContestants: vi.fn().mockResolvedValue(contestants),
+    fetchContestantsMeta: vi.fn().mockResolvedValue({ broadcastStartUtc: null }),
     ...overrides,
   };
 }
@@ -425,5 +426,47 @@ describe("getRoom — votes rehydration", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.data.votes).toEqual([]);
+  });
+});
+
+// ─── broadcastStartUtc ──────────────────────────────────────────────────────
+
+describe("getRoom — broadcastStartUtc", () => {
+  it("includes broadcastStartUtc in the returned data when fetchContestantsMeta returns one", async () => {
+    const mock = makeSupabaseMock();
+    const fetchMetaSpy = vi
+      .fn()
+      .mockResolvedValueOnce({ broadcastStartUtc: "2026-05-16T19:00:00.000Z" });
+    const result = await getRoom(
+      { roomId: VALID_ROOM_ID },
+      makeDeps(mock, { fetchContestantsMeta: fetchMetaSpy })
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.broadcastStartUtc).toBe("2026-05-16T19:00:00.000Z");
+  });
+
+  it("falls back to broadcastStartUtc: null when fetchContestantsMeta throws", async () => {
+    const mock = makeSupabaseMock();
+    const fetchMetaSpy = vi.fn().mockRejectedValue(new Error("file missing"));
+    const result = await getRoom(
+      { roomId: VALID_ROOM_ID },
+      makeDeps(mock, { fetchContestantsMeta: fetchMetaSpy })
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.broadcastStartUtc).toBeNull();
+  });
+
+  it("returns broadcastStartUtc: null when fetchContestantsMeta returns null", async () => {
+    const mock = makeSupabaseMock();
+    const fetchMetaSpy = vi.fn().mockResolvedValue({ broadcastStartUtc: null });
+    const result = await getRoom(
+      { roomId: VALID_ROOM_ID },
+      makeDeps(mock, { fetchContestantsMeta: fetchMetaSpy })
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.broadcastStartUtc).toBeNull();
   });
 });

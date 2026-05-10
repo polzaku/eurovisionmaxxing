@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRoom } from "@/lib/rooms/get";
 import { apiError } from "@/lib/api-errors";
 import { createServiceClient } from "@/lib/supabase/server";
-import { fetchContestants } from "@/lib/contestants";
+import { fetchContestants, fetchContestantsMeta } from "@/lib/contestants";
 
 /**
  * GET /api/rooms/{id}
@@ -22,6 +22,7 @@ export async function GET(
     {
       supabase: createServiceClient(),
       fetchContestants,
+      fetchContestantsMeta,
     }
   );
 
