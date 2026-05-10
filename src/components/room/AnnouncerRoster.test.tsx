@@ -2,11 +2,16 @@
 
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 vi.mock("@/components/ui/Avatar", () => ({
   default: ({ seed }: { seed: string }) => (
     <span data-testid="avatar" data-seed={seed} />
   ),
+}));
+
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string) => key,
 }));
 
 import AnnouncerRoster, { type RosterMember } from "./AnnouncerRoster";
@@ -203,5 +208,83 @@ describe("<AnnouncerRoster>", () => {
       expect(bobBtn).not.toBeDisabled();
       expect(bobBtn).toHaveTextContent(/^Restore$/);
     });
+  });
+});
+
+describe("AnnouncerRoster — re-shuffle button (R4 #4)", () => {
+  const baseMembers: RosterMember[] = [
+    { userId: "u1", displayName: "Alice", avatarSeed: "a" },
+    { userId: "u2", displayName: "Bob", avatarSeed: "b" },
+  ];
+  const presenceUserIds = new Set(["u1", "u2"]);
+
+  it("renders the button when onReshuffle is provided AND canReshuffle is true", () => {
+    render(
+      <AnnouncerRoster
+        members={baseMembers}
+        presenceUserIds={presenceUserIds}
+        currentAnnouncerId="u1"
+        onReshuffle={() => {}}
+        canReshuffle={true}
+      />,
+    );
+    expect(screen.getByTestId("roster-reshuffle")).toBeInTheDocument();
+  });
+
+  it("hides the button when canReshuffle is false (regression: hide-not-grey UX)", () => {
+    render(
+      <AnnouncerRoster
+        members={baseMembers}
+        presenceUserIds={presenceUserIds}
+        currentAnnouncerId="u1"
+        onReshuffle={() => {}}
+        canReshuffle={false}
+      />,
+    );
+    expect(screen.queryByTestId("roster-reshuffle")).toBeNull();
+  });
+
+  it("hides the button when onReshuffle is undefined (non-owner view)", () => {
+    render(
+      <AnnouncerRoster
+        members={baseMembers}
+        presenceUserIds={presenceUserIds}
+        currentAnnouncerId="u1"
+        canReshuffle={true}
+      />,
+    );
+    expect(screen.queryByTestId("roster-reshuffle")).toBeNull();
+  });
+
+  it("shows busy copy when reshuffling is true", () => {
+    render(
+      <AnnouncerRoster
+        members={baseMembers}
+        presenceUserIds={presenceUserIds}
+        currentAnnouncerId="u1"
+        onReshuffle={() => {}}
+        canReshuffle={true}
+        reshuffling={true}
+      />,
+    );
+    expect(screen.getByTestId("roster-reshuffle")).toHaveTextContent(
+      "roster.reshuffle.busyCta",
+    );
+  });
+
+  it("calls onReshuffle when tapped", async () => {
+    const onReshuffle = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <AnnouncerRoster
+        members={baseMembers}
+        presenceUserIds={presenceUserIds}
+        currentAnnouncerId="u1"
+        onReshuffle={onReshuffle}
+        canReshuffle={true}
+      />,
+    );
+    await user.click(screen.getByTestId("roster-reshuffle"));
+    expect(onReshuffle).toHaveBeenCalledTimes(1);
   });
 });

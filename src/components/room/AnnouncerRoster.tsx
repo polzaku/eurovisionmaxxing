@@ -1,6 +1,7 @@
 "use client";
 
 import Avatar from "@/components/ui/Avatar";
+import { useTranslations } from "next-intl";
 
 export interface RosterMember {
   userId: string;
@@ -35,6 +36,23 @@ interface AnnouncerRosterProps {
    * restores.
    */
   restoringUserId?: string | null;
+  /**
+   * SPEC §10.2.1 — owner-only callback for re-shuffling the announcement
+   * order. When provided, the header renders a "Re-shuffle order" button
+   * — but only when canReshuffle is also true. Omit on non-owner views.
+   */
+  onReshuffle?: () => void;
+  /**
+   * True while the reshuffle API call is in flight. Disables the button
+   * + flips its copy to "Re-shuffling…".
+   */
+  reshuffling?: boolean;
+  /**
+   * SPEC §10.2.1 — true only before any user has revealed any point.
+   * When false, the button is hidden entirely (not greyed out — narrow
+   * window means a locked button is dead UI).
+   */
+  canReshuffle?: boolean;
 }
 
 /**
@@ -58,7 +76,11 @@ export default function AnnouncerRoster({
   skippedUserIds,
   onRestore,
   restoringUserId,
+  onReshuffle,
+  reshuffling,
+  canReshuffle,
 }: AnnouncerRosterProps) {
+  const t = useTranslations();
   if (members.length === 0) return null;
 
   return (
@@ -71,13 +93,29 @@ export default function AnnouncerRoster({
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Roster
         </h2>
-        <p className="text-[10px] text-muted-foreground">
-          <span
-            aria-hidden
-            className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1 align-middle"
-          />
-          here now
-        </p>
+        <div className="flex items-baseline gap-3">
+          <p className="text-[10px] text-muted-foreground">
+            <span
+              aria-hidden
+              className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1 align-middle"
+            />
+            here now
+          </p>
+          {onReshuffle && canReshuffle ? (
+            <button
+              type="button"
+              onClick={onReshuffle}
+              disabled={reshuffling}
+              data-testid="roster-reshuffle"
+              aria-label="Re-shuffle the announcement order"
+              className="rounded border border-accent/50 bg-accent/5 px-2 py-0.5 text-xs font-medium text-accent transition-colors hover:bg-accent/10 active:scale-[0.98] disabled:opacity-60"
+            >
+              {reshuffling
+                ? t("roster.reshuffle.busyCta")
+                : t("roster.reshuffle.idleCta")}
+            </button>
+          ) : null}
+        </div>
       </header>
       <ul className="space-y-1">
         {members.map((m) => {
