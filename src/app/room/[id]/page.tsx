@@ -85,6 +85,7 @@ type Phase =
       memberships: MembershipShape[];
       contestants: Contestant[];
       votes: VoteView[];
+      broadcastStartUtc: string | null;
     };
 
 /**
@@ -205,6 +206,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         memberships: ensureSelfInMemberships(memberships, session),
         contestants: (refetched.contestants ?? []) as Contestant[],
         votes: (refetched.votes ?? []) as VoteView[],
+        broadcastStartUtc: refetched.broadcastStartUtc as string | null ?? null,
       });
       return;
     }
@@ -215,6 +217,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
       memberships: ensureSelfInMemberships(memberships, session),
       contestants: (data.contestants ?? []) as Contestant[],
       votes: (data.votes ?? []) as VoteView[],
+      broadcastStartUtc: data.broadcastStartUtc as string | null ?? null,
     });
   }, [roomId]);
 
@@ -598,6 +601,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         }
         roomId={roomId}
         currentUserId={session?.userId ?? ""}
+        broadcastStartUtc={phase.broadcastStartUtc}
       />
     );
   }

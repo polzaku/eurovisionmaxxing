@@ -57,15 +57,39 @@ function getCountryCode(country: string): string {
   return COUNTRY_CODES[country] ?? country.substring(0, 2).toLowerCase();
 }
 
-function validateContestants(data: unknown): data is ApiContestant[] {
-  if (!Array.isArray(data) || data.length === 0) return false;
-  return data.every(
-    (item) =>
-      typeof item.country === "string" &&
-      typeof item.artist === "string" &&
-      typeof item.song === "string" &&
-      typeof item.runningOrder === "number"
+function isApiContestant(item: unknown): item is ApiContestant {
+  if (typeof item !== "object" || item === null) return false;
+  const c = item as Record<string, unknown>;
+  return (
+    typeof c.country === "string" &&
+    typeof c.artist === "string" &&
+    typeof c.song === "string" &&
+    typeof c.runningOrder === "number"
   );
+}
+
+/**
+ * Parse contestants JSON in either legacy (flat array) or wrapper shape.
+ * Returns null if the input doesn't match either shape.
+ */
+function parseContestantsJson(data: unknown): ApiContestant[] | null {
+  // Legacy: bare array of contestants.
+  if (Array.isArray(data)) {
+    return data.every(isApiContestant) ? data : null;
+  }
+  // Wrapper: { broadcastStartUtc?, contestants: [...] }.
+  if (typeof data === "object" && data !== null) {
+    const wrapper = data as Record<string, unknown>;
+    const inner = wrapper.contestants;
+    if (Array.isArray(inner) && inner.every(isApiContestant)) {
+      return inner as ApiContestant[];
+    }
+  }
+  return null;
+}
+
+function validateContestants(data: unknown): data is ApiContestant[] {
+  return Array.isArray(data) && parseContestantsJson(data) !== null;
 }
 
 function mapApiToContestant(
@@ -133,8 +157,9 @@ export async function fetchContestants(
 
     if (res.ok) {
       const data = await res.json();
-      if (validateContestants(data)) {
-        return data
+      const parsed = parseContestantsJson(data);
+      if (parsed) {
+        return parsed
           .map((item) => mapApiToContestant(item, year, event))
           .sort((a, b) => a.runningOrder - b.runningOrder);
       }
@@ -168,10 +193,11 @@ async function loadFromHardcoded(
 ): Promise<Contestant[]> {
   const fallback = await import(`../../data/contestants/${year}/${event}.json`);
   const data = fallback.default ?? fallback;
-  if (!validateContestants(data)) {
+  const parsed = parseContestantsJson(data);
+  if (parsed === null) {
     throw new ContestDataError(`Hardcoded data invalid for ${year} ${event}`);
   }
-  return data
+  return parsed
     .map((item: ApiContestant) => mapApiToContestant(item, year, event))
     .sort((a, b) => a.runningOrder - b.runningOrder);
 }

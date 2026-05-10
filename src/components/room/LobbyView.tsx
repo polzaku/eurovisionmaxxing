@@ -6,6 +6,7 @@ import { useRoomPresence } from "@/hooks/useRoomPresence";
 import Button from "@/components/ui/Button";
 import QrCode from "@/components/ui/QrCode";
 import CategoriesPreview from "@/components/room/CategoriesPreview";
+import LobbyCountdown from "@/components/room/LobbyCountdown";
 import RefreshContestantsButton, {
   type RefreshDiff,
 } from "@/components/room/RefreshContestantsButton";
@@ -77,6 +78,12 @@ interface LobbyViewProps {
   /** SPEC §6.6.2 — required for the live presence channel subscription. */
   roomId: string;
   currentUserId: string;
+  /**
+   * SPEC §6.6.1 — when null, <LobbyCountdown> renders the
+   * "Ready whenever you are." fallback. When a valid ISO 8601 UTC
+   * timestamp, the countdown ticks down to that target.
+   */
+  broadcastStartUtc?: string | null;
 }
 
 function useCopiedFlag(): [boolean, () => void] {
@@ -106,6 +113,7 @@ export default function LobbyView({
   onChangeCategories,
   roomId,
   currentUserId,
+  broadcastStartUtc,
 }: LobbyViewProps) {
   const [pinCopied, markPinCopied] = useCopiedFlag();
   const [linkCopied, markLinkCopied] = useCopiedFlag();
@@ -337,6 +345,10 @@ export default function LobbyView({
             </p>
           </section>
         ) : null}
+
+        <section className="space-y-3">
+          <LobbyCountdown broadcastStartUtc={broadcastStartUtc ?? null} />
+        </section>
 
         <section className="space-y-3">
           <h2 className="text-sm uppercase tracking-wider text-muted-foreground">

@@ -311,6 +311,10 @@
     }
   },
   "lobby": {
+    "countdown": {
+      "label": "Showtime in",
+      "fallback": "Ready whenever you are."
+    },
     "refreshContestants": {
       "button": "Refresh contestants",
       "busy": "Refreshing…",
