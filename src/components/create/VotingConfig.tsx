@@ -5,6 +5,7 @@ import Button from "@/components/ui/Button";
 import { VOTING_TEMPLATES } from "@/lib/templates";
 import TemplateCard from "./TemplateCard";
 import AnnouncementModeCard from "./AnnouncementModeCard";
+import AnnouncementStyleSubRadio from "./AnnouncementStyleSubRadio";
 import { nextExpandedId } from "./expandedId";
 
 type TemplateId = "classic" | "spectacle" | "bangerTest";
@@ -18,11 +19,13 @@ type SubmitState =
 interface VotingConfigProps {
   templateId: TemplateId;
   announcementMode: Mode;
+  announcementStyle: 'full' | 'short';
   allowNowPerforming: boolean;
   submitState: SubmitState;
   onChange: (patch: {
     templateId?: TemplateId;
     announcementMode?: Mode;
+    announcementStyle?: 'full' | 'short';
     allowNowPerforming?: boolean;
   }) => void;
   onBack: () => void;
@@ -32,6 +35,7 @@ interface VotingConfigProps {
 export default function VotingConfig({
   templateId,
   announcementMode,
+  announcementStyle,
   allowNowPerforming,
   submitState,
   onChange,
@@ -93,6 +97,12 @@ export default function VotingConfig({
             />
           ))}
         </div>
+        {announcementMode === "live" ? (
+          <AnnouncementStyleSubRadio
+            value={announcementStyle}
+            onChange={(next) => onChange({ announcementStyle: next })}
+          />
+        ) : null}
       </div>
 
       <div className="space-y-2">
