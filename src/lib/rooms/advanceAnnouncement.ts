@@ -4,6 +4,11 @@ import type { ApiErrorCode } from "@/lib/api-errors";
 import type { RoomEventPayload } from "@/lib/rooms/shared";
 import { isAbsent } from "@/lib/rooms/isAbsent";
 import { applySingleSkip } from "@/lib/rooms/applySingleSkip";
+import {
+  selectShortBatchRows,
+  twelvePointIdx,
+} from "./autoBatchShortStyle";
+import { buildBatchBroadcastPayload } from "./buildBatchBroadcastPayload";
 
 export interface AdvanceAnnouncementInput {
   roomId: unknown;
@@ -68,6 +73,7 @@ type RoomRow = {
   delegate_user_id: string | null;
   announce_skipped_user_ids: string[] | null;
   batch_reveal_mode: boolean;
+  announcement_style: string;
 };
 
 export type AnnouncerResultRow = {
@@ -126,7 +132,7 @@ export async function advanceAnnouncement(
   const roomQuery = await deps.supabase
     .from("rooms")
     .select(
-      "id, status, owner_user_id, announcement_order, announcing_user_id, current_announce_idx, delegate_user_id, announce_skipped_user_ids, batch_reveal_mode",
+      "id, status, owner_user_id, announcement_order, announcing_user_id, current_announce_idx, delegate_user_id, announce_skipped_user_ids, batch_reveal_mode, announcement_style",
     )
     .eq("id", roomId)
     .maybeSingle();
@@ -204,7 +210,7 @@ export async function advanceAnnouncement(
     );
   }
 
-  const revealRow = announcerRows[expectedIdx];
+  let revealRow = announcerRows[expectedIdx];
 
   // 5. Mark the chosen results row as announced (idempotent).
   const markAnnounced = await deps.supabase
@@ -230,8 +236,53 @@ export async function advanceAnnouncement(
   let cascadeExhausted = false;
   const cascadedSkippedUserIds: string[] = [];
 
+  // Pending short-style batch state — populated in the isLastForAnnouncer branches below
+  // and consumed by the broadcast section after the room UPDATE commits.
+  let pendingShortBatchRevealCurrent: {
+    batchRows: AnnouncerResultRow[];
+  } | null = null;
+  let pendingShortRotationBatch: {
+    nextUserId: string;
+    batchRows: AnnouncerResultRow[];
+    twelveIdx: number;
+  } | null = null;
+
   if (isLastForAnnouncer) {
     if (room.batch_reveal_mode) {
+      if (room.announcement_style === "short") {
+        // Has the current user's auto-batch fired? Detect via the queue.
+        // Under short style, a "fresh" announcer has 10 announced=false rows;
+        // after auto-batch fires, only 1 (the 12-point row) remains pending.
+        const pendingCount = announcerRows.filter((r) => !r.announced).length;
+        if (pendingCount > 1) {
+          // 10 rows pending — auto-batch hasn't fired. Fire it now (before the 12pt reveal).
+          const batchRows = selectShortBatchRows(announcerRows);
+          if (batchRows.length > 0) {
+            const batchIds = batchRows.map((r) => r.contestant_id);
+            const markBatch = await deps.supabase
+              .from("results")
+              .update({ announced: true })
+              .eq("room_id", roomId)
+              .eq("user_id", currentAnnouncer)
+              .in("contestant_id", batchIds);
+            if (markBatch.error) {
+              return fail(
+                "INTERNAL_ERROR",
+                "Could not mark current user's batch-reveal short auto-batch.",
+                500,
+              );
+            }
+            pendingShortBatchRevealCurrent = { batchRows };
+            // After firing the batch, the current advance should reveal the rank-1 (12-pt)
+            // row, not whatever expectedIdx pointed at. Override revealRow accordingly.
+            const rankOneRow = announcerRows.find((r) => r.rank === 1);
+            if (rankOneRow) {
+              revealRow = rankOneRow;
+            }
+          }
+        }
+      }
+
       // SPEC §10.2.1 — batch-reveal rotation: walk announcement_order
       // forward, skipping users with all-announced results. No presence
       // check (admin is driving for absent users).
@@ -336,6 +387,41 @@ export async function advanceAnnouncement(
         finishedShow = true;
       }
     }
+
+    if (
+      room.announcement_style === "short" &&
+      !room.batch_reveal_mode &&
+      nextAnnouncingUserId !== null
+    ) {
+      const nextQueueQuery = await deps.supabase
+        .from("results")
+        .select("contestant_id, points_awarded, rank, announced")
+        .eq("room_id", roomId)
+        .eq("user_id", nextAnnouncingUserId)
+        .gt("points_awarded", 0)
+        .order("rank", { ascending: false });
+
+      if (nextQueueQuery.error) {
+        return fail(
+          "INTERNAL_ERROR",
+          "Could not load next announcer's queue for short auto-batch.",
+          500,
+        );
+      }
+      const nextRows = (nextQueueQuery.data ?? []) as AnnouncerResultRow[];
+      const nextBatch = selectShortBatchRows(nextRows);
+      const nextTwelveIdx = twelvePointIdx(nextRows);
+
+      if (nextBatch.length > 0 && nextTwelveIdx !== null) {
+        pendingShortRotationBatch = {
+          nextUserId: nextAnnouncingUserId,
+          batchRows: nextBatch,
+          twelveIdx: nextTwelveIdx,
+        };
+        // Adjust the room patch to land on the 12-point idx instead of 0.
+        nextIdx = nextTwelveIdx;
+      }
+    }
   }
 
   // 7. Conditional UPDATE on the room state. Guards against concurrent calls.
@@ -423,6 +509,24 @@ export async function advanceAnnouncement(
     }
   }
 
+  if (pendingShortRotationBatch) {
+    const batchIds = pendingShortRotationBatch.batchRows.map((r) => r.contestant_id);
+    const markBatch = await deps.supabase
+      .from("results")
+      .update({ announced: true })
+      .eq("room_id", roomId)
+      .eq("user_id", pendingShortRotationBatch.nextUserId)
+      .in("contestant_id", batchIds);
+
+    if (markBatch.error) {
+      return fail(
+        "INTERNAL_ERROR",
+        "Could not mark short-style rotation auto-batch.",
+        500,
+      );
+    }
+  }
+
   // 8. Build the broadcast payload from the post-update leaderboard.
   const allResultsQuery = await deps.supabase
     .from("results")
@@ -488,6 +592,57 @@ export async function advanceAnnouncement(
     } catch (err) {
       console.warn(
         `broadcast 'status_changed:done' failed for room ${roomId}; state committed regardless:`,
+        err,
+      );
+    }
+  }
+
+  // SPEC §10.2.2 — fire the auto-batch broadcast(s). Two cases:
+  //   - pendingShortBatchRevealCurrent: current user's batch fires
+  //     alongside their 12-point row in a single advance under
+  //     batch_reveal_mode. One broadcast.
+  //   - pendingShortRotationBatch: next user's batch fires after the
+  //     current user's 12-point row reveals. One broadcast.
+  const leaderboard =
+    (allResultsQuery.data ?? []) as Array<{
+      contestant_id: string;
+      points_awarded: number;
+      announced: boolean;
+    }>;
+
+  if (pendingShortBatchRevealCurrent) {
+    const payload = buildBatchBroadcastPayload(
+      pendingShortBatchRevealCurrent.batchRows,
+      leaderboard,
+    );
+    try {
+      await deps.broadcastRoomEvent(roomId, {
+        type: "score_batch_revealed",
+        announcingUserId: currentAnnouncer,
+        contestants: payload,
+      });
+    } catch (err) {
+      console.warn(
+        `broadcast 'score_batch_revealed' (batch-reveal current user) failed for room ${roomId}; state committed regardless:`,
+        err,
+      );
+    }
+  }
+
+  if (pendingShortRotationBatch) {
+    const payload = buildBatchBroadcastPayload(
+      pendingShortRotationBatch.batchRows,
+      leaderboard,
+    );
+    try {
+      await deps.broadcastRoomEvent(roomId, {
+        type: "score_batch_revealed",
+        announcingUserId: pendingShortRotationBatch.nextUserId,
+        contestants: payload,
+      });
+    } catch (err) {
+      console.warn(
+        `broadcast 'score_batch_revealed' (rotation next user) failed for room ${roomId}; state committed regardless:`,
         err,
       );
     }
