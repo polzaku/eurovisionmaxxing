@@ -286,6 +286,10 @@
       "dark": "Tema: Oscuro (toca para Sistema)"
     }
   },
+  "localeSwitcher": {
+    "label": "Idioma: {locale} — toca para cambiar",
+    "menuLabel": "Elige un idioma"
+  },
   "roster": {
     "reshuffle": {
       "idleCta": "🎲 Reordenar aleatoriamente",

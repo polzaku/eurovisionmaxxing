@@ -3,6 +3,7 @@ import { GeistSans } from "geist/font/sans";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import I18nProvider from "@/i18n/provider";
 import ThemeToggle from "@/components/ui/ThemeToggle";
+import LocaleSwitcher from "@/components/ui/LocaleSwitcher";
 import "./globals.css";
 
 /**
@@ -50,6 +51,7 @@ export default async function RootLayout({
       <body className={`${GeistSans.variable} font-sans antialiased min-h-screen bg-background text-foreground`}>
         <I18nProvider locale={locale} messages={messages}>
           <ThemeToggle />
+          <LocaleSwitcher />
           {children}
         </I18nProvider>
       </body>

@@ -286,6 +286,10 @@
       "dark": "Theme: Dark (tap for System)"
     }
   },
+  "localeSwitcher": {
+    "label": "Language: {locale} — tap to change",
+    "menuLabel": "Choose a language"
+  },
   "roster": {
     "reshuffle": {
       "idleCta": "🎲 Re-shuffle order",
