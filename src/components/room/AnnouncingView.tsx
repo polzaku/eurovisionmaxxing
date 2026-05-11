@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import Avatar from "@/components/ui/Avatar";
 import DoneCard from "@/components/room/DoneCard";
 import SkipBannerQueue, {
@@ -9,6 +10,10 @@ import SkipBannerQueue, {
 import AnnouncerRoster, {
   type RosterMember,
 } from "@/components/room/AnnouncerRoster";
+import TwelvePointSplash from "@/components/room/TwelvePointSplash";
+import TwelvePointToast, {
+  type ToastEvent,
+} from "@/components/room/TwelvePointToast";
 import { useRoomRealtime } from "@/hooks/useRoomRealtime";
 import { useRoomPresence } from "@/hooks/useRoomPresence";
 import {
@@ -150,6 +155,7 @@ export default function AnnouncingView({
   );
   const [finishedLocal, setFinishedLocal] = useState(false);
   const [skipEvents, setSkipEvents] = useState<SkipEvent[]>([]);
+  const [toastEvents, setToastEvents] = useState<ToastEvent[]>([]);
 
   const [finishingShow, setFinishingShow] = useState(false);
 
@@ -219,10 +225,33 @@ export default function AnnouncingView({
         announcingUserId: event.announcingUserId,
         timestamp: Date.now(),
       });
+      if (
+        announcementStyle === "short" &&
+        currentUserId !== event.announcingUserId
+      ) {
+        const contestant = contestantById.current.get(event.contestantId);
+        const announcerName = announcement?.announcingDisplayName ?? "Someone";
+        if (contestant) {
+          setToastEvents((prev) => [
+            ...prev,
+            {
+              id: `toast-${event.announcingUserId}-${Date.now()}`,
+              announcingUserDisplayName: announcerName,
+              country: contestant.country,
+              flagEmoji: contestant.flagEmoji,
+              at: Date.now(),
+            },
+          ]);
+        }
+      }
       void refetch();
       return;
     }
     if (event.type === "score_update") {
+      void refetch();
+      return;
+    }
+    if (event.type === "score_batch_revealed") {
       void refetch();
       return;
     }
@@ -446,6 +475,7 @@ export default function AnnouncingView({
   return (
     <main className="flex min-h-screen flex-col items-center px-4 py-8">
       <SkipBannerQueue events={skipEvents} />
+      <TwelvePointToast events={toastEvents} />
       <div className="max-w-xl w-full space-y-6 motion-safe:animate-fade-in">
         <header className="space-y-3 text-center">
           <h1 className="text-xl font-bold tracking-tight emx-wordmark">
@@ -518,7 +548,23 @@ export default function AnnouncingView({
          * default-on auto-advance can cut narrators off mid-sentence on TV
          * and the manual reveal flow already works fine.
          */}
-        {isActiveDriver && announcement?.pendingReveal ? (
+        {isActiveDriver && announcement?.pendingReveal && announcementStyle === "short" ? (
+          <ShortStyleRevealCard
+            onReveal={handleReveal}
+            submitting={advanceState.kind === "submitting"}
+            error={advanceState.error}
+            contestant={pendingContestant ?? null}
+            justRevealedContestant={
+              justRevealed
+                ? contestantById.current.get(justRevealed.contestantId) ?? null
+                : null
+            }
+            isDelegate={isDelegate}
+            announcerName={announcerName}
+            handoffState={handoffState}
+            onHandoffBack={() => handleTakeControl(false)}
+          />
+        ) : isActiveDriver && announcement?.pendingReveal ? (
           <div
             data-testid="active-driver-tap-zone"
             onClick={() => {
@@ -818,6 +864,74 @@ function pickMode({
   if (isAnnouncer && adminHasTakenControl) return "passive-announcer";
   if (isOwner) return "owner-watching";
   return "guest-watching";
+}
+
+function ShortStyleRevealCard({
+  onReveal,
+  submitting,
+  error,
+  contestant,
+  justRevealedContestant,
+  isDelegate,
+  announcerName,
+  handoffState,
+  onHandoffBack,
+}: {
+  onReveal: () => void;
+  submitting: boolean;
+  error?: string;
+  contestant: Contestant | null;
+  justRevealedContestant: Contestant | null;
+  isDelegate: boolean;
+  announcerName: string;
+  handoffState: { kind: "idle" | "submitting"; error?: string };
+  onHandoffBack: () => void;
+}) {
+  const t = useTranslations();
+
+  if (justRevealedContestant) {
+    return (
+      <div className="space-y-4">
+        <p className="text-center text-sm font-semibold text-primary">
+          {t("announce.shortReveal.revealed")}
+        </p>
+        <TwelvePointSplash contestant={justRevealedContestant} size="card" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border-2 border-accent/60 bg-accent/5 px-5 py-6 space-y-4 text-center">
+      <button
+        type="button"
+        onClick={onReveal}
+        disabled={submitting || !contestant}
+        className="w-full rounded-xl bg-primary px-6 py-5 text-2xl font-bold text-primary-foreground transition-all hover:scale-[1.01] hover:emx-glow-gold active:scale-[0.99] disabled:opacity-60"
+      >
+        {submitting ? "…" : t("announce.shortReveal.cta")}
+      </button>
+      <p className="text-xs text-muted-foreground">
+        {t("announce.shortReveal.ctaMicrocopy")}
+      </p>
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+      {isDelegate ? (
+        <button
+          type="button"
+          onClick={onHandoffBack}
+          disabled={handoffState.kind === "submitting"}
+          className="w-full rounded-lg border-2 border-border bg-background px-3 py-2 text-sm font-medium transition-all hover:border-accent disabled:opacity-60"
+        >
+          {handoffState.kind === "submitting"
+            ? "Releasing…"
+            : `Give back control to ${announcerName}`}
+        </button>
+      ) : null}
+    </div>
+  );
 }
 
 function renderHeader({

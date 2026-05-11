@@ -48,12 +48,74 @@ vi.mock("@/components/room/DoneCard", () => ({
   ),
 }));
 
+// next-intl — mock useTranslations so AnnouncingView and its internal
+// ShortStyleRevealCard don't need a NextIntlClientProvider in tests.
+// The mock returns the key's last segment as the translation value so
+// assertions can match on the actual locale string (e.g. "Reveal 12 points").
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string, params?: Record<string, string>) => {
+    const translations: Record<string, string> = {
+      "announce.shortReveal.cta": "Reveal 12 points",
+      "announce.shortReveal.ctaMicrocopy": "Tap when you say it",
+      "announce.shortReveal.revealed": "Revealed ✓",
+      "announce.shortReveal.guestToast": params
+        ? `${params.name} gave 12 to ${params.country} ${params.flag}`
+        : key,
+    };
+    return translations[key] ?? key;
+  },
+}));
+
 // SkipBannerQueue uses next-intl — stub it out so AnnouncingView tests
 // don't need an intl provider. The null-render when events=[] is what
 // existing tests rely on; a banner stub is fine for the rare test that
 // triggers announce_skip.
 vi.mock("@/components/room/SkipBannerQueue", () => ({
   default: () => null,
+}));
+
+// TwelvePointSplash — render a minimal stub that preserves the
+// data-testid and data-size attributes the new tests assert on.
+vi.mock("@/components/room/TwelvePointSplash", () => ({
+  default: ({
+    contestant,
+    size,
+  }: {
+    contestant: { country: string; flagEmoji: string };
+    size: string;
+  }) => (
+    <div
+      data-testid="twelve-point-splash"
+      data-size={size}
+    >
+      {contestant.country} {contestant.flagEmoji}
+    </div>
+  ),
+}));
+
+// TwelvePointToast — render a minimal stub that preserves the
+// data-testid attribute and shows the formatted text.
+vi.mock("@/components/room/TwelvePointToast", () => ({
+  default: ({
+    events,
+  }: {
+    events: Array<{
+      id: string;
+      announcingUserDisplayName: string;
+      country: string;
+      flagEmoji: string;
+      at: number;
+    }>;
+  }) => {
+    if (!events || events.length === 0) return null;
+    const latest = events[events.length - 1];
+    return (
+      <div data-testid="twelve-point-toast">
+        {latest.announcingUserDisplayName} gave 12 to {latest.country}{" "}
+        {latest.flagEmoji}
+      </div>
+    );
+  },
 }));
 
 // AnnouncerRoster uses next-intl — stub with a minimal implementation that
@@ -1054,5 +1116,158 @@ describe("AnnouncingView — announcement_order_reshuffled broadcast (R4 #4 task
       announcingUserId: "u1",
     });
     expect(onAnnouncementEnded).toHaveBeenCalled();
+  });
+});
+
+// ─── R4 §10.2.2 — short-style render branches ────────────────────────────────
+
+describe("AnnouncingView — short style (SPEC §10.2.2)", () => {
+  beforeEach(() => {
+    postAnnounceNextMock.mockReset();
+    postAnnounceHandoffMock.mockReset();
+    postAnnounceSkipMock.mockReset();
+    capturedRoomEventHandler = null;
+    mockResultsFetch();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // Case A: active announcer + style='short' renders short CTA, not tap-zone
+  it("Case A — active announcer + style='short' renders 'Reveal 12 points' CTA and microcopy, not tap-zone", async () => {
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={ANNOUNCER_ID}
+        announcement={ANNOUNCEMENT_STATE}
+        announcementStyle="short"
+      />,
+    );
+    // Wait for the short CTA to appear
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /reveal 12 points/i }),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/tap when you say it/i)).toBeInTheDocument();
+    // The existing full-style tap-zone copy should NOT be visible
+    expect(screen.queryByText(/tap anywhere to reveal/i)).not.toBeInTheDocument();
+    expect(screen.queryByTestId("active-driver-tap-zone")).not.toBeInTheDocument();
+  });
+
+  // Case B: active announcer + style='full' (control) renders existing tap-zone
+  it("Case B — active announcer + style='full' renders existing tap-zone, not short CTA", async () => {
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={ANNOUNCER_ID}
+        announcement={ANNOUNCEMENT_STATE}
+        announcementStyle="full"
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("active-driver-tap-zone")).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/tap anywhere to reveal/i)).toBeInTheDocument();
+    // Short CTA should NOT be present
+    expect(
+      screen.queryByRole("button", { name: /reveal 12 points/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/tap when you say it/i)).not.toBeInTheDocument();
+  });
+
+  // Case C: active announcer + style='short' + justRevealed event → splash, not CTA
+  it("Case C — active announcer + style='short' + announce_next event renders splash (card size), not CTA", async () => {
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={ANNOUNCER_ID}
+        announcement={ANNOUNCEMENT_STATE}
+        announcementStyle="short"
+      />,
+    );
+    // Wait for the component to mount and register the event handler
+    await waitFor(() => expect(capturedRoomEventHandler).not.toBeNull());
+    // Fire an announce_next event as the current user (active driver)
+    fireRoomEvent({
+      type: "announce_next",
+      contestantId: "2026-AT",
+      points: 12,
+      announcingUserId: ANNOUNCER_ID,
+    });
+    // After the event, the CTA should disappear and the splash should show
+    await waitFor(() =>
+      expect(screen.getByTestId("twelve-point-splash")).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId("twelve-point-splash")).toHaveAttribute(
+      "data-size",
+      "card",
+    );
+    // The CTA button should not be visible (splash replaced it)
+    expect(
+      screen.queryByRole("button", { name: /reveal 12 points/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  // Case D: guest watching + style='short' + announce_next from another user → toast appears
+  it("Case D — guest + style='short' + announce_next from another user renders TwelvePointToast", async () => {
+    const GUEST_ID = "99999999-9999-4999-8999-999999999999";
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={GUEST_ID}
+        announcement={ANNOUNCEMENT_STATE}
+        announcementStyle="short"
+      />,
+    );
+    // Wait for mount and handler capture
+    await waitFor(() => expect(capturedRoomEventHandler).not.toBeNull());
+    // Fire announce_next from the announcer (different from guest)
+    fireRoomEvent({
+      type: "announce_next",
+      contestantId: "2026-AT",
+      points: 12,
+      announcingUserId: ANNOUNCER_ID,
+    });
+    // Toast should appear with the announcer name + country
+    await waitFor(() =>
+      expect(screen.getByTestId("twelve-point-toast")).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId("twelve-point-toast")).toHaveTextContent("Bob");
+    expect(screen.getByTestId("twelve-point-toast")).toHaveTextContent("Austria");
+  });
+
+  // Case E: guest watching + style='full' (control) — no toast on announce_next
+  it("Case E — guest + style='full' + announce_next does NOT render TwelvePointToast", async () => {
+    const GUEST_ID = "99999999-9999-4999-8999-999999999999";
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={GUEST_ID}
+        announcement={ANNOUNCEMENT_STATE}
+        announcementStyle="full"
+      />,
+    );
+    // Wait for mount and handler capture
+    await waitFor(() => expect(capturedRoomEventHandler).not.toBeNull());
+    // Fire announce_next from the announcer
+    fireRoomEvent({
+      type: "announce_next",
+      contestantId: "2026-AT",
+      points: 12,
+      announcingUserId: ANNOUNCER_ID,
+    });
+    // Toast should NOT appear under full style
+    await waitFor(() =>
+      // Wait for refetch to settle (Austria in leaderboard)
+      expect(screen.getByText("Austria")).toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId("twelve-point-toast")).not.toBeInTheDocument();
   });
 });
