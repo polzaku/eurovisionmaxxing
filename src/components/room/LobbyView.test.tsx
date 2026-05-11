@@ -76,6 +76,8 @@ interface RenderOpts {
   } | null>;
   announcementMode?: "live" | "instant";
   onChangeAnnouncementMode?: (mode: "live" | "instant") => Promise<void>;
+  announcementStyle?: "full" | "short";
+  onChangeAnnouncementStyle?: (next: "full" | "short") => Promise<void>;
   categoriesOverride?: { name: string; hint?: string }[];
   onChangeCategories?: (
     categories: { name: string; weight: number; hint?: string }[],
@@ -107,6 +109,8 @@ function renderLobby(opts: RenderOpts = {}) {
       onRefreshContestants={opts.onRefreshContestants}
       announcementMode={opts.announcementMode}
       onChangeAnnouncementMode={opts.onChangeAnnouncementMode}
+      announcementStyle={opts.announcementStyle}
+      onChangeAnnouncementStyle={opts.onChangeAnnouncementStyle}
       onChangeCategories={opts.onChangeCategories}
       roomId={opts.roomId ?? "r-1"}
       currentUserId={opts.currentUserId ?? ALICE.userId}
@@ -496,5 +500,42 @@ describe("<LobbyView> — primer carousel section (R2 #240)", () => {
   it("hides the carousel section when contestants array is empty", () => {
     renderLobby({ contestants: [] });
     expect(screen.queryByTestId("contestant-primer-carousel")).toBeNull();
+  });
+});
+
+describe("LobbyView — short live reveal chooser (R4 §10.2.2)", () => {
+  it("A — admin + announcementMode='live' + announcementStyle + onChangeAnnouncementStyle renders sub-radio", () => {
+    renderLobby({
+      isAdmin: true,
+      announcementMode: "live",
+      announcementStyle: "full",
+      onChangeAnnouncementStyle: vi.fn().mockResolvedValue(undefined),
+    });
+    expect(
+      screen.getByTestId("lobby-announcement-style-toggle"),
+    ).toBeInTheDocument();
+  });
+
+  it("B — admin + announcementStyle='short' renders info card with title text", () => {
+    renderLobby({
+      isAdmin: true,
+      announcementStyle: "short",
+    });
+    expect(
+      screen.getByTestId("lobby-short-info-card"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("announcementStyle.short.lobbyCard.title"),
+    ).toBeInTheDocument();
+  });
+
+  it("C — guest (not admin) + announcementStyle='short' does NOT render info card", () => {
+    renderLobby({
+      isAdmin: false,
+      announcementStyle: "short",
+    });
+    expect(
+      screen.queryByTestId("lobby-short-info-card"),
+    ).not.toBeInTheDocument();
   });
 });

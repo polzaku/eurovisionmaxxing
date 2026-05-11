@@ -412,6 +412,29 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     [phase],
   );
 
+  const handleChangeAnnouncementStyle = useCallback(
+    async (next: "full" | "short") => {
+      if (phase.kind !== "ready") return;
+      const session = getSession();
+      if (!session) return;
+      const result = await patchAnnouncementMode(
+        phase.room.id,
+        phase.room.announcementMode as "live" | "instant",
+        session.userId,
+        { fetch: window.fetch.bind(window) },
+        { style: next },
+      );
+      if (!result.ok) return;
+      // Optimistic update — broadcast triggers a refetch shortly after.
+      setPhase((p) =>
+        p.kind === "ready"
+          ? { ...p, room: { ...p.room, announcementStyle: next } }
+          : p,
+      );
+    },
+    [phase],
+  );
+
   const handleChangeCategories = useCallback(
     async (categories: VotingCategoryShape[]) => {
       if (phase.kind !== "ready") return;
@@ -596,6 +619,10 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         }
         onChangeAnnouncementMode={
           isAdmin ? handleChangeAnnouncementMode : undefined
+        }
+        announcementStyle={phase.room.announcementStyle}
+        onChangeAnnouncementStyle={
+          isAdmin ? handleChangeAnnouncementStyle : undefined
         }
         onChangeCategories={
           isAdmin ? handleChangeCategories : undefined

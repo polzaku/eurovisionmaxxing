@@ -378,18 +378,26 @@ export async function postFinishShow(
 /**
  * SPEC §6.1 / TODO A2 — owner-only switch of `announcement_mode` between
  * 'live' and 'instant' while the room is still in the lobby.
+ *
+ * Pass `options.style` to simultaneously update `announcement_style`
+ * (SPEC §10.2.2). The server endpoint (PR A) accepts the optional field.
  */
 export async function patchAnnouncementMode(
   roomId: string,
   mode: "live" | "instant",
   userId: string,
   deps: Deps,
+  options?: { style?: "full" | "short" },
 ): Promise<ApiOk<never> | ApiFail> {
+  const body: Record<string, unknown> = { mode, userId };
+  if (options?.style !== undefined) {
+    body.style = options.style;
+  }
   return runRequest(() =>
     deps.fetch(`/api/rooms/${roomId}/announcement-mode`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ mode, userId }),
+      body: JSON.stringify(body),
     }),
   );
 }
