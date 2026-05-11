@@ -1,509 +1,440 @@
 {
   "common": {
     "app": {
-      "name": "",
-      "tagline": "",
-      "description": "",
-      "metaDescription": "",
-      "featuresLine": ""
+      "name": "eurovisionmaxxing",
+      "tagline": "La forma de ver Eurovisión en grupo",
+      "description": "Convierte el concurso en tu propio juego de votación. Puntúa cada país, anima el chat grupal en directo y termina la noche con un anuncio de 12 puntos en toda regla.",
+      "metaDescription": "App de votación para ver Eurovisión en grupo — vota, anuncia, corona al ganador.",
+      "featuresLine": "Vota en directo · Cualquier dispositivo · Revelación estilo jurado"
     },
     "cta": {
-      "startRoom": "",
-      "joinRoom": ""
+      "startRoom": "Crear sala",
+      "joinRoom": "Unirse a una sala"
     }
   },
   "onboarding": {
-    "metaTitle": "",
+    "metaTitle": "Unirse — eurovisionmaxxing",
     "displayName": {
-      "label": "",
-      "placeholder": "",
-      "hint": ""
+      "label": "Tu nombre de usuario",
+      "placeholder": "p. ej. Alice",
+      "hint": "Usa entre 2 y 24 letras, números, espacios o guiones."
     },
     "avatar": {
-      "title": "",
-      "tapHint": "",
-      "shuffleAria": "",
-      "shuffleLabel": "",
-      "changeAria": ""
+      "title": "Elige tu avatar",
+      "tapHint": "Toca tu avatar para cambiarlo.",
+      "shuffleAria": "Mezclar avatares",
+      "shuffleLabel": "Mezclar",
+      "changeAria": "Cambiar avatar"
     },
     "submit": {
-      "idle": "",
-      "busy": "",
-      "error": ""
+      "idle": "Unirse",
+      "busy": "Uniéndose…",
+      "error": "No se pudo crear tu identidad. Inténtalo de nuevo."
     }
   },
   "templates": {
     "classic": {
-      "name": "",
-      "description": ""
+      "name": "El Clásico",
+      "description": "Para los fans que quieren ser justos y minuciosos."
     },
     "spectacle": {
-      "name": "",
-      "description": ""
+      "name": "El Espectáculo",
+      "description": "Para cuando quieres premiar lo más desquiciado."
     },
     "bangerTest": {
-      "name": "",
-      "description": ""
+      "name": "El Test del Temazo",
+      "description": "Para cuando el grupo quiere encontrar la mejor canción de verdad."
     },
     "custom": {
-      "name": "",
-      "description": ""
+      "name": "Personalizado",
+      "description": "Crea tus propias categorías desde cero."
     },
-    "infoButtonAria": ""
+    "infoButtonAria": "Más sobre {name}"
   },
   "announcementMode": {
     "live": {
-      "tagline": "",
-      "long": ""
+      "tagline": "Anunciad vuestros puntos por turnos, al estilo Eurovisión.",
+      "long": "Genial con una tele. Cada usuario revela sus puntos del 1 al 12 por turno."
     },
     "instant": {
-      "tagline": "",
-      "long": ""
+      "tagline": "Revela al ganador de un golpe.",
+      "long": "Genial si tienes poco tiempo. Todos se marcan como listos y aparece la clasificación."
     },
-    "infoButtonAria": ""
+    "infoButtonAria": "Más sobre el modo de anuncio {mode}"
   },
   "announcementStyle": {
-    "subradioLabel": "",
+    "subradioLabel": "Estilo de revelación",
     "full": {
-      "label": "",
-      "tagline": ""
+      "label": "Revelación completa",
+      "tagline": "Cada portavoz revela todos los 10 puntos en directo, del 1 al 12."
     },
     "short": {
-      "label": "",
-      "tagline": "",
-      "tooltip": "",
+      "label": "Revelación corta — estilo Eurovisión",
+      "tagline": "Solo la revelación de 12 puntos es en directo. Las puntuaciones más bajas aparecen solas.",
+      "tooltip": "Como en el Eurovisión real: solo las revelaciones de 12 puntos son en directo, el resto aparece automáticamente. Mejor en una tele con todos mirando.",
       "lobbyCard": {
-        "title": "",
-        "body": ""
+        "title": "Revelación corta activada",
+        "body": "Cada portavoz solo tendrá que revelar sus 12 puntos en directo. Abre la vista de presentación en una tele antes de que acabe la votación — ese es el escenario del presentador."
       },
       "presentOverlay": {
-        "title": "",
-        "body": "",
-        "dismiss": ""
+        "title": "Modo de revelación corta",
+        "body": "El teléfono del presentador tiene un único botón «Revelar 12 puntos». Las puntuaciones más bajas aparecen automáticamente.",
+        "dismiss": "Entendido"
       }
     }
   },
   "categories": {
-    "vocals": {
-      "name": "",
-      "hint": ""
-    },
-    "music": {
-      "name": "",
-      "hint": ""
-    },
-    "outfit": {
-      "name": "",
-      "hint": ""
-    },
-    "stagePerformance": {
-      "name": "",
-      "hint": ""
-    },
-    "vibes": {
-      "name": "",
-      "hint": ""
-    },
-    "drama": {
-      "name": "",
-      "hint": ""
-    },
-    "costumeCommitment": {
-      "name": "",
-      "hint": ""
-    },
-    "stagingChaos": {
-      "name": "",
-      "hint": ""
-    },
-    "gayPanicLevel": {
-      "name": "",
-      "hint": ""
-    },
-    "quotability": {
-      "name": "",
-      "hint": ""
-    },
-    "catchiness": {
-      "name": "",
-      "hint": ""
-    },
-    "danceability": {
-      "name": "",
-      "hint": ""
-    },
-    "production": {
-      "name": "",
-      "hint": ""
-    },
-    "lyrics": {
-      "name": "",
-      "hint": ""
-    },
-    "originality": {
-      "name": "",
-      "hint": ""
-    }
+    "vocals":            { "name": "Voz",                 "hint": "Ejecución técnica y control — no solo si te gusta el estilo" },
+    "music":             { "name": "Música",               "hint": "Composición, arreglos y calidad de producción" },
+    "outfit":            { "name": "Outfit",               "hint": "El look. ¿Funciona? ¿Está comprometido?" },
+    "stagePerformance":  { "name": "Actuación en escena",  "hint": "Movimiento, energía y uso del escenario" },
+    "vibes":             { "name": "Vibras",               "hint": "Lo inefable. ¿Cómo te hizo sentir?" },
+    "drama":             { "name": "Drama",                "hint": "¿Cuánto te hizo jadear, llevarte la mano al pecho o inclinarte hacia adelante?" },
+    "costumeCommitment": { "name": "Entrega al vestuario", "hint": "No solo bonito — ¿hasta dónde llegaron? ¿Sin frenos?" },
+    "stagingChaos":      { "name": "Caos escénico",        "hint": "¿Fue locura controlada o simplemente confusión? Premia lo primero." },
+    "gayPanicLevel":     { "name": "Nivel de pánico gay",  "hint": "Lo camp. Lo queer. La iconografía." },
+    "quotability":       { "name": "Citabilidad",          "hint": "¿Seguirás hablando de esto en noviembre?" },
+    "catchiness":        { "name": "Pegada",               "hint": "¿Podrías tararearla 10 minutos después?" },
+    "danceability":      { "name": "Bailabilidad",         "hint": "¿Tu cuerpo se movió solo?" },
+    "production":        { "name": "Producción",           "hint": "Diseño de sonido, mezcla y calidad de estudio" },
+    "lyrics":            { "name": "Letra",                "hint": "¿Qué dicen en realidad? ¿Aguanta el escrutinio?" },
+    "originality":       { "name": "Originalidad",         "hint": "¿Ha escuchado Eurovisión algo así antes?" }
   },
   "voting": {
     "scoredChip": {
-      "partial": "",
-      "all": ""
+      "partial": "puntuado",
+      "all": "todo puntuado"
     },
     "missed": {
-      "button": "",
-      "buttonAria": "",
-      "cardLabel": "",
-      "estimatedLabel": "",
-      "perCategoryLabel": "",
-      "rescoreButton": "",
+      "button": "Me lo perdí",
+      "buttonAria": "Marcar este concursante como perdido",
+      "cardLabel": "Este está marcado como perdido",
+      "estimatedLabel": "Puntuación estimada",
+      "perCategoryLabel": "Por categoría (estimada)",
+      "rescoreButton": "Volver a puntuar este concursante",
       "toast": {
-        "body": "",
-        "undo": "",
-        "dismissAria": ""
+        "body": "Marcado como perdido — estimaremos tus puntuaciones como ~{overall}.",
+        "undo": "Deshacer",
+        "dismissAria": "Descartar"
       }
     },
     "hotTake": {
-      "addPill": "",
-      "addPillAria": "",
-      "fieldAria": "",
-      "placeholder": "",
-      "counter": ""
+      "addPill": "+ Añadir una opinión",
+      "addPillAria": "Añadir una opinión",
+      "fieldAria": "Opinión",
+      "placeholder": "Tu frase lapidaria",
+      "counter": "{count} / {max}"
     },
     "status": {
-      "scored": "",
-      "unscored": ""
+      "scored": "✓ puntuado {value}",
+      "unscored": "Sin puntuar"
     },
     "scale": {
-      "1": "",
-      "5": "",
-      "10": "",
-      "openAria": "",
-      "closeAria": "",
-      "title": ""
+      "openAria": "Mostrar anclajes de escala",
+      "closeAria": "Cerrar anclajes de escala",
+      "title": "Escala",
+      "1": "Devastador",
+      "5": "Aceptable",
+      "10": "Icónico"
     },
     "hint": {
       "toggleAria": {
-        "collapsed": "",
-        "expanded": ""
+        "collapsed": "Mostrar pista para {category}",
+        "expanded": "Ocultar pista para {category}"
       },
-      "onboarding": ""
+      "onboarding": "Toca ⓘ en una categoría para ocultar su pista."
     },
     "jumpTo": {
-      "footerButton": "",
-      "footerButtonAria": "",
-      "title": "",
-      "closeAria": "",
-      "currentSuffix": "",
+      "footerButton": "Ir a",
+      "footerButtonAria": "Ir a un concursante",
+      "title": "Ir a concursante",
+      "closeAria": "Cerrar",
+      "currentSuffix": "(actual)",
       "status": {
-        "unscored": "",
-        "scored": "",
-        "missed": ""
+        "unscored": "Sin puntuar aún",
+        "scored": "✓ Puntuado",
+        "missed": "👻 Perdido"
       }
     },
     "endOfVoting": {
-      "allScored": "",
-      "allScoredFallback": "",
-      "missedSome": "",
-      "unscoredCount": "",
-      "roomMomentum": "",
-      "rescoreCta": "",
-      "jumpToCta": "",
+      "allScored": "✅ Todos los {count} puntuados — esperando a que {admin} cierre la votación.",
+      "allScoredFallback": "✅ Todos los {count} puntuados — esperando a que el anfitrión cierre la votación.",
+      "missedSome": "⚠️ Marcaste {count} como perdidos — se rellenarán con tu media. Toca para volver a puntuar.",
+      "unscoredCount": "⚠️ {count} sin puntuar aún",
+      "roomMomentum": "⏳ La mayoría de la sala ha terminado — te quedan {count} por puntuar.",
+      "rescoreCta": "Volver a puntuar",
+      "jumpToCta": "Puntuar ahora",
       "host": {
-        "allDone": "",
-        "mostDone": "",
-        "selfDoneOnly": "",
-        "selfDoneOnlyNoCount": "",
-        "endVotingCta": ""
+        "allDone": "🎉 Todos han terminado — ¿listo para cerrar la votación?",
+        "mostDone": "⏳ {ready} de {total} han terminado — dales un momento y luego cierra la votación.",
+        "selfDoneOnly": "✅ Tu voto está listo — {ready} de {total} han terminado hasta ahora.",
+        "selfDoneOnlyNoCount": "✅ Tu voto está listo.",
+        "endVotingCta": "Cerrar votación"
       }
     },
     "endVoting": {
-      "button": "",
+      "button": "Cerrar votación",
       "modal": {
-        "title": "",
-        "body": "",
-        "confirm": "",
-        "cancel": ""
+        "title": "¿Cerrar la votación?",
+        "body": "Al tocar Cerrar votación se inicia una cuenta atrás de 5 segundos. Puedes tocar Deshacer durante la cuenta atrás para cancelar.",
+        "confirm": "Cerrar votación",
+        "cancel": "Cancelar"
       },
       "countdown": {
-        "body": "",
-        "finalising": "",
-        "undo": ""
+        "body": "La votación termina en {seconds}s",
+        "finalising": "Finalizando…",
+        "undo": "Deshacer"
       },
       "guest": {
-        "body": ""
+        "body": "La votación termina en {seconds}s…"
       }
     }
   },
   "errors": {
-    "INVALID_BODY": "",
-    "INVALID_DISPLAY_NAME": "",
-    "INVALID_AVATAR_SEED": "",
-    "INVALID_ROOM_ID": "",
-    "ROOM_NOT_FOUND": "",
-    "USER_NOT_FOUND": "",
-    "INVALID_TOKEN": "",
-    "INTERNAL_ERROR": ""
+    "INVALID_BODY": "Algo en tu solicitud no es válido.",
+    "INVALID_DISPLAY_NAME": "El nombre de usuario debe tener entre 2 y 24 caracteres: letras, números, espacios o guiones.",
+    "INVALID_AVATAR_SEED": "El identificador de avatar debe tener entre 1 y {limit} caracteres.",
+    "INVALID_ROOM_ID": "Ese enlace de sala no parece correcto. ¿Compruebas la URL?",
+    "ROOM_NOT_FOUND": "No encontramos esa sala.",
+    "USER_NOT_FOUND": "No encontramos esa sesión.",
+    "INVALID_TOKEN": "Tu sesión ha caducado. Vuelve a unirte.",
+    "INTERNAL_ERROR": "Algo salió mal en nuestro lado. Inténtalo de nuevo."
   },
   "announce": {
     "skipBanner": {
-      "single": "",
-      "coalesced": "",
-      "coalescedTrailing": ""
+      "single": "{name} no está — sus puntos se están saltando",
+      "coalesced": "{count} saltados: {names}",
+      "coalescedTrailing": "+{remaining}"
     },
     "finishTheShow": {
-      "ownerCta": "",
-      "ownerSubtitle": "",
-      "guestWaiting": "",
-      "batchRevealChip": ""
+      "ownerCta": "Terminar el show",
+      "ownerSubtitle": "Todos los presentadores restantes están ausentes — termina de revelar en su nombre",
+      "guestWaiting": "Esperando a que el anfitrión continúe…",
+      "batchRevealChip": "El anfitrión está terminando el show"
     },
     "shortReveal": {
-      "cta": "",
-      "ctaMicrocopy": "",
-      "revealed": "",
-      "awaitingTwelve": "",
-      "guestToast": ""
+      "cta": "Revelar 12 puntos",
+      "ctaMicrocopy": "Toca cuando lo digas",
+      "revealed": "Revelado ✓",
+      "awaitingTwelve": "Esperando sus 12 puntos…",
+      "guestToast": "{name} dio 12 puntos a {country} {flag}"
     }
   },
   "results": {
-    "title": "",
+    "title": "Resultados",
     "placeholders": {
-      "lobby": "",
-      "lobbyCountdown": "",
-      "voting": "",
-      "votingCta": "",
-      "scoring": "",
-      "roomNotFound": ""
+      "lobby": "Esta sala aún no ha empezado a votar. Vuelve después del show.",
+      "lobbyCountdown": "El show empieza en {countdown}",
+      "voting": "La votación sigue en curso. Los resultados estarán disponibles cuando el administrador la cierre.",
+      "votingCta": "Unirse a esta sala",
+      "scoring": "Calculando resultados…",
+      "roomNotFound": "No encontramos esa sala. ¿Compruebas el enlace?"
     },
     "announcing": {
-      "banner": ""
+      "banner": "En directo — anuncios en curso"
     },
     "headings": {
-      "leaderboard": "",
-      "breakdowns": "",
-      "hotTakes": "",
-      "awards": "",
-      "categoryAwards": "",
-      "personalityAwards": ""
+      "leaderboard": "Clasificación",
+      "breakdowns": "Quién dio qué",
+      "hotTakes": "Opiniones",
+      "awards": "Premios",
+      "categoryAwards": "Mejor en categoría",
+      "personalityAwards": "Y la sala dijo…"
     },
     "leaderboard": {
-      "points": "",
-      "noPoints": "",
-      "drillDownToggleAria": "",
-      "drillDownHeading": "",
-      "drillDownEmpty": "",
-      "drillDownGive": ""
+      "points": "{count, plural, one {# pt} other {# pts}}",
+      "noPoints": "—",
+      "drillDownToggleAria": "Mostrar desglose de puntos para {country}",
+      "drillDownHeading": "Puntos recibidos",
+      "drillDownEmpty": "Nadie en la sala le dio puntos.",
+      "drillDownGive": "{points, plural, one {# pt} other {# pts}}"
     },
     "hotTake": {
-      "edited": "",
-      "deleteAria": "",
-      "deleteConfirmTitle": "",
-      "deleteConfirmBody": "",
-      "deleteConfirmAction": "",
-      "deleteSubmitting": "",
-      "deleteCancel": "",
-      "deleteError": ""
+      "edited": "editado",
+      "deleteAria": "Eliminar la opinión de {name}",
+      "deleteConfirmTitle": "¿Eliminar esta opinión?",
+      "deleteConfirmBody": "¿Eliminar la opinión de {name}? No se le notificará.",
+      "deleteConfirmAction": "Eliminar",
+      "deleteSubmitting": "Eliminando…",
+      "deleteCancel": "Cancelar",
+      "deleteError": "No se pudo eliminar. ¿Intentarlo de nuevo?"
     },
     "breakdown": {
-      "gave": ""
+      "gave": "dio {points} a {country}"
     },
     "copySummary": {
-      "idle": "",
-      "done": ""
+      "idle": "Copiar resumen de texto",
+      "done": "¡Copiado!"
     },
     "summary": {
-      "topLine": "",
-      "fullResults": ""
+      "topLine": "El top 10 de nuestra sala:",
+      "fullResults": "Resultados completos"
     },
     "eventTitle": {
-      "final": "",
-      "semi1": "",
-      "semi2": ""
+      "final": "Eurovisión {year} — Gran Final",
+      "semi1": "Eurovisión {year} — Semifinal 1",
+      "semi2": "Eurovisión {year} — Semifinal 2"
     }
   },
   "theme": {
-    "system": "",
-    "light": "",
-    "dark": "",
+    "system": "Sistema",
+    "light": "Claro",
+    "dark": "Oscuro",
     "toggleAria": {
-      "system": "",
-      "light": "",
-      "dark": ""
+      "system": "Tema: Sistema (toca para Claro)",
+      "light": "Tema: Claro (toca para Oscuro)",
+      "dark": "Tema: Oscuro (toca para Sistema)"
     }
   },
   "roster": {
     "reshuffle": {
-      "idleCta": "",
-      "busyCta": "",
-      "errorInProgress": "",
-      "errorGeneric": ""
+      "idleCta": "🎲 Reordenar aleatoriamente",
+      "busyCta": "Reordenando…",
+      "errorInProgress": "Las revelaciones han empezado — ya no es posible reordenar.",
+      "errorGeneric": "No se pudo reordenar. ¿Intentarlo de nuevo?"
     }
   },
   "scoring": {
-    "title": "",
-    "subtitle": ""
+    "title": "Calculando resultados…",
+    "subtitle": "Aguanta — estamos haciendo los cálculos."
   },
   "room": {
-    "catchingUp": ""
+    "catchingUp": "Poniéndote al día…"
   },
   "present": {
     "lobby": {
-      "eyebrow": "",
-      "callToJoin": "",
-      "memberCount": ""
+      "eyebrow": "PIN de la sala",
+      "callToJoin": "Abre eurovisionmaxxing.com e introduce el PIN para unirte.",
+      "memberCount": "{count, plural, =0 {Esperando participantes…} =1 {1 persona aquí} other {# personas aquí}}"
     },
     "voting": {
-      "eyebrow": "",
-      "title": ""
+      "eyebrow": "Votación en curso",
+      "title": "Puntúa las canciones desde tu teléfono."
     },
     "votingEnding": {
-      "title": ""
+      "title": "La votación termina en un momento…"
     },
     "announcing": {
-      "title": "",
-      "announcer": "",
-      "position": "",
-      "upNext": "",
-      "upNextDetail": "",
-      "queueExhausted": ""
+      "title": "Clasificación en directo",
+      "announcer": "{name} está anunciando",
+      "position": "Presentador {position} de {total}",
+      "upNext": "El siguiente",
+      "upNextDetail": "{points} pts → {country}",
+      "queueExhausted": "Revelaciones completas — pasando el turno…"
     },
     "done": {
-      "title": ""
+      "title": "Resultados finales"
     },
     "cascadeExhausted": {
-      "title": "",
-      "subtitle": ""
+      "title": "Esperando a que un administrador continúe…",
+      "subtitle": "Todos los presentadores están ausentes. El anfitrión reanudará cuando vuelvan."
     },
     "batchReveal": {
-      "chip": ""
+      "chip": "El anfitrión está terminando el show"
     },
     "fullscreen": {
-      "enter": "",
-      "aria": "",
-      "dismissAria": ""
+      "enter": "Pantalla completa",
+      "aria": "Aviso de pantalla completa",
+      "dismissAria": "Descartar aviso de pantalla completa"
     }
   },
   "lobby": {
     "countdown": {
-      "label": "",
-      "fallback": ""
+      "label": "El show empieza en",
+      "fallback": "Listo cuando quieras."
     },
     "primer": {
-      "title": "",
-      "tapHint": "",
-      "previewSong": "",
-      "flagAria": ""
+      "title": "El lineup de esta noche",
+      "tapHint": "Toca cualquier tarjeta para ver las pistas de categoría",
+      "previewSong": "Vista previa en YouTube",
+      "flagAria": "Bandera de {country}"
     },
     "refreshContestants": {
-      "button": "",
-      "busy": "",
-      "upToDate": "",
-      "summary": "",
-      "error": ""
+      "button": "Actualizar concursantes",
+      "busy": "Actualizando…",
+      "upToDate": "Ya está al día — nada ha cambiado.",
+      "summary": "{added, plural, =0 {} =1 {1 añadido · } other {# añadidos · }}{removed, plural, =0 {} =1 {1 eliminado · } other {# eliminados · }}{reordered, plural, =0 {} =1 {1 reordenado} other {# reordenados}}",
+      "error": "No se pudo actualizar — inténtalo de nuevo."
     }
   },
   "instantAnnounce": {
-    "lede": "",
+    "lede": "La votación ha terminado. Aquí están los puntos que diste — toca cuando estés listo para ver la clasificación de la sala.",
     "ownResults": {
-      "title": "",
-      "subtitle": "",
-      "empty": "",
-      "revealTwelveButton": "",
-      "revealTwelveSkip": "",
-      "twelveLabel": ""
+      "title": "Tus mejores elecciones",
+      "subtitle": "Estos son los puntos de Eurovisión que diste a cada país. La clasificación está oculta hasta que todos estén listos.",
+      "empty": "No puntuaste ningún concursante esta ronda.",
+      "revealTwelveButton": "Revelar tus 12 puntos",
+      "revealTwelveSkip": "Saltarse el suspense",
+      "twelveLabel": "Tus 12 puntos"
     },
     "ready": {
-      "button": "",
-      "subtitle": "",
-      "busy": "",
-      "waiting": ""
+      "button": "He terminado — avisa al anfitrión",
+      "subtitle": "El anfitrión revela cuando todos estén listos.",
+      "busy": "Marcando como listo…",
+      "waiting": "Estás listo. Esperando a {count} más — el anfitrión revela cuando todos estén listos."
     },
     "admin": {
-      "readyCount": "",
-      "hostHeading": "",
-      "hostSubtitle": "",
-      "revealAll": "",
-      "revealAllSublineReady": "",
-      "revealAllSublineWaiting": "",
-      "revealAnyway": "",
-      "revealAnywaySublineHalf": "",
-      "revealAnywaySublineCountdown": "",
-      "revealAnywaySublineDisabled": "",
-      "override": "",
-      "overrideSubline": "",
-      "overrideConfirmTitle": "",
-      "overrideConfirmBody": "",
-      "overrideConfirmCancel": "",
-      "overrideConfirmGo": ""
+      "readyCount": "{ready} / {total} listos",
+      "hostHeading": "Como anfitrión, tú decides cuándo revelar.",
+      "hostSubtitle": "Elige una de las tres opciones.",
+      "revealAll": "Revelar a todos",
+      "revealAllSublineReady": "Todos marcaron listo ({ready}/{total}). Toca para mostrar la clasificación.",
+      "revealAllSublineWaiting": "Disponible cuando todos estén listos ({ready}/{total}).",
+      "revealAnyway": "Revelar antes de tiempo",
+      "revealAnywaySublineHalf": "La mitad de la sala está lista ({ready}/{total}) — se puede revelar.",
+      "revealAnywaySublineCountdown": "Disponible en {minutes}:{seconds}.",
+      "revealAnywaySublineDisabled": "Se desbloquea cuando la mitad esté lista, o 60s después del primero.",
+      "override": "Saltarse la espera — revelar ahora",
+      "overrideSubline": "Omite la espera. Úsalo si la gente no responde.",
+      "overrideConfirmTitle": "¿Saltarse la espera?",
+      "overrideConfirmBody": "Todo el mundo verá la clasificación del grupo de inmediato, aunque no hayan marcado listo.",
+      "overrideConfirmCancel": "Cancelar",
+      "overrideConfirmGo": "Revelar ahora"
     },
     "ceremony": {
-      "subtitle": "",
-      "redirectingIn": "",
-      "stayHere": "",
-      "seeFullResults": ""
+      "subtitle": "La clasificación final de la sala",
+      "redirectingIn": "Abriendo resultados completos en {seconds}s…",
+      "stayHere": "Quedarse aquí",
+      "seeFullResults": "Ver resultados completos →"
     }
   },
   "awards": {
-    "jointCaption": "",
-    "neighbourhoodCaption": "",
-    "explainerToggle": "",
+    "jointCaption": "ganadores conjuntos",
+    "neighbourhoodCaption": "votaron más parecido",
+    "explainerToggle": "¿Qué significa esto?",
     "ceremony": {
-      "title": "",
-      "nextAward": "",
-      "nextAwardAria": "",
-      "advanceHint": ""
+      "title": "Y los premios van para…",
+      "nextAward": "Siguiente premio",
+      "nextAwardAria": "Siguiente premio ({current} de {total})",
+      "advanceHint": "Toca en cualquier sitio para revelar el siguiente premio"
     },
     "endOfShow": {
-      "copyLink": "",
-      "copyLinkConfirm": "",
-      "copySummary": "",
-      "copySummaryConfirm": "",
-      "viewFullResults": "",
-      "createAnother": ""
+      "copyLink": "Copiar enlace para compartir",
+      "copyLinkConfirm": "¡Enlace copiado!",
+      "copySummary": "Copiar resumen de texto",
+      "copySummaryConfirm": "¡Resumen copiado!",
+      "viewFullResults": "Ver resultados completos",
+      "createAnother": "Crear otra sala"
     },
     "explainers": {
-      "harshest_critic": "",
-      "biggest_stan": "",
-      "hive_mind_master": "",
-      "most_contrarian": "",
-      "neighbourhood_voters": "",
-      "the_dark_horse": "",
-      "fashion_stan": "",
-      "the_enabler": ""
+      "harshest_critic": "La puntuación media más baja dada a todos los concursantes que votaste.",
+      "biggest_stan": "La puntuación media más alta dada a todos los concursantes que votaste.",
+      "hive_mind_master": "Tu clasificación coincidió más con la del conjunto de la sala.",
+      "most_contrarian": "Tu clasificación fue la más alejada de la clasificación general de la sala.",
+      "neighbourhood_voters": "Tú y otra persona votasteis más parecido — vuestras puntuaciones subieron y bajaron juntas más que las de cualquier otro.",
+      "the_dark_horse": "El concursante sobre el que la sala más discrepó — a algunos les encantó, a otros les pareció fatal.",
+      "fashion_stan": "Diste la puntuación más alta de todos en la categoría de outfit o vestuario.",
+      "the_enabler": "Diste tus 12 puntos al ganador general de la sala."
     },
     "personality": {
-      "biggest_stan": {
-        "name": "",
-        "stat": ""
-      },
-      "harshest_critic": {
-        "name": "",
-        "stat": ""
-      },
-      "most_contrarian": {
-        "name": "",
-        "stat": ""
-      },
-      "hive_mind_master": {
-        "name": "",
-        "stat": ""
-      },
-      "neighbourhood_voters": {
-        "name": "",
-        "stat": ""
-      },
-      "the_dark_horse": {
-        "name": "",
-        "stat": ""
-      },
-      "fashion_stan": {
-        "name": "",
-        "stat": ""
-      },
-      "the_enabler": {
-        "name": "",
-        "stat": ""
-      }
+      "biggest_stan": { "name": "El mayor fan", "stat": "media {value}/10" },
+      "harshest_critic": { "name": "El más crítico", "stat": "media {value}/10" },
+      "most_contrarian": { "name": "El más contrario", "stat": "dist. Spearman {value}" },
+      "hive_mind_master": { "name": "Mente colmena", "stat": "dist. Spearman {value}" },
+      "neighbourhood_voters": { "name": "Votantes afines", "stat": "Pearson {value}" },
+      "the_dark_horse": { "name": "El caballo ganador", "stat": "varianza {value}" },
+      "fashion_stan": { "name": "Fan del estilismo", "stat": "{value}/10 en estilismo" },
+      "the_enabler": { "name": "El cómplice", "stat": "12 puntos al ganador" }
     }
   }
 }
