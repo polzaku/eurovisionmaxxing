@@ -286,6 +286,10 @@
       "dark": "Design: Dunkel (tippen für System)"
     }
   },
+  "localeSwitcher": {
+    "label": "Sprache: {locale} — tippen zum Wechseln",
+    "menuLabel": "Sprache wählen"
+  },
   "roster": {
     "reshuffle": {
       "idleCta": "🎲 Reihenfolge neu mischen",

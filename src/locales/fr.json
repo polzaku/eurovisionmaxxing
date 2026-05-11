@@ -286,6 +286,10 @@
       "dark": "Thème : Sombre (appuie pour Système)"
     }
   },
+  "localeSwitcher": {
+    "label": "Langue : {locale} — appuie pour changer",
+    "menuLabel": "Choisis une langue"
+  },
   "roster": {
     "reshuffle": {
       "idleCta": "🎲 Remélanger l'ordre",
