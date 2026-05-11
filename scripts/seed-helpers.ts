@@ -259,6 +259,7 @@ export const SEED_STATES = [
   "done-with-awards",
   "announcing-cascade-absent",
   "announcing-cascade-all-absent",
+  "announcing-short-style-live",
 ] as const;
 
 export type SeedState = (typeof SEED_STATES)[number];
