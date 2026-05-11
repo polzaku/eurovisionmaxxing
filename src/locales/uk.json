@@ -1,509 +1,440 @@
 {
   "common": {
     "app": {
-      "name": "",
-      "tagline": "",
-      "description": "",
-      "metaDescription": "",
-      "featuresLine": ""
+      "name": "eurovisionmaxxing",
+      "tagline": "Дивись Євробачення разом — і голосуй у груповому чаті",
+      "description": "Перетвори конкурс на власну гру з балами. Оціни кожну країну, розігрій груповий чат наживо й завершіть вечір справжнім оголошенням 12 балів.",
+      "metaDescription": "Євробачення: додаток для голосування на вечірці — голосуй, оголошуй, визнач переможця.",
+      "featuresLine": "Голосуй наживо · Будь-який пристрій · Розкриття у стилі журі"
     },
     "cta": {
-      "startRoom": "",
-      "joinRoom": ""
+      "startRoom": "Створити кімнату",
+      "joinRoom": "Приєднатися до кімнати"
     }
   },
   "onboarding": {
-    "metaTitle": "",
+    "metaTitle": "Приєднатися — eurovisionmaxxing",
     "displayName": {
-      "label": "",
-      "placeholder": "",
-      "hint": ""
+      "label": "Твоє ім'я",
+      "placeholder": "напр. Аліса",
+      "hint": "Від 2 до 24 символів: літери, цифри, пробіли або дефіси."
     },
     "avatar": {
-      "title": "",
-      "tapHint": "",
-      "shuffleAria": "",
-      "shuffleLabel": "",
-      "changeAria": ""
+      "title": "Обери аватар",
+      "tapHint": "Натисни на аватар, щоб змінити його.",
+      "shuffleAria": "Перемішати аватари",
+      "shuffleLabel": "Перемішати",
+      "changeAria": "Змінити аватар"
     },
     "submit": {
-      "idle": "",
-      "busy": "",
-      "error": ""
+      "idle": "Приєднатися",
+      "busy": "Приєднуємось…",
+      "error": "Не вдалося створити профіль. Спробуй ще раз."
     }
   },
   "templates": {
     "classic": {
-      "name": "",
-      "description": ""
+      "name": "Класика",
+      "description": "Для тих, хто хоче бути чесним і ретельним."
     },
     "spectacle": {
-      "name": "",
-      "description": ""
+      "name": "Видовище",
+      "description": "Для тих, хто хоче винагороджувати безумство."
     },
     "bangerTest": {
-      "name": "",
-      "description": ""
+      "name": "Тест на банґер",
+      "description": "Для тих, хто хоче знайти справді найкращу пісню."
     },
     "custom": {
-      "name": "",
-      "description": ""
+      "name": "Власні категорії",
+      "description": "Створи свої категорії з нуля."
     },
-    "infoButtonAria": ""
+    "infoButtonAria": "Детальніше про {name}"
   },
   "announcementMode": {
     "live": {
-      "tagline": "",
-      "long": ""
+      "tagline": "По черзі оголошуйте свої бали — у стилі Євробачення.",
+      "long": "Чудово з телевізором. Кожен учасник розкриває свої бали від 1 до 12 по черзі."
     },
     "instant": {
-      "tagline": "",
-      "long": ""
+      "tagline": "Розкрий переможця одним натиском.",
+      "long": "Ідеально, якщо часу мало. Всі позначають готовність — і одразу з'являється таблиця лідерів."
     },
-    "infoButtonAria": ""
+    "infoButtonAria": "Детальніше про режим оголошення {mode}"
   },
   "announcementStyle": {
-    "subradioLabel": "",
+    "subradioLabel": "Стиль розкриття",
     "full": {
-      "label": "",
-      "tagline": ""
+      "label": "Повне розкриття",
+      "tagline": "Кожен представник оголошує всі 10 балів наживо — від 1 до 12."
     },
     "short": {
-      "label": "",
-      "tagline": "",
-      "tooltip": "",
+      "label": "Коротке розкриття — у стилі Євробачення",
+      "tagline": "Лише 12 балів оголошуються наживо. Нижчі бали з'являються автоматично.",
+      "tooltip": "Як на справжньому Євробаченні: лише 12 балів оголошуються наживо, решта з'являється автоматично. Найкраще — на телевізорі, коли всі дивляться разом.",
       "lobbyCard": {
-        "title": "",
-        "body": ""
+        "title": "Увімкнено коротке розкриття",
+        "body": "Кожному представнику потрібно оголосити лише свої 12 балів наживо. Відкрий вид для презентації на телевізорі до завершення голосування — це сцена ведучого."
       },
       "presentOverlay": {
-        "title": "",
-        "body": "",
-        "dismiss": ""
+        "title": "Режим короткого розкриття",
+        "body": "На телефоні ведучого є одна кнопка «Показати 12 балів». Нижчі бали з'являються автоматично.",
+        "dismiss": "Зрозуміло"
       }
     }
   },
   "categories": {
-    "vocals": {
-      "name": "",
-      "hint": ""
-    },
-    "music": {
-      "name": "",
-      "hint": ""
-    },
-    "outfit": {
-      "name": "",
-      "hint": ""
-    },
-    "stagePerformance": {
-      "name": "",
-      "hint": ""
-    },
-    "vibes": {
-      "name": "",
-      "hint": ""
-    },
-    "drama": {
-      "name": "",
-      "hint": ""
-    },
-    "costumeCommitment": {
-      "name": "",
-      "hint": ""
-    },
-    "stagingChaos": {
-      "name": "",
-      "hint": ""
-    },
-    "gayPanicLevel": {
-      "name": "",
-      "hint": ""
-    },
-    "quotability": {
-      "name": "",
-      "hint": ""
-    },
-    "catchiness": {
-      "name": "",
-      "hint": ""
-    },
-    "danceability": {
-      "name": "",
-      "hint": ""
-    },
-    "production": {
-      "name": "",
-      "hint": ""
-    },
-    "lyrics": {
-      "name": "",
-      "hint": ""
-    },
-    "originality": {
-      "name": "",
-      "hint": ""
-    }
+    "vocals":            { "name": "Вокал",              "hint": "Технічне виконання та контроль — незалежно від того, чи подобається тобі стиль" },
+    "music":             { "name": "Музика",             "hint": "Композиція, аранжування та якість виробництва" },
+    "outfit":            { "name": "Образ",              "hint": "Зовнішній вигляд. Він вражає? Він відданий своїй ідеї?" },
+    "stagePerformance":  { "name": "Сценічне шоу",       "hint": "Рухи, енергія, використання сцени" },
+    "vibes":             { "name": "Атмосфера",          "hint": "Невловиме. Які почуття це викликало?" },
+    "drama":             { "name": "Драма",              "hint": "Наскільки це змусило тебе ахнути, затамувати подих або нахилитися вперед?" },
+    "costumeCommitment": { "name": "Відданість костюму", "hint": "Не просто гарно — наскільки вони вклалися? На всю котушку?" },
+    "stagingChaos":      { "name": "Хаос на сцені",      "hint": "Це контрольоване безумство чи просто плутанина? Нагороджуй перше." },
+    "gayPanicLevel":     { "name": "Рівень гей-паніки",  "hint": "Кемп, квірність, іконографія." },
+    "quotability":       { "name": "Цитованість",        "hint": "Ти будеш згадувати це ще в листопаді?" },
+    "catchiness":        { "name": "Зачіпливість",       "hint": "Ти б наспівав це через 10 хвилин?" },
+    "danceability":      { "name": "Танцюваність",       "hint": "Твоє тіло рухалося само собою?" },
+    "production":        { "name": "Продакшн",           "hint": "Звуковий дизайн, зведення, студійна якість" },
+    "lyrics":            { "name": "Текст",              "hint": "Про що вони взагалі? Це тримається купи?" },
+    "originality":       { "name": "Оригінальність",    "hint": "Євробачення вже таке чуло?" }
   },
   "voting": {
     "scoredChip": {
-      "partial": "",
-      "all": ""
+      "partial": "оцінено",
+      "all": "усіх оцінено"
     },
     "missed": {
-      "button": "",
-      "buttonAria": "",
-      "cardLabel": "",
-      "estimatedLabel": "",
-      "perCategoryLabel": "",
-      "rescoreButton": "",
+      "button": "Я пропустив(ла) це",
+      "buttonAria": "Позначити цього учасника як пропущеного",
+      "cardLabel": "Цей виступ позначено як пропущений",
+      "estimatedLabel": "Приблизний бал",
+      "perCategoryLabel": "За категорією (приблизно)",
+      "rescoreButton": "Переоцінити цього учасника",
       "toast": {
-        "body": "",
-        "undo": "",
-        "dismissAria": ""
+        "body": "Позначено як пропущений — твій приблизний бал: ~{overall}.",
+        "undo": "Скасувати",
+        "dismissAria": "Закрити"
       }
     },
     "hotTake": {
-      "addPill": "",
-      "addPillAria": "",
-      "fieldAria": "",
-      "placeholder": "",
-      "counter": ""
+      "addPill": "+ Додати гарячий коментар",
+      "addPillAria": "Додати гарячий коментар",
+      "fieldAria": "Гарячий коментар",
+      "placeholder": "Твій одрядковий відгук",
+      "counter": "{count} / {max}"
     },
     "status": {
-      "scored": "",
-      "unscored": ""
+      "scored": "✓ оцінено {value}",
+      "unscored": "Не оцінено"
     },
     "scale": {
-      "1": "",
-      "5": "",
-      "10": "",
-      "openAria": "",
-      "closeAria": "",
-      "title": ""
+      "openAria": "Показати орієнтири шкали",
+      "closeAria": "Закрити орієнтири шкали",
+      "title": "Шкала",
+      "1": "Жахливо",
+      "5": "Нормально",
+      "10": "Легендарно"
     },
     "hint": {
       "toggleAria": {
-        "collapsed": "",
-        "expanded": ""
+        "collapsed": "Показати підказку для {category}",
+        "expanded": "Сховати підказку для {category}"
       },
-      "onboarding": ""
+      "onboarding": "Натисни ⓘ на категорію, щоб сховати підказку."
     },
     "jumpTo": {
-      "footerButton": "",
-      "footerButtonAria": "",
-      "title": "",
-      "closeAria": "",
-      "currentSuffix": "",
+      "footerButton": "Перейти до",
+      "footerButtonAria": "Перейти до учасника",
+      "title": "Перейти до учасника",
+      "closeAria": "Закрити",
+      "currentSuffix": "(поточний)",
       "status": {
-        "unscored": "",
-        "scored": "",
-        "missed": ""
+        "unscored": "Ще не оцінено",
+        "scored": "✓ Оцінено",
+        "missed": "👻 Пропущено"
       }
     },
     "endOfVoting": {
-      "allScored": "",
-      "allScoredFallback": "",
-      "missedSome": "",
-      "unscoredCount": "",
-      "roomMomentum": "",
-      "rescoreCta": "",
-      "jumpToCta": "",
+      "allScored": "✅ Усіх {count} оцінено — чекаємо, поки {admin} завершить голосування.",
+      "allScoredFallback": "✅ Усіх {count} оцінено — чекаємо, поки хост завершить голосування.",
+      "missedSome": "⚠️ Ти позначив(ла) {count} як пропущені — їх заповнять твоїм середнім балом. Натисни, щоб переоцінити.",
+      "unscoredCount": "⚠️ {count} ще без оцінки",
+      "roomMomentum": "⏳ Більшість у кімнаті вже завершила — тобі залишилось оцінити {count}.",
+      "rescoreCta": "Переоцінити",
+      "jumpToCta": "Оцінити зараз",
       "host": {
-        "allDone": "",
-        "mostDone": "",
-        "selfDoneOnly": "",
-        "selfDoneOnlyNoCount": "",
-        "endVotingCta": ""
+        "allDone": "🎉 Всі готові — завершити голосування?",
+        "mostDone": "⏳ {ready} з {total} вже готові — дай решті хвилинку, потім завершуй голосування.",
+        "selfDoneOnly": "✅ Твій голос подано — {ready} з {total} готові.",
+        "selfDoneOnlyNoCount": "✅ Твій голос подано.",
+        "endVotingCta": "Завершити голосування"
       }
     },
     "endVoting": {
-      "button": "",
+      "button": "Завершити голосування",
       "modal": {
-        "title": "",
-        "body": "",
-        "confirm": "",
-        "cancel": ""
+        "title": "Завершити голосування?",
+        "body": "Натискання «Завершити голосування» запускає відлік 5 секунд. Ти можеш натиснути «Скасувати» під час відліку.",
+        "confirm": "Завершити голосування",
+        "cancel": "Скасувати"
       },
       "countdown": {
-        "body": "",
-        "finalising": "",
-        "undo": ""
+        "body": "Голосування закінчується через {seconds}с",
+        "finalising": "Підраховуємо…",
+        "undo": "Скасувати"
       },
       "guest": {
-        "body": ""
+        "body": "Голосування закінчується через {seconds}с…"
       }
     }
   },
   "errors": {
-    "INVALID_BODY": "",
-    "INVALID_DISPLAY_NAME": "",
-    "INVALID_AVATAR_SEED": "",
-    "INVALID_ROOM_ID": "",
-    "ROOM_NOT_FOUND": "",
-    "USER_NOT_FOUND": "",
-    "INVALID_TOKEN": "",
-    "INTERNAL_ERROR": ""
+    "INVALID_BODY": "Щось у твоєму запиті невірне.",
+    "INVALID_DISPLAY_NAME": "Ім'я має бути від 2 до 24 символів: літери, цифри, пробіли або дефіси.",
+    "INVALID_AVATAR_SEED": "Ідентифікатор аватара має бути від 1 до {limit} символів.",
+    "INVALID_ROOM_ID": "Це посилання на кімнату виглядає неправильно. Перевір URL?",
+    "ROOM_NOT_FOUND": "Нам не вдалося знайти цю кімнату.",
+    "USER_NOT_FOUND": "Нам не вдалося знайти цю сесію.",
+    "INVALID_TOKEN": "Термін дії твоєї сесії вийшов. Будь ласка, приєднайся знову.",
+    "INTERNAL_ERROR": "Щось пішло не так з нашого боку. Будь ласка, спробуй ще раз."
   },
   "announce": {
     "skipBanner": {
-      "single": "",
-      "coalesced": "",
-      "coalescedTrailing": ""
+      "single": "{name} відсутній — їхні бали пропускаються",
+      "coalesced": "Пропущено {count}: {names}",
+      "coalescedTrailing": "+{remaining}"
     },
     "finishTheShow": {
-      "ownerCta": "",
-      "ownerSubtitle": "",
-      "guestWaiting": "",
-      "batchRevealChip": ""
+      "ownerCta": "Завершити шоу",
+      "ownerSubtitle": "Всі решта ведучих відсутні — завершити розкриття замість них",
+      "guestWaiting": "Чекаємо, поки хост продовжить…",
+      "batchRevealChip": "Хост завершує шоу"
     },
     "shortReveal": {
-      "cta": "",
-      "ctaMicrocopy": "",
-      "revealed": "",
-      "awaitingTwelve": "",
-      "guestToast": ""
+      "cta": "Показати 12 балів",
+      "ctaMicrocopy": "Натисни, коли оголосиш",
+      "revealed": "Оголошено ✓",
+      "awaitingTwelve": "Чекаємо на їхні 12 балів…",
+      "guestToast": "{name} віддав(ла) 12 балів {country} {flag}"
     }
   },
   "results": {
-    "title": "",
+    "title": "Результати",
     "placeholders": {
-      "lobby": "",
-      "lobbyCountdown": "",
-      "voting": "",
-      "votingCta": "",
-      "scoring": "",
-      "roomNotFound": ""
+      "lobby": "Голосування в цій кімнаті ще не розпочалося. Повернись після шоу.",
+      "lobbyCountdown": "Шоу починається через {countdown}",
+      "voting": "Голосування ще триває. Результати будуть доступні після того, як адмін завершить голосування.",
+      "votingCta": "Приєднатися до кімнати",
+      "scoring": "Підраховуємо результати…",
+      "roomNotFound": "Нам не вдалося знайти цю кімнату. Перевір посилання?"
     },
     "announcing": {
-      "banner": ""
+      "banner": "Наживо — оголошення тривають"
     },
     "headings": {
-      "leaderboard": "",
-      "breakdowns": "",
-      "hotTakes": "",
-      "awards": "",
-      "categoryAwards": "",
-      "personalityAwards": ""
+      "leaderboard": "Таблиця лідерів",
+      "breakdowns": "Хто що поставив",
+      "hotTakes": "Гарячі коментарі",
+      "awards": "Нагороди",
+      "categoryAwards": "Найкращий у категорії",
+      "personalityAwards": "А кімната сказала…"
     },
     "leaderboard": {
-      "points": "",
-      "noPoints": "",
-      "drillDownToggleAria": "",
-      "drillDownHeading": "",
-      "drillDownEmpty": "",
-      "drillDownGive": ""
+      "points": "{count, plural, =1 {# бал} =2 {# бали} =3 {# бали} =4 {# бали} other {# балів}}",
+      "noPoints": "—",
+      "drillDownToggleAria": "Показати розбивку балів для {country}",
+      "drillDownHeading": "Отримані бали",
+      "drillDownEmpty": "Ніхто з кімнати не дав жодного балу.",
+      "drillDownGive": "{points, plural, =1 {# бал} =2 {# бали} =3 {# бали} =4 {# бали} other {# балів}}"
     },
     "hotTake": {
-      "edited": "",
-      "deleteAria": "",
-      "deleteConfirmTitle": "",
-      "deleteConfirmBody": "",
-      "deleteConfirmAction": "",
-      "deleteSubmitting": "",
-      "deleteCancel": "",
-      "deleteError": ""
+      "edited": "відредаговано",
+      "deleteAria": "Видалити гарячий коментар {name}",
+      "deleteConfirmTitle": "Видалити цей коментар?",
+      "deleteConfirmBody": "Видалити гарячий коментар {name}? Їм не буде надіслано сповіщення.",
+      "deleteConfirmAction": "Видалити",
+      "deleteSubmitting": "Видаляємо…",
+      "deleteCancel": "Скасувати",
+      "deleteError": "Не вдалося видалити. Спробуй ще?"
     },
     "breakdown": {
-      "gave": ""
+      "gave": "поставив(ла) {points} балів {country}"
     },
     "copySummary": {
-      "idle": "",
-      "done": ""
+      "idle": "Скопіювати текстовий підсумок",
+      "done": "Скопійовано!"
     },
     "summary": {
-      "topLine": "",
-      "fullResults": ""
+      "topLine": "Топ-10 нашої кімнати:",
+      "fullResults": "Повні результати"
     },
     "eventTitle": {
-      "final": "",
-      "semi1": "",
-      "semi2": ""
+      "final": "Євробачення {year} — Гранд-фінал",
+      "semi1": "Євробачення {year} — Перший півфінал",
+      "semi2": "Євробачення {year} — Другий півфінал"
     }
   },
   "theme": {
-    "system": "",
-    "light": "",
-    "dark": "",
+    "system": "Системна",
+    "light": "Світла",
+    "dark": "Темна",
     "toggleAria": {
-      "system": "",
-      "light": "",
-      "dark": ""
+      "system": "Тема: Системна (натисни для Світлої)",
+      "light": "Тема: Світла (натисни для Темної)",
+      "dark": "Тема: Темна (натисни для Системної)"
     }
   },
   "roster": {
     "reshuffle": {
-      "idleCta": "",
-      "busyCta": "",
-      "errorInProgress": "",
-      "errorGeneric": ""
+      "idleCta": "🎲 Перемішати порядок",
+      "busyCta": "Перемішуємо…",
+      "errorInProgress": "Розкриття вже розпочалося — перемішування більше недоступне.",
+      "errorGeneric": "Не вдалося перемішати. Спробуй ще?"
     }
   },
   "scoring": {
-    "title": "",
-    "subtitle": ""
+    "title": "Підраховуємо результати…",
+    "subtitle": "Зачекай — ми рахуємо бали."
   },
   "room": {
-    "catchingUp": ""
+    "catchingUp": "Синхронізуємось…"
   },
   "present": {
     "lobby": {
-      "eyebrow": "",
-      "callToJoin": "",
-      "memberCount": ""
+      "eyebrow": "PIN кімнати",
+      "callToJoin": "Відкрий eurovisionmaxxing.com і введи PIN, щоб приєднатися.",
+      "memberCount": "{count, plural, =0 {Чекаємо на гостей…} =1 {1 людина тут} other {# людей тут}}"
     },
     "voting": {
-      "eyebrow": "",
-      "title": ""
+      "eyebrow": "Голосування триває",
+      "title": "Оціни пісні на своєму телефоні."
     },
     "votingEnding": {
-      "title": ""
+      "title": "Голосування скоро завершиться…"
     },
     "announcing": {
-      "title": "",
-      "announcer": "",
-      "position": "",
-      "upNext": "",
-      "upNextDetail": "",
-      "queueExhausted": ""
+      "title": "Таблиця лідерів наживо",
+      "announcer": "{name} оголошує",
+      "position": "Ведучий {position} з {total}",
+      "upNext": "Наступний",
+      "upNextDetail": "{points} балів → {country}",
+      "queueExhausted": "Розкриття завершено — передаємо далі…"
     },
     "done": {
-      "title": ""
+      "title": "Фінальні результати"
     },
     "cascadeExhausted": {
-      "title": "",
-      "subtitle": ""
+      "title": "Чекаємо, поки адмін продовжить…",
+      "subtitle": "Всі ведучі відсутні. Хост відновить, коли повернеться."
     },
     "batchReveal": {
-      "chip": ""
+      "chip": "Хост завершує шоу"
     },
     "fullscreen": {
-      "enter": "",
-      "aria": "",
-      "dismissAria": ""
+      "enter": "На весь екран",
+      "aria": "Запит на повноекранний режим",
+      "dismissAria": "Закрити запит на повноекранний режим"
     }
   },
   "lobby": {
     "countdown": {
-      "label": "",
-      "fallback": ""
+      "label": "До шоу залишилось",
+      "fallback": "Готові, коли ти готовий(а)."
     },
     "primer": {
-      "title": "",
-      "tapHint": "",
-      "previewSong": "",
-      "flagAria": ""
+      "title": "Сьогоднішній лайнап",
+      "tapHint": "Натисни на будь-яку картку, щоб побачити підказки категорій",
+      "previewSong": "Переглянути на YouTube",
+      "flagAria": "Прапор {country}"
     },
     "refreshContestants": {
-      "button": "",
-      "busy": "",
-      "upToDate": "",
-      "summary": "",
-      "error": ""
+      "button": "Оновити учасників",
+      "busy": "Оновлюємо…",
+      "upToDate": "Вже актуально — нічого не змінилось.",
+      "summary": "{added, plural, =0 {} =1 {1 додано · } other {# додано · }}{removed, plural, =0 {} =1 {1 видалено · } other {# видалено · }}{reordered, plural, =0 {} =1 {1 переставлено} other {# переставлено}}",
+      "error": "Не вдалося оновити — спробуй ще раз."
     }
   },
   "instantAnnounce": {
-    "lede": "",
+    "lede": "Голосування завершено. Ось бали, які ти поставив(ла) — натисни, коли будеш готовий(а) побачити таблицю лідерів кімнати.",
     "ownResults": {
-      "title": "",
-      "subtitle": "",
-      "empty": "",
-      "revealTwelveButton": "",
-      "revealTwelveSkip": "",
-      "twelveLabel": ""
+      "title": "Твої фаворити",
+      "subtitle": "Ось бали Євробачення, які ти дав(ла) кожній країні. Таблиця лідерів схована, поки всі не будуть готові.",
+      "empty": "Ти не оцінив(ла) жодного учасника цього раунду.",
+      "revealTwelveButton": "Розкрити свої 12 балів",
+      "revealTwelveSkip": "Пропустити нагнітання",
+      "twelveLabel": "Твої 12 балів"
     },
     "ready": {
-      "button": "",
-      "subtitle": "",
-      "busy": "",
-      "waiting": ""
+      "button": "Готово — повідомити хоста",
+      "subtitle": "Хост розкриває, коли всі готові.",
+      "busy": "Позначаємо готовність…",
+      "waiting": "Ти готовий(а). Чекаємо ще {count} — хост розкриє, коли всі будуть готові."
     },
     "admin": {
-      "readyCount": "",
-      "hostHeading": "",
-      "hostSubtitle": "",
-      "revealAll": "",
-      "revealAllSublineReady": "",
-      "revealAllSublineWaiting": "",
-      "revealAnyway": "",
-      "revealAnywaySublineHalf": "",
-      "revealAnywaySublineCountdown": "",
-      "revealAnywaySublineDisabled": "",
-      "override": "",
-      "overrideSubline": "",
-      "overrideConfirmTitle": "",
-      "overrideConfirmBody": "",
-      "overrideConfirmCancel": "",
-      "overrideConfirmGo": ""
+      "readyCount": "{ready} / {total} готові",
+      "hostHeading": "Як хост, ти вирішуєш, коли розкривати.",
+      "hostSubtitle": "Обери один з трьох варіантів нижче.",
+      "revealAll": "Показати всім",
+      "revealAllSublineReady": "Всі позначили готовність ({ready}/{total}). Натисни, щоб показати таблицю лідерів.",
+      "revealAllSublineWaiting": "Доступно, коли всі будуть готові ({ready}/{total}).",
+      "revealAnyway": "Показати достроково",
+      "revealAnywaySublineHalf": "Половина кімнати готова ({ready}/{total}) — можна розкривати.",
+      "revealAnywaySublineCountdown": "Доступно через {minutes}:{seconds}.",
+      "revealAnywaySublineDisabled": "Розблоковується, коли половина готова або через 60с після першого.",
+      "override": "Пропустити очікування — показати зараз",
+      "overrideSubline": "Обходить очікування. Використовуй, якщо люди не реагують.",
+      "overrideConfirmTitle": "Пропустити очікування?",
+      "overrideConfirmBody": "Всі одразу побачать таблицю лідерів кімнати, навіть якщо вони не позначили готовність.",
+      "overrideConfirmCancel": "Скасувати",
+      "overrideConfirmGo": "Показати зараз"
     },
     "ceremony": {
-      "subtitle": "",
-      "redirectingIn": "",
-      "stayHere": "",
-      "seeFullResults": ""
+      "subtitle": "Фінальна таблиця лідерів кімнати",
+      "redirectingIn": "Відкриваємо повні результати через {seconds}с…",
+      "stayHere": "Залишитись тут",
+      "seeFullResults": "Переглянути повні результати →"
     }
   },
   "awards": {
-    "jointCaption": "",
-    "neighbourhoodCaption": "",
-    "explainerToggle": "",
+    "jointCaption": "переможці разом",
+    "neighbourhoodCaption": "проголосували найбільш схоже",
+    "explainerToggle": "Що це означає?",
     "ceremony": {
-      "title": "",
-      "nextAward": "",
-      "nextAwardAria": "",
-      "advanceHint": ""
+      "title": "І нагороди отримують…",
+      "nextAward": "Наступна нагорода",
+      "nextAwardAria": "Наступна нагорода ({current} з {total})",
+      "advanceHint": "Натисни будь-де, щоб розкрити наступну нагороду"
     },
     "endOfShow": {
-      "copyLink": "",
-      "copyLinkConfirm": "",
-      "copySummary": "",
-      "copySummaryConfirm": "",
-      "viewFullResults": "",
-      "createAnother": ""
+      "copyLink": "Скопіювати посилання для поширення",
+      "copyLinkConfirm": "Посилання скопійовано!",
+      "copySummary": "Скопіювати текстовий підсумок",
+      "copySummaryConfirm": "Підсумок скопійовано!",
+      "viewFullResults": "Переглянути повні результати",
+      "createAnother": "Створити ще одну кімнату"
     },
     "explainers": {
-      "harshest_critic": "",
-      "biggest_stan": "",
-      "hive_mind_master": "",
-      "most_contrarian": "",
-      "neighbourhood_voters": "",
-      "the_dark_horse": "",
-      "fashion_stan": "",
-      "the_enabler": ""
+      "harshest_critic": "Найнижчий середній бал серед усіх учасників, яких ти оцінив(ла).",
+      "biggest_stan": "Найвищий середній бал серед усіх учасників, яких ти оцінив(ла).",
+      "hive_mind_master": "Твій рейтинг найбільше збігся із загальним голосуванням кімнати.",
+      "most_contrarian": "Твій рейтинг найбільше відрізнявся від загального рейтингу кімнати.",
+      "neighbourhood_voters": "Ти і ще одна людина проголосували найбільш схоже — ваші бали рухалися вгору і вниз разом більше, ніж у будь-кого іншого.",
+      "the_dark_horse": "Учасник, щодо якого кімната найбільше не погоджувалась — одні любили, інші ненавиділи.",
+      "fashion_stan": "Ти поставив(ла) найвищий одиночний бал у категорії образу / костюму.",
+      "the_enabler": "Ти віддав(ла) свої 12 балів загальному переможцю кімнати."
     },
     "personality": {
-      "biggest_stan": {
-        "name": "",
-        "stat": ""
-      },
-      "harshest_critic": {
-        "name": "",
-        "stat": ""
-      },
-      "most_contrarian": {
-        "name": "",
-        "stat": ""
-      },
-      "hive_mind_master": {
-        "name": "",
-        "stat": ""
-      },
-      "neighbourhood_voters": {
-        "name": "",
-        "stat": ""
-      },
-      "the_dark_horse": {
-        "name": "",
-        "stat": ""
-      },
-      "fashion_stan": {
-        "name": "",
-        "stat": ""
-      },
-      "the_enabler": {
-        "name": "",
-        "stat": ""
-      }
+      "biggest_stan": { "name": "Найбільший фан", "stat": "сер. {value}/10" },
+      "harshest_critic": { "name": "Найсуворіший критик", "stat": "сер. {value}/10" },
+      "most_contrarian": { "name": "Найбільший нонконформіст", "stat": "відстань Спірмена {value}" },
+      "hive_mind_master": { "name": "Майстер єдиного розуму", "stat": "відстань Спірмена {value}" },
+      "neighbourhood_voters": { "name": "Сусіди по смаку", "stat": "Пірсон {value}" },
+      "the_dark_horse": { "name": "Темна конячка", "stat": "дисперсія {value}" },
+      "fashion_stan": { "name": "Фанат моди", "stat": "{value}/10 за образ" },
+      "the_enabler": { "name": "Помічник переможця", "stat": "12 балів переможцю" }
     }
   }
 }
