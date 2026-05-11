@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import type { Contestant } from "@/types";
 import type { LeaderboardEntry } from "@/lib/results/formatRoomSummary";
 import SkipBannerQueue, { type SkipEvent } from "@/components/room/SkipBannerQueue";
+import TwelvePointSplash from "@/components/room/TwelvePointSplash";
 
 export type PresentStatus =
   | "lobby"
@@ -43,6 +44,13 @@ interface PresentScreenProps {
    * announce_next broadcast. Render branches in subsequent commits.
    */
   announcementStyle?: 'full' | 'short';
+  /** SPEC §10.2.2 — when set under short style, renders TwelvePointSplash
+   * overlay. The triggerKey changes on every emit so the component
+   * remounts and re-runs its 3-second dismiss timer.
+   */
+  splashEvent?: { contestantId: string; triggerKey: number } | null;
+  /** Called by the splash component after its dismissAfterMs elapses. */
+  onSplashDismiss?: () => void;
   /** When false and no announcer is active, renders the cascade-exhaust waiting state. */
   batchRevealMode?: boolean;
   /** Incoming skip events to render as a banner train via SkipBannerQueue. */
@@ -82,6 +90,8 @@ export default function PresentScreen({
   announcerPosition,
   announcerCount,
   announcementStyle = 'full',
+  splashEvent = null,
+  onSplashDismiss,
   batchRevealMode,
   skipEvents,
 }: PresentScreenProps) {
@@ -227,10 +237,53 @@ export default function PresentScreen({
         }
         isBatchReveal={batchRevealMode === true}
       />
+      {announcementStyle === "short" && splashEvent
+        ? <ShortStyleSplash
+            key={splashEvent.triggerKey}
+            contestantId={splashEvent.contestantId}
+            contestantById={contestantById}
+            onDismiss={onSplashDismiss}
+          />
+        : null}
+      {announcementStyle === "short" &&
+       status === "announcing" &&
+       announcerDisplayName &&
+       !splashEvent ? (
+        <p
+          data-testid="present-short-ticker"
+          className="mt-6 text-3xl text-muted-foreground motion-safe:animate-pulse text-center"
+        >
+          {t("announce.shortReveal.awaitingTwelve")}
+        </p>
+      ) : null}
       {skipEvents && skipEvents.length > 0 ? (
         <SkipBannerQueue events={skipEvents} />
       ) : null}
     </>
+  );
+}
+
+/** Wrapper that performs the defensive contestant lookup so the key prop
+ * on the outer element correctly remounts TwelvePointSplash on each new event.
+ */
+function ShortStyleSplash({
+  contestantId,
+  contestantById,
+  onDismiss,
+}: {
+  contestantId: string;
+  contestantById: Map<string, Contestant>;
+  onDismiss?: () => void;
+}) {
+  const contestant = contestantById.get(contestantId);
+  if (!contestant) return null; // Defensive: unknown contestant ID
+  return (
+    <TwelvePointSplash
+      contestant={contestant}
+      size="fullscreen"
+      onDismiss={onDismiss}
+      dismissAfterMs={3000}
+    />
   );
 }
 
