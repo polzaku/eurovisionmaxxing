@@ -43,6 +43,11 @@ interface Scripted {
   announcerUser?: Mock;
   /** SELECT contestant_id, points_awarded FROM results filtered to announcer's queue. */
   announcerQueue?: Mock;
+  /**
+   * SELECT user_id, contestant_id, scores, missed FROM votes WHERE room_id = ...
+   * (the awards/personalNeighbours SELECT — no .not() chain).
+   */
+  votesSelect?: Mock;
 }
 
 function makeSupabaseMock(s: Scripted = {}) {
@@ -62,6 +67,7 @@ function makeSupabaseMock(s: Scripted = {}) {
   const awardsSelect = s.awardsSelect ?? { data: [], error: null };
   const announcerUser = s.announcerUser ?? { data: null, error: null };
   const announcerQueue = s.announcerQueue ?? { data: [], error: null };
+  const votesSelect = s.votesSelect ?? { data: [], error: null };
 
   const from = vi.fn((table: string) => {
     if (table === "rooms") {
@@ -125,11 +131,23 @@ function makeSupabaseMock(s: Scripted = {}) {
       };
     }
     if (table === "votes") {
+      // Two call shapes coexist in loadDone:
+      //   hot-takes:        .select(...).eq("room_id", id).not("hot_take", "is", null) → awaited
+      //   awards/personal:  .select(...).eq("room_id", id)                             → awaited directly
+      // We make the object returned by .eq() both directly awaitable (for the awards
+      // SELECT) and expose .not() (for the hot-takes SELECT).
       return {
         select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            not: vi.fn().mockResolvedValue(hotTakesSelect),
-          })),
+          eq: vi.fn(() => {
+            const eqResult = {
+              not: vi.fn().mockResolvedValue(hotTakesSelect),
+              then: (
+                onFulfilled: (v: Mock) => unknown,
+                onRejected?: (err: unknown) => unknown,
+              ) => Promise.resolve(votesSelect).then(onFulfilled, onRejected),
+            };
+            return eqResult;
+          }),
         })),
       };
     }
@@ -842,5 +860,63 @@ describe("loadResults — unknown/forward-compat status", () => {
       ok: true,
       data: { status: "voting", pin: "PP" },
     });
+  });
+});
+
+// ─── done — personalNeighbours ─────────────────────────────────────────
+// (`vi`, `describe`, `it`, `expect` already imported at top of file)
+
+describe("loadResults — done personalNeighbours", () => {
+  const ROOM_ID = "11111111-2222-4333-8444-555555555555";
+  const OWNER = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+  const ALICE = "11111111-2222-4333-8444-000000000001";
+  const BOB = "22222222-3333-4444-8555-000000000002";
+  const CAROL = "33333333-4444-4555-8666-000000000003";
+
+  const doneRoom = {
+    data: {
+      id: ROOM_ID,
+      status: "done",
+      pin: "DONEEE",
+      year: 2026,
+      event: "final",
+      owner_user_id: OWNER,
+    },
+    error: null,
+  };
+
+  const memberships = {
+    data: [
+      { user_id: ALICE, users: { display_name: "Alice", avatar_seed: "alice" } },
+      { user_id: BOB, users: { display_name: "Bob", avatar_seed: "bob" } },
+      { user_id: CAROL, users: { display_name: "Carol", avatar_seed: "carol" } },
+    ],
+    error: null,
+  };
+
+  it("attaches personalNeighbours array on the done payload", async () => {
+    const mock = makeSupabaseMock({
+      roomSelect: doneRoom,
+      membershipsSelect: memberships,
+      resultsSelect: { data: [], error: null },
+      awardsSelect: { data: [], error: null },
+    });
+    const result = await loadResults({ roomId: ROOM_ID }, makeDeps(mock));
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.data.status !== "done") return;
+    expect(Array.isArray(result.data.personalNeighbours)).toBe(true);
+  });
+
+  it("returns empty personalNeighbours when there are <3 voters with signal", async () => {
+    const mock = makeSupabaseMock({
+      roomSelect: doneRoom,
+      membershipsSelect: memberships,
+      resultsSelect: { data: [], error: null },
+      awardsSelect: { data: [], error: null },
+    });
+    const result = await loadResults({ roomId: ROOM_ID }, makeDeps(mock));
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.data.status !== "done") return;
+    expect(result.data.personalNeighbours).toEqual([]);
   });
 });

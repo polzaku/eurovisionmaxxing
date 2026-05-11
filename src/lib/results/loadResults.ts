@@ -8,6 +8,10 @@ import {
   buildContestantBreakdowns,
   type ContestantBreakdown,
 } from "@/lib/results/buildContestantBreakdowns";
+import {
+  buildPersonalNeighbours,
+  type PersonalNeighbour,
+} from "@/lib/awards/buildPersonalNeighbours";
 
 export interface UserBreakdownPick {
   contestantId: string;
@@ -111,6 +115,12 @@ export type ResultsData =
       contestantBreakdowns: ContestantBreakdown[];
       hotTakes: HotTakeEntry[];
       awards: RoomAward[];
+      /**
+       * SPEC §11.2 your_neighbour — per-viewer nearest-neighbour pick. The
+       * full mapping for the room is exposed here; the client renderer
+       * filters to the caller's session. Empty when <3 voters have signal.
+       */
+      personalNeighbours: PersonalNeighbour[];
       /** Roster (for awards rendering when winners aren't already in `breakdowns`). */
       members: Array<{
         userId: string;
@@ -168,6 +178,7 @@ type RoomBase = {
   year: number;
   event: string;
   owner_user_id: string;
+  categories: unknown;
   announcement_order: string[] | null;
   announcing_user_id: string | null;
   current_announce_idx: number | null;
@@ -244,7 +255,7 @@ export async function loadResults(
   const roomQuery = await deps.supabase
     .from("rooms")
     .select(
-      "id, status, pin, year, event, owner_user_id, announcement_order, announcing_user_id, current_announce_idx, delegate_user_id, announce_skipped_user_ids",
+      "id, status, pin, year, event, owner_user_id, categories, announcement_order, announcing_user_id, current_announce_idx, delegate_user_id, announce_skipped_user_ids",
     )
     .eq("id", roomId)
     .maybeSingle();
@@ -444,6 +455,21 @@ async function loadDone(
   }
   const hotTakeRows = (hotTakesQuery.data ?? []) as VoteHotTakeRow[];
 
+  const votesQuery = await deps.supabase
+    .from("votes")
+    .select("user_id, contestant_id, scores, missed")
+    .eq("room_id", room.id);
+
+  if (votesQuery.error) {
+    return fail("INTERNAL_ERROR", "Could not load votes for awards.", 500);
+  }
+  const voteRows = (votesQuery.data ?? []) as Array<{
+    user_id: string;
+    contestant_id: string;
+    scores: Record<string, number> | null;
+    missed: boolean;
+  }>;
+
   const awardsQuery = await deps.supabase
     .from("room_awards")
     .select("*")
@@ -526,6 +552,37 @@ async function loadDone(
 
   const contestantBreakdowns = buildContestantBreakdowns(breakdowns);
 
+  // Adapt the lightweight vote rows to the `Vote` shape buildPersonalNeighbours expects.
+  const votesForAwards = voteRows.map((r) => ({
+    id: `${r.user_id}-${r.contestant_id}`,
+    roomId: room.id,
+    userId: r.user_id,
+    contestantId: r.contestant_id,
+    scores: r.scores,
+    missed: r.missed,
+    hotTake: null,
+    hotTakeEditedAt: null,
+    updatedAt: "",
+  }));
+
+  const usersForAwards = members.map((m) => ({
+    userId: m.userId,
+    displayName: m.displayName,
+  }));
+
+  const categories =
+    Array.isArray(room.categories)
+      ? (room.categories as Array<{ name: string; weight: number; key?: string }>)
+      : [];
+
+  const personalNeighbours = buildPersonalNeighbours({
+    categories,
+    contestants: contestants.map((c) => ({ id: c.id, country: c.country })),
+    users: usersForAwards,
+    votes: votesForAwards,
+    results: [],
+  });
+
   return {
     ok: true,
     data: {
@@ -540,6 +597,7 @@ async function loadDone(
       contestantBreakdowns,
       hotTakes,
       awards,
+      personalNeighbours,
       members,
     },
   };
