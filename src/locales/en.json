@@ -62,6 +62,27 @@
     },
     "infoButtonAria": "More about {mode} announcement mode"
   },
+  "announcementStyle": {
+    "subradioLabel": "Reveal style",
+    "full": {
+      "label": "Full reveal",
+      "tagline": "Each spokesperson reveals all 10 points live, 1 through 12."
+    },
+    "short": {
+      "label": "Short reveal — Eurovision style",
+      "tagline": "Only the 12-point reveal is live. Lower scores tick on automatically.",
+      "tooltip": "Just like the real Eurovision: only 12-point reveals are live, the rest tick on automatically. Best on a TV with everyone watching.",
+      "lobbyCard": {
+        "title": "Short reveal is on",
+        "body": "Each spokesperson will only need to reveal their 12 points live. Open the present view on a TV before voting ends — that's the announcer's stage."
+      },
+      "presentOverlay": {
+        "title": "Short reveal mode",
+        "body": "The announcer's phone has a single \"Reveal 12 points\" button. Lower scores tick on automatically.",
+        "dismiss": "Got it"
+      }
+    }
+  },
   "categories": {
     "vocals":            { "name": "Vocals",            "hint": "Technical delivery and control — not just whether you like the style" },
     "music":             { "name": "Music",             "hint": "Composition, arrangement, and production quality" },

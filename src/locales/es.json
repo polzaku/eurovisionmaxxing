@@ -62,6 +62,27 @@
     },
     "infoButtonAria": ""
   },
+  "announcementStyle": {
+    "subradioLabel": "",
+    "full": {
+      "label": "",
+      "tagline": ""
+    },
+    "short": {
+      "label": "",
+      "tagline": "",
+      "tooltip": "",
+      "lobbyCard": {
+        "title": "",
+        "body": ""
+      },
+      "presentOverlay": {
+        "title": "",
+        "body": "",
+        "dismiss": ""
+      }
+    }
+  },
   "categories": {
     "vocals": {
       "name": "",
