@@ -919,4 +919,80 @@ describe("loadResults — done personalNeighbours", () => {
     if (!result.ok || result.data.status !== "done") return;
     expect(result.data.personalNeighbours).toEqual([]);
   });
+
+  it("produces correct PersonalNeighbour entries when 3 voters have non-trivial scores", async () => {
+    // Score pattern chosen so Alice and Carol have identical mean vectors →
+    // they are each other's nearest neighbour (reciprocal pair, Pearson = 1).
+    // Bob is the contrarian; his two candidates (Alice, Carol) share the same
+    // correlation, so the alphabetical tie-break picks Alice.
+    //
+    //   Alice: AL=[10,9]→9.5, BE=[2,3]→2.5, CR=[7,6]→6.5
+    //   Bob:   AL=[2,1]→1.5,  BE=[9,10]→9.5, CR=[4,5]→4.5
+    //   Carol: AL=[9,10]→9.5, BE=[3,2]→2.5,  CR=[6,7]→6.5
+    const doneRoomWithCategories = {
+      data: {
+        ...doneRoom.data,
+        categories: [
+          { name: "Vocals", weight: 1, key: "vocals" },
+          { name: "Outfit", weight: 1, key: "outfit" },
+        ],
+      },
+      error: null,
+    };
+
+    const votesSelect = {
+      data: [
+        // Alice
+        { user_id: ALICE, contestant_id: "2026-al", scores: { Vocals: 10, Outfit: 9 }, missed: false },
+        { user_id: ALICE, contestant_id: "2026-be", scores: { Vocals: 2, Outfit: 3 }, missed: false },
+        { user_id: ALICE, contestant_id: "2026-cr", scores: { Vocals: 7, Outfit: 6 }, missed: false },
+        // Bob
+        { user_id: BOB, contestant_id: "2026-al", scores: { Vocals: 2, Outfit: 1 }, missed: false },
+        { user_id: BOB, contestant_id: "2026-be", scores: { Vocals: 9, Outfit: 10 }, missed: false },
+        { user_id: BOB, contestant_id: "2026-cr", scores: { Vocals: 4, Outfit: 5 }, missed: false },
+        // Carol
+        { user_id: CAROL, contestant_id: "2026-al", scores: { Vocals: 9, Outfit: 10 }, missed: false },
+        { user_id: CAROL, contestant_id: "2026-be", scores: { Vocals: 3, Outfit: 2 }, missed: false },
+        { user_id: CAROL, contestant_id: "2026-cr", scores: { Vocals: 6, Outfit: 7 }, missed: false },
+      ],
+      error: null,
+    };
+
+    const mock = makeSupabaseMock({
+      roomSelect: doneRoomWithCategories,
+      membershipsSelect: memberships,
+      resultsSelect: { data: [], error: null },
+      awardsSelect: { data: [], error: null },
+      votesSelect,
+    });
+
+    const result = await loadResults({ roomId: ROOM_ID }, makeDeps(mock));
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.data.status !== "done") return;
+
+    const pn = result.data.personalNeighbours;
+
+    // One entry per signal-bearing voter.
+    expect(pn).toHaveLength(3);
+
+    // Every entry has the correct PersonalNeighbour shape.
+    for (const entry of pn) {
+      expect(typeof entry.userId).toBe("string");
+      expect(typeof entry.neighbourUserId).toBe("string");
+      expect(typeof entry.pearson).toBe("number");
+      expect(typeof entry.isReciprocal).toBe("boolean");
+    }
+
+    // Alice's nearest neighbour is Carol (identical vectors → Pearson = 1).
+    const aliceEntry = pn.find((e) => e.userId === ALICE);
+    expect(aliceEntry).toBeDefined();
+    expect(aliceEntry!.neighbourUserId).toBe(CAROL);
+
+    // Alice ↔ Carol are a reciprocal pair.
+    const carolEntry = pn.find((e) => e.userId === CAROL);
+    expect(carolEntry).toBeDefined();
+    expect(carolEntry!.neighbourUserId).toBe(ALICE);
+    expect(aliceEntry!.isReciprocal).toBe(true);
+    expect(carolEntry!.isReciprocal).toBe(true);
+  });
 });
