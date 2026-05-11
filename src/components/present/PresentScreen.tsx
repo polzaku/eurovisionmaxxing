@@ -6,6 +6,7 @@ import type { Contestant } from "@/types";
 import type { LeaderboardEntry } from "@/lib/results/formatRoomSummary";
 import SkipBannerQueue, { type SkipEvent } from "@/components/room/SkipBannerQueue";
 import TwelvePointSplash from "@/components/room/TwelvePointSplash";
+import QrCode from "@/components/ui/QrCode";
 
 export type PresentStatus =
   | "lobby"
@@ -58,6 +59,10 @@ interface PresentScreenProps {
   /** SPEC §10.2.2 — used to key the first-load overlay per-room so the
    * sessionStorage flag is room-scoped. */
   roomId?: string;
+  /** Full join URL (e.g. https://app/room/{id}). When provided in lobby
+   * state, renders a QR code alongside the PIN so guests can scan from
+   * the TV without typing. */
+  shareUrl?: string;
 }
 
 const RANK_MEDAL: Record<number, string> = {
@@ -98,6 +103,7 @@ export default function PresentScreen({
   batchRevealMode,
   skipEvents,
   roomId,
+  shareUrl,
 }: PresentScreenProps) {
   const t = useTranslations();
   const contestantById = new Map(contestants.map((c) => [c.id, c]));
@@ -151,9 +157,19 @@ export default function PresentScreen({
         <p className="text-xs uppercase tracking-[0.5em] text-muted-foreground">
           {t("present.lobby.eyebrow")}
         </p>
-        <p className="mt-6 text-[10vw] font-mono font-bold tracking-[0.5em] text-foreground leading-none">
-          {pin}
-        </p>
+        <div className="mt-6 flex flex-col items-center gap-8 sm:flex-row sm:gap-12">
+          <p className="text-[10vw] sm:text-[8vw] font-mono font-bold tracking-[0.5em] text-foreground leading-none">
+            {pin}
+          </p>
+          {shareUrl ? (
+            <QrCode
+              url={shareUrl}
+              size={320}
+              alt="Scan to join this room"
+              className="bg-white p-2"
+            />
+          ) : null}
+        </div>
         <p className="mt-12 text-3xl font-semibold text-muted-foreground">
           {t("present.lobby.callToJoin")}
         </p>
