@@ -42,6 +42,7 @@ export interface Database {
           owner_user_id: string;
           status: string;
           announcement_mode: string;
+          announcement_style: string;
           announcement_order: string[] | null;
           announcing_user_id: string | null;
           current_announce_idx: number;
@@ -63,6 +64,7 @@ export interface Database {
           owner_user_id: string;
           status?: string;
           announcement_mode?: string;
+          announcement_style?: string;
           announcement_order?: string[] | null;
           announcing_user_id?: string | null;
           current_announce_idx?: number;
@@ -81,6 +83,7 @@ export interface Database {
           categories?: Array<{ name: string; weight: number; hint?: string }>;
           status?: string;
           announcement_mode?: string;
+          announcement_style?: string;
           announcement_order?: string[] | null;
           announcing_user_id?: string | null;
           current_announce_idx?: number;

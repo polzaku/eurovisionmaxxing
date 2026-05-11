@@ -21,6 +21,7 @@ const announcingRoom = {
   current_announce_idx: 0,
   announce_skipped_user_ids: [],
   batch_reveal_mode: false,
+  announcement_style: "full",
 };
 
 // 5-contestant fixture mirrors the year-9999 test setup. Each user has 5
@@ -36,11 +37,34 @@ function fiveResultsFor(userId: string) {
   }));
 }
 
+// 10-contestant fixture for short-style tests. Points = 1,2,3,4,5,6,7,8,10,12
+// sorted rank DESC (idx 0 = rank 10 = 1pt, idx 9 = rank 1 = 12pt).
+function tenResultsFor(userId: string, announced = false) {
+  const POINTS = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12];
+  const RANKS = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
+  return POINTS.map((p, i) => ({
+    contestant_id: `c-${userId.slice(-1)}-${i}`,
+    points_awarded: p,
+    rank: RANKS[i],
+    announced,
+  }));
+}
+
+// Ten rows for "auto-batch already fired": 9 announced, 1 pending (rank-1).
+function tenResultsAutoBatchFired(userId: string) {
+  return tenResultsFor(userId, false).map((r, i) => ({
+    ...r,
+    announced: i < 9, // indices 0-8 are the 9 batch rows (1pt..10pt); idx 9 is 12pt
+  }));
+}
+
 type Mock = { data: unknown; error: { message: string } | null };
 
 interface Scripted {
   roomSelect?: Mock;
   announcerResults?: Mock;
+  /** Results returned for the second announcer SELECT (e.g. next user's queue in rotation). */
+  nextAnnouncerResults?: Mock;
   resultsUpdate?: { error: { message: string } | null };
   resultsUpdateError?: { message: string } | null;
   roomUpdate?: Mock;
@@ -60,6 +84,7 @@ function makeSupabaseMock(s: Scripted = {}) {
   const roomSelect = s.roomSelect ?? { data: announcingRoom, error: null };
   const announcerResults =
     s.announcerResults ?? { data: fiveResultsFor(U1), error: null };
+  const nextAnnouncerResults = s.nextAnnouncerResults ?? announcerResults;
   const resultsUpdate = s.resultsUpdate ?? { error: null };
   const roomUpdate =
     s.roomUpdate ?? { data: { id: VALID_ROOM_ID }, error: null };
@@ -73,6 +98,10 @@ function makeSupabaseMock(s: Scripted = {}) {
     s.resultsUpdateError !== undefined
       ? [{ error: null }, { error: s.resultsUpdateError ?? null }]
       : [];
+
+  // Counter for how many times the announcer-results SELECT has been called.
+  // First call returns announcerResults (current user); subsequent calls return nextAnnouncerResults.
+  let announcerSelectCount = 0;
 
   // Queue of membership selects, popped FIFO per probe.
   const membershipSelectQueue: Array<{
@@ -127,10 +156,13 @@ function makeSupabaseMock(s: Scripted = {}) {
           // query does not.
           const isAnnouncerQuery = cols.includes("rank");
           if (isAnnouncerQuery) {
+            announcerSelectCount += 1;
+            const resultForThisCall =
+              announcerSelectCount === 1 ? announcerResults : nextAnnouncerResults;
             const chain = {
               eq: vi.fn(() => chain),
               gt: vi.fn(() => chain),
-              order: vi.fn().mockResolvedValue(announcerResults),
+              order: vi.fn().mockResolvedValue(resultForThisCall),
             };
             return chain;
           }
@@ -165,6 +197,14 @@ function makeSupabaseMock(s: Scripted = {}) {
             eq: vi.fn((col: string, val: unknown) => {
               eqs.push({ col, val });
               return chain;
+            }),
+            in: vi.fn((_col: string, _vals: unknown[]) => {
+              // .in() is a terminal filter on batch updates; resolve immediately.
+              const response =
+                resultsUpdateQueue.length > 0
+                  ? resultsUpdateQueue.shift()!
+                  : { ...resultsUpdate };
+              return Promise.resolve({ data: null, ...response });
             }),
             then: (...args: unknown[]) => {
               const response =
@@ -1049,5 +1089,360 @@ describe("batch-reveal mode (SPEC §10.2.1 'Finish the show')", () => {
     expect(lastRoomUpdate?.patch.announcing_user_id).toBeNull();
     expect(lastRoomUpdate?.patch.status).toBe("done");
     expect(lastRoomUpdate?.patch.batch_reveal_mode).toBe(false);
+  });
+});
+
+// ─── short-style (SPEC §10.2.2) ──────────────────────────────────────────────
+
+describe("advanceAnnouncement — short-style (SPEC §10.2.2)", () => {
+  const NOW = new Date("2026-05-11T19:00:00.000Z");
+  const freshTs = new Date(NOW.getTime() - 5_000).toISOString();
+  const staleTs = new Date(NOW.getTime() - 600_000).toISOString(); // 10 min ago
+
+  it("rotation: current user reveals their 12-point row, next user's auto-batch fires (9 contestants)", async () => {
+    // U1 is on idx 9 (rank-1 / 12pt); after their reveal, rotation lands on
+    // present U2 → server fires U2's auto-batch (9 rows) and pre-sets idx to 9.
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          ...announcingRoom,
+          announcement_style: "short",
+          current_announce_idx: 9,
+        },
+        error: null,
+      },
+      announcerResults: { data: tenResultsAutoBatchFired(U1), error: null },
+      nextAnnouncerResults: { data: tenResultsFor(U2), error: null },
+      membershipSelects: [{ data: { last_seen_at: freshTs }, error: null }],
+      allResults: { data: [], error: null },
+    });
+    const broadcastSpy = vi.fn().mockResolvedValue(undefined);
+
+    const result = await advanceAnnouncement(
+      { roomId: VALID_ROOM_ID, userId: U1 },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy }),
+      NOW,
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      contestantId: "c-1-9",
+      points: 12,
+      announcingUserId: U1,
+      nextAnnouncingUserId: U2,
+      cascadeExhausted: false,
+      cascadedSkippedUserIds: [],
+    });
+
+    // results.update calls: 1) U1's rank-1 mark, 2) U2's batch mark (9 rows via .in()).
+    expect(mock.resultsUpdateCalls).toHaveLength(2);
+    expect(mock.resultsUpdateCalls[0].patch).toEqual({ announced: true });
+    expect(mock.resultsUpdateCalls[0].eqs).toEqual([
+      { col: "room_id", val: VALID_ROOM_ID },
+      { col: "user_id", val: U1 },
+      { col: "contestant_id", val: "c-1-9" },
+    ]);
+    expect(mock.resultsUpdateCalls[1].patch).toEqual({ announced: true });
+    expect(mock.resultsUpdateCalls[1].eqs).toEqual([
+      { col: "room_id", val: VALID_ROOM_ID },
+      { col: "user_id", val: U2 },
+    ]);
+
+    // Room patch sets next announcer = U2 with idx = 9 (the 12-point row's index).
+    expect(mock.roomUpdateCalls[0].patch).toMatchObject({
+      announcing_user_id: U2,
+      current_announce_idx: 9,
+    });
+
+    // Broadcasts: announce_next (U1's 12pt), score_update (12pt),
+    // score_batch_revealed (U2, 9 contestants). In that order.
+    const types = broadcastSpy.mock.calls.map(
+      (c) => (c[1] as { type: string }).type,
+    );
+    expect(types).toEqual([
+      "announce_next",
+      "score_update",
+      "score_batch_revealed",
+    ]);
+
+    const batchCall = broadcastSpy.mock.calls.find(
+      (c) => (c[1] as { type: string }).type === "score_batch_revealed",
+    );
+    expect(batchCall).toBeDefined();
+    const batchEvent = batchCall![1] as {
+      type: "score_batch_revealed";
+      announcingUserId: string;
+      contestants: Array<{ contestantId: string }>;
+    };
+    expect(batchEvent.announcingUserId).toBe(U2);
+    expect(batchEvent.contestants).toHaveLength(9);
+  });
+
+  it("rotation + cascade: skips absent user, auto-batches the present one", async () => {
+    // U1 reveals their 12pt; rotation candidate U2 is absent (skipped);
+    // U3 is present → fires U3's auto-batch.
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          ...announcingRoom,
+          announcement_order: [U1, U2, U3],
+          announcement_style: "short",
+          current_announce_idx: 9,
+        },
+        error: null,
+      },
+      announcerResults: { data: tenResultsAutoBatchFired(U1), error: null },
+      nextAnnouncerResults: { data: tenResultsFor(U3), error: null },
+      membershipSelects: [
+        { data: { last_seen_at: staleTs }, error: null }, // U2 absent
+        { data: { last_seen_at: freshTs }, error: null }, // U3 present
+      ],
+      usersByIdSelect: {
+        data: [{ id: U2, display_name: "User Two" }],
+        error: null,
+      },
+    });
+    const broadcastSpy = vi.fn().mockResolvedValue(undefined);
+
+    const result = await advanceAnnouncement(
+      { roomId: VALID_ROOM_ID, userId: U1 },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy }),
+      NOW,
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      nextAnnouncingUserId: U3,
+      cascadeExhausted: false,
+      cascadedSkippedUserIds: [U2],
+    });
+
+    // results.update calls: 1) U1 rank-1 mark, 2) applySingleSkip for U2,
+    // 3) U3's batch mark (9 rows).
+    expect(mock.resultsUpdateCalls).toHaveLength(3);
+    // The batch mark is on U3 (last call).
+    expect(mock.resultsUpdateCalls[2].eqs).toEqual([
+      { col: "room_id", val: VALID_ROOM_ID },
+      { col: "user_id", val: U3 },
+    ]);
+
+    // Broadcast order: announce_skip (U2) → announce_next (U1 12pt) → score_update → score_batch_revealed (U3).
+    const types = broadcastSpy.mock.calls.map(
+      (c) => (c[1] as { type: string }).type,
+    );
+    expect(types).toEqual([
+      "announce_skip",
+      "announce_next",
+      "score_update",
+      "score_batch_revealed",
+    ]);
+    const batchEvent = broadcastSpy.mock.calls.find(
+      (c) => (c[1] as { type: string }).type === "score_batch_revealed",
+    )![1] as {
+      announcingUserId: string;
+      contestants: Array<unknown>;
+    };
+    expect(batchEvent.announcingUserId).toBe(U3);
+    expect(batchEvent.contestants).toHaveLength(9);
+  });
+
+  it("cascade exhausts: no auto-batch broadcast, cascadeExhausted: true", async () => {
+    // U1 reveals their 12pt; rotation candidate U2 is absent; no one else.
+    // Cascade exhausts → nextAnnouncingUserId is null, no batch broadcast.
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          ...announcingRoom,
+          announcement_order: [U1, U2],
+          announcement_style: "short",
+          current_announce_idx: 9,
+        },
+        error: null,
+      },
+      announcerResults: { data: tenResultsAutoBatchFired(U1), error: null },
+      membershipSelects: [
+        { data: { last_seen_at: staleTs }, error: null }, // U2 absent
+      ],
+      usersByIdSelect: {
+        data: [{ id: U2, display_name: "User Two" }],
+        error: null,
+      },
+    });
+    const broadcastSpy = vi.fn().mockResolvedValue(undefined);
+
+    const result = await advanceAnnouncement(
+      { roomId: VALID_ROOM_ID, userId: U1 },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy }),
+      NOW,
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      cascadeExhausted: true,
+      nextAnnouncingUserId: null,
+      cascadedSkippedUserIds: [U2],
+    });
+
+    // No score_batch_revealed broadcast.
+    const types = broadcastSpy.mock.calls.map(
+      (c) => (c[1] as { type: string }).type,
+    );
+    expect(types).not.toContain("score_batch_revealed");
+
+    // SPEC §10.2.1 — cascade-exhaust does NOT silent-mark the absent user
+    // (their results stay announced=false for batch reveal). Only 1
+    // results.update should have fired: U1's rank-1 mark.
+    expect(mock.resultsUpdateCalls).toHaveLength(1);
+  });
+
+  it("batch-reveal-mode + 10 pending rows: single tap fires auto-batch AND 12-point reveal", async () => {
+    // U1 enters batch-reveal-mode fresh (no auto-batch ever fired for them).
+    // Admin taps once → orchestrator marks U1's rank-1 (12pt) AND the
+    // 9-row auto-batch, then probes for the next pending user.
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          ...announcingRoom,
+          announcement_order: [U1, U2],
+          announcing_user_id: U1,
+          current_announce_idx: 9, // last index = 12pt row
+          batch_reveal_mode: true,
+          announcement_style: "short",
+        },
+        error: null,
+      },
+      announcerResults: { data: tenResultsFor(U1), error: null }, // all 10 unannounced
+      pendingByUser: new Map<string, { contestant_id: string } | null>([
+        [U2, { contestant_id: "c-2-9" }], // U2 has pending
+      ]),
+    });
+    const broadcastSpy = vi.fn().mockResolvedValue(undefined);
+
+    const result = await advanceAnnouncement(
+      { roomId: VALID_ROOM_ID, userId: OWNER_ID },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy, now: () => NOW }),
+      NOW,
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      points: 12,
+      nextAnnouncingUserId: U2,
+    });
+
+    // results.update calls: 1) U1's rank-1 mark, 2) U1's batch mark (9 rows).
+    expect(mock.resultsUpdateCalls).toHaveLength(2);
+    expect(mock.resultsUpdateCalls[0].eqs).toEqual([
+      { col: "room_id", val: VALID_ROOM_ID },
+      { col: "user_id", val: U1 },
+      { col: "contestant_id", val: "c-1-9" }, // rank-1 = 12pt = idx 9
+    ]);
+    expect(mock.resultsUpdateCalls[1].eqs).toEqual([
+      { col: "room_id", val: VALID_ROOM_ID },
+      { col: "user_id", val: U1 },
+    ]);
+
+    // Broadcasts: announce_next (U1 12pt) → score_update → score_batch_revealed (U1, 9 contestants).
+    const types = broadcastSpy.mock.calls.map(
+      (c) => (c[1] as { type: string }).type,
+    );
+    expect(types).toEqual([
+      "announce_next",
+      "score_update",
+      "score_batch_revealed",
+    ]);
+    const batchEvent = broadcastSpy.mock.calls.find(
+      (c) => (c[1] as { type: string }).type === "score_batch_revealed",
+    )![1] as { announcingUserId: string; contestants: Array<unknown> };
+    expect(batchEvent.announcingUserId).toBe(U1);
+    expect(batchEvent.contestants).toHaveLength(9);
+  });
+
+  it("batch-reveal-mode + 1 pending row (auto-batch already fired): single tap reveals only 12pt", async () => {
+    // U1's auto-batch fired earlier; now only rank-1 is pending.
+    // Admin tap should NOT re-fire the batch — only mark rank-1.
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          ...announcingRoom,
+          announcement_order: [U1, U2],
+          announcing_user_id: U1,
+          current_announce_idx: 9,
+          batch_reveal_mode: true,
+          announcement_style: "short",
+        },
+        error: null,
+      },
+      announcerResults: { data: tenResultsAutoBatchFired(U1), error: null }, // 9 announced, only rank-1 pending
+      pendingByUser: new Map<string, { contestant_id: string } | null>([
+        [U2, { contestant_id: "c-2-9" }],
+      ]),
+    });
+    const broadcastSpy = vi.fn().mockResolvedValue(undefined);
+
+    const result = await advanceAnnouncement(
+      { roomId: VALID_ROOM_ID, userId: OWNER_ID },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy, now: () => NOW }),
+      NOW,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.points).toBe(12);
+
+    // Only ONE results.update: the rank-1 mark. No batch mark fired.
+    expect(mock.resultsUpdateCalls).toHaveLength(1);
+    expect(mock.resultsUpdateCalls[0].eqs).toEqual([
+      { col: "room_id", val: VALID_ROOM_ID },
+      { col: "user_id", val: U1 },
+      { col: "contestant_id", val: "c-1-9" },
+    ]);
+
+    // Broadcasts: announce_next + score_update only. NO score_batch_revealed.
+    const types = broadcastSpy.mock.calls.map(
+      (c) => (c[1] as { type: string }).type,
+    );
+    expect(types).toEqual(["announce_next", "score_update"]);
+    expect(types).not.toContain("score_batch_revealed");
+  });
+
+  it("full-style control: existing rotation behaviour unchanged, no score_batch_revealed", async () => {
+    // Same setup as the existing "rotates to the next announcer" test —
+    // but explicit assertion that no auto-batch fires under style='full'.
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          ...announcingRoom,
+          announcement_style: "full",
+          current_announce_idx: 4,
+        },
+        error: null,
+      },
+      membershipSelects: [{ data: { last_seen_at: freshTs }, error: null }],
+    });
+    const broadcastSpy = vi.fn().mockResolvedValue(undefined);
+
+    const result = await advanceAnnouncement(
+      { roomId: VALID_ROOM_ID, userId: U1 },
+      makeDeps(mock, { broadcastRoomEvent: broadcastSpy }),
+      NOW,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.nextAnnouncingUserId).toBe(U2);
+
+    // No batch broadcast under full style.
+    const types = broadcastSpy.mock.calls.map(
+      (c) => (c[1] as { type: string }).type,
+    );
+    expect(types).not.toContain("score_batch_revealed");
+
+    // Room patch sets idx to 0 (full-style rotation default), not the
+    // twelvePointIdx that short-style would set.
+    expect(mock.roomUpdateCalls[0].patch).toMatchObject({
+      announcing_user_id: U2,
+      current_announce_idx: 0,
+    });
   });
 });

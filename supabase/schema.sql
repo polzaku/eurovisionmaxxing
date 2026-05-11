@@ -30,6 +30,8 @@ CREATE TABLE rooms (
                           CHECK (status IN ('lobby','voting','voting_ending','scoring','announcing','done')),
   announcement_mode     VARCHAR(7) NOT NULL DEFAULT 'instant'
                           CHECK (announcement_mode IN ('live','instant')),
+  announcement_style    VARCHAR(5) NOT NULL DEFAULT 'full'
+                          CHECK (announcement_style IN ('full','short')),
   announcement_order    UUID[],                 -- ordered array of userIds for live mode
   announcing_user_id    UUID REFERENCES users(id),
   current_announce_idx  SMALLINT DEFAULT 0,     -- which point value is being announced
@@ -47,6 +49,7 @@ CREATE TABLE rooms (
 --   ALTER TABLE rooms ADD COLUMN IF NOT EXISTS delegate_user_id UUID REFERENCES users(id);
 --   ALTER TABLE rooms ADD COLUMN IF NOT EXISTS announce_skipped_user_ids UUID[] NOT NULL DEFAULT '{}';
 --   ALTER TABLE rooms ADD COLUMN IF NOT EXISTS batch_reveal_mode BOOLEAN NOT NULL DEFAULT FALSE;
+--   ALTER TABLE rooms ADD COLUMN IF NOT EXISTS announcement_style VARCHAR(5) NOT NULL DEFAULT 'full' CHECK (announcement_style IN ('full','short'));
 --   ALTER TABLE room_memberships ADD COLUMN IF NOT EXISTS scores_locked_at TIMESTAMPTZ;
 --   ALTER TABLE room_memberships ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
 --
