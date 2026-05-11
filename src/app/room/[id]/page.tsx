@@ -70,6 +70,7 @@ interface RoomShape {
   ownerUserId: string;
   categories: Array<{ name: string; weight: number; hint?: string }>;
   announcementMode?: string;
+  announcementStyle: 'full' | 'short';
   announcementOrder?: string[] | null;
   announcingUserId?: string | null;
   currentAnnounceIdx?: number | null;
@@ -780,6 +781,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
             status: phase.room.status,
             ownerUserId: phase.room.ownerUserId,
           }}
+          announcementStyle={phase.room.announcementStyle}
           contestants={phase.contestants}
           currentUserId={session.userId}
           members={rosterMembers}

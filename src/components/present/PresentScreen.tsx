@@ -37,6 +37,12 @@ interface PresentScreenProps {
   announcerPosition?: number;
   /** Total number of eligible announcers in `announcement_order`. */
   announcerCount?: number;
+  /**
+   * SPEC §10.2.2 — when 'short', renders the 'Awaiting their 12 points…'
+   * ticker between turns and a TwelvePointSplash overlay on each
+   * announce_next broadcast. Render branches in subsequent commits.
+   */
+  announcementStyle?: 'full' | 'short';
   /** When false and no announcer is active, renders the cascade-exhaust waiting state. */
   batchRevealMode?: boolean;
   /** Incoming skip events to render as a banner train via SkipBannerQueue. */
@@ -75,6 +81,7 @@ export default function PresentScreen({
   pendingReveal,
   announcerPosition,
   announcerCount,
+  announcementStyle = 'full',
   batchRevealMode,
   skipEvents,
 }: PresentScreenProps) {

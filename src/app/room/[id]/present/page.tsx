@@ -19,6 +19,7 @@ interface RoomShape {
   status: string;
   ownerUserId: string;
   announcementMode?: string;
+  announcementStyle?: 'full' | 'short';
   announcingUserId?: string | null;
   batchRevealMode: boolean;
 }
@@ -199,6 +200,7 @@ export default function PresentPage({ params }: { params: { id: string } }) {
         }
         announcerPosition={results?.announcement?.announcerPosition}
         announcerCount={results?.announcement?.announcerCount}
+        announcementStyle={phase.room.announcementStyle ?? 'full'}
         batchRevealMode={phase.room.batchRevealMode}
         skipEvents={skipEvents}
       />

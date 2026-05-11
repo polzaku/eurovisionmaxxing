@@ -61,6 +61,12 @@ interface AnnouncingViewProps {
    */
   announcement?: AnnouncementState | null;
   /**
+   * SPEC §10.2.2 — when 'short', the active driver sees a compressed
+   * 'Reveal 12 points' CTA and non-drivers see a TwelvePointToast on
+   * each announce_next broadcast. Render branches in subsequent commits.
+   */
+  announcementStyle?: 'full' | 'short';
+  /**
    * Called when the in-component refetch detects the room has left
    * `announcing` status (e.g. show finished, broadcast lagged behind for
    * non-announcer guests). The page should re-fetch its room data so its
@@ -115,6 +121,7 @@ export default function AnnouncingView({
   currentUserId,
   members,
   announcement: announcementSeed = null,
+  announcementStyle = 'full',
   onAnnouncementEnded,
 }: AnnouncingViewProps) {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);

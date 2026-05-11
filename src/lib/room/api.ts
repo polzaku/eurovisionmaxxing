@@ -63,6 +63,7 @@ export type FetchRoomData = {
   contestants: unknown[];
   votes: unknown[];
   broadcastStartUtc: string | null;
+  announcementStyle?: 'full' | 'short';
 };
 
 export async function fetchRoomData(
