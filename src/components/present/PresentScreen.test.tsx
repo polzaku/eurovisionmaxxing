@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string, params?: Record<string, unknown>) =>
@@ -647,5 +647,73 @@ describe("PresentScreen — FLIP rank-shift animation (§10.3)", () => {
     );
     restore();
     expect(container.innerHTML).not.toContain("animate-rank-shift");
+  });
+});
+
+describe("PresentScreen — short-style first-load overlay (R4 §10.2.2)", () => {
+  const LEADERBOARD = [
+    { contestantId: "2026-se", totalPoints: 24, rank: 1 },
+    { contestantId: "2026-ua", totalPoints: 18, rank: 2 },
+  ];
+
+  beforeEach(() => {
+    if (typeof window !== "undefined") {
+      window.sessionStorage.clear();
+    }
+  });
+
+  it("Case A — Renders on first load when sessionStorage flag is absent", () => {
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={LEADERBOARD}
+        announcementStyle="short"
+        roomId="test-room"
+      />,
+    );
+    const overlay = screen.getByTestId("present-short-overlay");
+    expect(overlay).toBeInTheDocument();
+    expect(overlay).toHaveTextContent(
+      "announcementStyle.short.presentOverlay.title",
+    );
+  });
+
+  it("Case B — Suppressed when sessionStorage flag is already set", () => {
+    window.sessionStorage.setItem("emx_short_overlay_test-room", "1");
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={LEADERBOARD}
+        announcementStyle="short"
+        roomId="test-room"
+      />,
+    );
+    expect(
+      screen.queryByTestId("present-short-overlay"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("Case C — 'Got it' button dismisses the overlay", () => {
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={LEADERBOARD}
+        announcementStyle="short"
+        roomId="test-room"
+      />,
+    );
+    expect(screen.getByTestId("present-short-overlay")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByText("announcementStyle.short.presentOverlay.dismiss"),
+    );
+    expect(
+      screen.queryByTestId("present-short-overlay"),
+    ).not.toBeInTheDocument();
   });
 });

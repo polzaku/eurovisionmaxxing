@@ -64,6 +64,7 @@ export default function CreateRoomPage() {
   // Step 2 state
   const [templateId, setTemplateId] = useState<TemplateId>("classic");
   const [announcementMode, setAnnouncementMode] = useState<Mode>("instant");
+  const [announcementStyle, setAnnouncementStyle] = useState<'full' | 'short'>('full');
   const [allowNowPerforming, setAllowNowPerforming] = useState<boolean>(false);
   const [submitState, setSubmitState] = useState<SubmitState>({ kind: "idle" });
 
@@ -163,6 +164,7 @@ export default function CreateRoomPage() {
         event,
         categories: template.categories,
         announcementMode,
+        announcementStyle,
         allowNowPerforming,
         userId: session.userId,
       },
@@ -183,6 +185,7 @@ export default function CreateRoomPage() {
     event,
     templateId,
     announcementMode,
+    announcementStyle,
     allowNowPerforming,
     router,
   ]);
@@ -222,6 +225,7 @@ export default function CreateRoomPage() {
           <VotingConfig
             templateId={templateId}
             announcementMode={announcementMode}
+            announcementStyle={announcementStyle}
             allowNowPerforming={allowNowPerforming}
             submitState={submitState}
             onChange={(patch) => {
@@ -229,6 +233,8 @@ export default function CreateRoomPage() {
                 setTemplateId(patch.templateId);
               if (patch.announcementMode !== undefined)
                 setAnnouncementMode(patch.announcementMode);
+              if (patch.announcementStyle !== undefined)
+                setAnnouncementStyle(patch.announcementStyle);
               if (patch.allowNowPerforming !== undefined)
                 setAllowNowPerforming(patch.allowNowPerforming);
             }}

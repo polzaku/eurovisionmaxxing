@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import Avatar from "@/components/ui/Avatar";
 import { useRoomPresence } from "@/hooks/useRoomPresence";
 import Button from "@/components/ui/Button";
@@ -13,6 +14,7 @@ import RefreshContestantsButton, {
 import { VOTING_TEMPLATES } from "@/lib/templates";
 import type { Contestant } from "@/types";
 import ContestantPrimerCarousel from "@/components/room/ContestantPrimerCarousel";
+import AnnouncementStyleSubRadio from "@/components/create/AnnouncementStyleSubRadio";
 
 const PREDEFINED_TEMPLATES = VOTING_TEMPLATES.filter((t) => t.id !== "custom");
 
@@ -67,6 +69,10 @@ interface LobbyViewProps {
    */
   announcementMode?: "live" | "instant";
   onChangeAnnouncementMode?: (mode: "live" | "instant") => Promise<void>;
+  /** Current style. Required-ish when announcementMode='live'; ignored otherwise. */
+  announcementStyle?: "full" | "short";
+  /** Owner-only lobby-edit callback. Promise so the UI can show busy state. */
+  onChangeAnnouncementStyle?: (next: "full" | "short") => Promise<void>;
   /**
    * SPEC §6.1 / A2 — owner-only template picker for swapping the room's
    * categories array while still in the lobby. When provided, renders a
@@ -115,15 +121,19 @@ export default function LobbyView({
   onRefreshContestants,
   announcementMode,
   onChangeAnnouncementMode,
+  announcementStyle,
+  onChangeAnnouncementStyle,
   onChangeCategories,
   roomId,
   currentUserId,
   broadcastStartUtc,
   contestants,
 }: LobbyViewProps) {
+  const t = useTranslations();
   const [pinCopied, markPinCopied] = useCopiedFlag();
   const [linkCopied, markLinkCopied] = useCopiedFlag();
   const [modeBusy, setModeBusy] = useState(false);
+  const [styleBusy, setStyleBusy] = useState(false);
   const [templateBusy, setTemplateBusy] = useState(false);
 
   const presenceUserIds = useRoomPresence(roomId, currentUserId);
@@ -179,6 +189,24 @@ export default function LobbyView({
   const showModeToggle =
     isAdmin && !!announcementMode && !!onChangeAnnouncementMode;
 
+  const handleStyleChange = async (next: "full" | "short") => {
+    if (styleBusy) return;
+    if (!onChangeAnnouncementStyle) return;
+    if (next === announcementStyle) return;
+    setStyleBusy(true);
+    try {
+      await onChangeAnnouncementStyle(next);
+    } finally {
+      setStyleBusy(false);
+    }
+  };
+
+  const showStyleToggle =
+    isAdmin &&
+    announcementMode === "live" &&
+    !!announcementStyle &&
+    !!onChangeAnnouncementStyle;
+
   return (
     <main className="flex min-h-screen flex-col items-center px-6 py-12">
       <div className="max-w-md w-full space-y-8 animate-fade-in">
@@ -194,6 +222,20 @@ export default function LobbyView({
             </p>
           </section>
         )}
+
+        {isAdmin && announcementStyle === "short" ? (
+          <section
+            data-testid="lobby-short-info-card"
+            className="rounded-2xl border-2 border-accent bg-accent/5 px-4 py-3 space-y-1"
+          >
+            <p className="text-sm font-semibold">
+              {t("announcementStyle.short.lobbyCard.title")}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {t("announcementStyle.short.lobbyCard.body")}
+            </p>
+          </section>
+        ) : null}
 
         <section className="text-center space-y-2">
           <p className="text-xs uppercase tracking-widest text-muted-foreground">
@@ -349,6 +391,19 @@ export default function LobbyView({
             <p className="text-xs text-muted-foreground">
               Switch any time before voting starts. Year and event are locked.
             </p>
+          </section>
+        ) : null}
+
+        {showStyleToggle ? (
+          <section
+            className="space-y-2"
+            data-testid="lobby-announcement-style-toggle"
+          >
+            <AnnouncementStyleSubRadio
+              value={announcementStyle as "full" | "short"}
+              onChange={(next) => void handleStyleChange(next)}
+              disabled={styleBusy}
+            />
           </section>
         ) : null}
 

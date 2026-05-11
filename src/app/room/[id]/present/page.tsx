@@ -218,6 +218,7 @@ export default function PresentPage({ params }: { params: { id: string } }) {
         skipEvents={skipEvents}
         splashEvent={splashEvent}
         onSplashDismiss={() => setSplashEvent(null)}
+        roomId={roomId}
       />
       <FullscreenPrompt />
     </>

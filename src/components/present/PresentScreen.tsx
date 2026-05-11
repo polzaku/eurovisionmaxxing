@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import type { Contestant } from "@/types";
 import type { LeaderboardEntry } from "@/lib/results/formatRoomSummary";
@@ -55,6 +55,9 @@ interface PresentScreenProps {
   batchRevealMode?: boolean;
   /** Incoming skip events to render as a banner train via SkipBannerQueue. */
   skipEvents?: SkipEvent[];
+  /** SPEC §10.2.2 — used to key the first-load overlay per-room so the
+   * sessionStorage flag is room-scoped. */
+  roomId?: string;
 }
 
 const RANK_MEDAL: Record<number, string> = {
@@ -94,9 +97,25 @@ export default function PresentScreen({
   onSplashDismiss,
   batchRevealMode,
   skipEvents,
+  roomId,
 }: PresentScreenProps) {
   const t = useTranslations();
   const contestantById = new Map(contestants.map((c) => [c.id, c]));
+
+  const [showOverlay, setShowOverlay] = useState(false);
+  useEffect(() => {
+    if (announcementStyle !== "short") return;
+    if (status !== "announcing") return;
+    if (!roomId) return;
+    try {
+      const seen = window.sessionStorage.getItem(
+        `emx_short_overlay_${roomId}`,
+      );
+      if (!seen) setShowOverlay(true);
+    } catch {
+      // sessionStorage unavailable (e.g. private mode); skip the overlay.
+    }
+  }, [announcementStyle, status, roomId]);
 
   const isCascadeExhausted =
     status === "announcing" && !announcerDisplayName && batchRevealMode === false;
@@ -200,6 +219,12 @@ export default function PresentScreen({
 
   return (
     <>
+      {showOverlay && roomId ? (
+        <ShortStyleOverlay
+          roomId={roomId}
+          onDismiss={() => setShowOverlay(false)}
+        />
+      ) : null}
       <PresentLeaderboard
         status={status}
         rows={rows}
@@ -284,6 +309,51 @@ function ShortStyleSplash({
       onDismiss={onDismiss}
       dismissAfterMs={3000}
     />
+  );
+}
+
+function ShortStyleOverlay({
+  roomId,
+  onDismiss,
+}: {
+  roomId: string;
+  onDismiss: () => void;
+}) {
+  const t = useTranslations();
+  const storageKey = `emx_short_overlay_${roomId}`;
+
+  useEffect(() => {
+    // Write the seen flag immediately so refreshes don't re-show.
+    try {
+      window.sessionStorage.setItem(storageKey, "1");
+    } catch {
+      // sessionStorage unavailable; fall through.
+    }
+    const timer = setTimeout(onDismiss, 5000);
+    return () => clearTimeout(timer);
+  }, [storageKey, onDismiss]);
+
+  return (
+    <div
+      role="dialog"
+      aria-label="Short reveal mode"
+      data-testid="present-short-overlay"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/95 px-12 py-12 text-center motion-safe:animate-fade-in"
+    >
+      <p className="text-6xl font-bold">
+        {t("announcementStyle.short.presentOverlay.title")}
+      </p>
+      <p className="mt-6 max-w-3xl text-2xl text-muted-foreground">
+        {t("announcementStyle.short.presentOverlay.body")}
+      </p>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="mt-10 rounded-full bg-primary px-8 py-3 text-lg font-semibold text-primary-foreground transition-all hover:scale-[1.02] active:scale-[0.98]"
+      >
+        {t("announcementStyle.short.presentOverlay.dismiss")}
+      </button>
+    </div>
   );
 }
 

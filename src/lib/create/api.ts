@@ -74,6 +74,7 @@ export interface CreateRoomApiInput {
   event: "semi1" | "semi2" | "final";
   categories: VotingCategory[];
   announcementMode: "live" | "instant";
+  announcementStyle?: "full" | "short";
   allowNowPerforming: boolean;
   userId: string;
 }
