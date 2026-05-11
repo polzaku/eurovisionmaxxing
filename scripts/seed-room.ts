@@ -12,6 +12,7 @@
  *   - announcing-mid-queue-live
  *   - announcing-instant-all-ready
  *   - announcing-cascade-absent
+ *   - announcing-short-style-live
  *   - done-with-awards
  *
  * Each implemented state inserts a fresh room (PIN prefix `SEED`) plus
@@ -78,6 +79,7 @@ function parseArgs(argv: readonly string[]): CliArgs {
         "  announcing-instant-all-ready\n" +
         "  announcing-cascade-absent\n" +
         "  announcing-cascade-all-absent\n" +
+        "  announcing-short-style-live\n" +
         "  done-with-awards\n",
     );
   }
@@ -197,20 +199,36 @@ async function insertMembership(
 }
 
 async function fetchSeedContestants(): Promise<Contestant[]> {
-  // Year 9999 fixture — synthetic 5-row contestant list bundled in
+  // Year 9999 fixture — synthetic contestant list bundled in
   // data/contestants/9999/final.json. Same shape the room would resolve
   // at runtime via the contestants cascade.
+  //
+  // Supports both legacy flat-array shape and the R2 #241 wrapper
+  // `{ broadcastStartUtc?, contestants: [...] }` shape that the
+  // production fixtures migrated to.
   const raw = (await import("../data/contestants/9999/final.json", {
     assert: { type: "json" },
   })) as { default?: unknown };
-  // The JSON file exports an array directly; the dynamic import wraps
-  // it in `default` under ES modules.
-  const arr = (raw.default ?? raw) as Array<{
+  const data = raw.default ?? raw;
+  type Row = {
     country: string;
     artist: string;
     song: string;
     runningOrder: number;
-  }>;
+  };
+  let arr: Row[];
+  if (Array.isArray(data)) {
+    arr = data as Row[];
+  } else if (
+    data && typeof data === "object" &&
+    Array.isArray((data as { contestants?: unknown }).contestants)
+  ) {
+    arr = (data as { contestants: Row[] }).contestants;
+  } else {
+    bail(
+      "data/contestants/9999/final.json is not a recognised shape (expected flat array or { contestants: [...] }).",
+    );
+  }
   return arr.map((c) => {
     const code = c.country.slice(0, 2).toLowerCase();
     return {
@@ -706,6 +724,76 @@ async function seedAnnouncingCascadeAbsent(db: Db): Promise<SeedReport> {
   };
 }
 
+async function seedAnnouncingShortStyleLive(db: Db): Promise<SeedReport> {
+  // SPEC §10.2.2 — live + short style mid-flow: owner is the active
+  // announcer with their auto-batch (ranks 2–N, the non-rank-1 rows)
+  // already marked announced=true. The rank-1 (12-point) row is the
+  // only one still pending. Order = [owner, guest]; when the owner
+  // taps "Reveal 12 points", advanceAnnouncement marks rank-1 + fires
+  // the guest's auto-batch.
+  const owner = await insertSeededUser(db, 0);
+  const guest = await insertSeededUser(db, 1);
+  const allUsers = [owner, guest];
+  const order = allUsers.map((u) => u.userId);
+
+  const room = await insertSeededRoom(db, owner.userId, {
+    status: "announcing",
+    announcement_mode: "live",
+    announcement_style: "short",
+    announcement_order: order,
+    announcing_user_id: owner.userId,
+    // current_announce_idx = position of the rank-1 (12pt) row in the
+    // queue sorted rank DESC. For a 5-row test fixture that's idx 4
+    // (ranks 5..1 → idxs 0..4); for a 10-row queue it would be 9.
+    current_announce_idx: 4,
+    voting_ended_at: new Date(Date.now() - 5 * 60_000).toISOString(),
+  });
+  for (const u of allUsers) {
+    await insertMembership(db, room.roomId, u.userId);
+  }
+
+  const contestants = await fetchSeedContestants();
+  const { voteRows, resultRows } = buildFullVotesAndResults(
+    room.roomId,
+    allUsers,
+    contestants,
+  );
+
+  // Pre-mark the owner's non-rank-1 rows (the auto-batch) as announced.
+  // Mirrors what runScoring would do under live + short style on the
+  // voting → announcing transition.
+  const adjustedResults = resultRows.map((r) => {
+    if (r.user_id === owner.userId && r.rank !== 1) {
+      return { ...r, announced: true };
+    }
+    return r;
+  });
+
+  const { error: votesErr } = await db.from("votes").insert(voteRows);
+  if (votesErr) bail(`Failed to insert votes: ${votesErr.message}`);
+  const { error: resultsErr } = await db
+    .from("results")
+    .insert(adjustedResults);
+  if (resultsErr) bail(`Failed to insert results: ${resultsErr.message}`);
+
+  const queueLen = contestants.length;
+  return {
+    roomId: room.roomId,
+    pin: room.pin,
+    url: `/room/${room.roomId}`,
+    notes: [
+      `Status: announcing (live + short). Order: ${allUsers.map((u) => u.displayName).join(" → ")}.`,
+      `Owner (${owner.displayName}) is the active announcer — their auto-batch (${queueLen - 1} rows) is already revealed.`,
+      `Only the rank-1 (12-point) row is pending. Owner sees the "Reveal 12 points" CTA.`,
+      `On tap → server marks rank-1 announced + fires the guest's auto-batch (${queueLen - 1} rows) and rotates.`,
+    ],
+    ownerSession: {
+      userId: owner.userId,
+      rejoinToken: owner.rejoinToken,
+    },
+  };
+}
+
 async function seedAnnouncingCascadeAllAbsent(db: Db): Promise<SeedReport> {
   // SPEC §10.2.1 — live-mode announcing room in cascade-exhaust state.
   // 3 users in announcement_order, all absent (last_seen_at 60s ago),
@@ -788,6 +876,7 @@ const STATE_BUILDERS: Record<SeedState, (db: Db) => Promise<SeedReport>> = {
   "announcing-mid-queue-live": seedAnnouncingMidQueueLive,
   "announcing-instant-all-ready": seedAnnouncingInstantAllReady,
   "announcing-cascade-absent": seedAnnouncingCascadeAbsent,
+  "announcing-short-style-live": seedAnnouncingShortStyleLive,
   "announcing-cascade-all-absent": seedAnnouncingCascadeAllAbsent,
   "done-with-awards": seedDoneWithAwards,
 };

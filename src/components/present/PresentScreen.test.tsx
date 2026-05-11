@@ -412,6 +412,82 @@ describe("PresentScreen — batch-reveal active (R4 #3)", () => {
   });
 });
 
+describe("PresentScreen — short style (SPEC §10.2.2)", () => {
+  const LEADERBOARD = [
+    { contestantId: "2026-se", totalPoints: 24, rank: 1 },
+    { contestantId: "2026-ua", totalPoints: 18, rank: 2 },
+  ];
+
+  it("Case A — ticker visible when announcing + short + announcer present + no splash", () => {
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={LEADERBOARD}
+        announcerDisplayName="Alice"
+        announcementStyle="short"
+        splashEvent={null}
+      />,
+    );
+    const ticker = screen.getByTestId("present-short-ticker");
+    expect(ticker).toBeInTheDocument();
+    // Mock returns the raw key; verify it contains the correct locale key.
+    expect(ticker).toHaveTextContent("announce.shortReveal.awaitingTwelve");
+  });
+
+  it("Case B — splash visible when splashEvent is set; ticker suppressed", () => {
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={LEADERBOARD}
+        announcerDisplayName="Alice"
+        announcementStyle="short"
+        splashEvent={{ contestantId: "2026-se", triggerKey: 1 }}
+      />,
+    );
+    const splash = screen.getByTestId("twelve-point-splash");
+    expect(splash).toBeInTheDocument();
+    expect(splash).toHaveAttribute("data-size", "fullscreen");
+    // Ticker must not be rendered while a splash is active.
+    expect(screen.queryByTestId("present-short-ticker")).not.toBeInTheDocument();
+  });
+
+  it("Case C — full-style control: no ticker, no splash even when announcing + announcer present", () => {
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={LEADERBOARD}
+        announcerDisplayName="Alice"
+        announcementStyle="full"
+        splashEvent={{ contestantId: "2026-se", triggerKey: 2 }}
+      />,
+    );
+    expect(screen.queryByTestId("present-short-ticker")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("twelve-point-splash")).not.toBeInTheDocument();
+  });
+
+  it("Case D — unknown contestantId in splashEvent: defensive no-render, no crash", () => {
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={LEADERBOARD}
+        announcerDisplayName="Alice"
+        announcementStyle="short"
+        splashEvent={{ contestantId: "non-existent-id", triggerKey: 99 }}
+      />,
+    );
+    // The ShortStyleSplash guard returns null for unknown IDs — no crash + no render.
+    expect(screen.queryByTestId("twelve-point-splash")).not.toBeInTheDocument();
+  });
+});
+
 describe("PresentScreen — FLIP rank-shift animation (§10.3)", () => {
   // jsdom returns a zero-DOMRect for getBoundingClientRect by default,
   // so we mock it to drive deterministic dy values across rerenders.

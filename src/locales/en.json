@@ -190,6 +190,13 @@
       "ownerSubtitle": "All remaining announcers are absent — finish revealing on their behalf",
       "guestWaiting": "Waiting for the host to continue…",
       "batchRevealChip": "Host is finishing the show"
+    },
+    "shortReveal": {
+      "cta": "Reveal 12 points",
+      "ctaMicrocopy": "Tap when you say it",
+      "revealed": "Revealed ✓",
+      "awaitingTwelve": "Awaiting their 12 points…",
+      "guestToast": "{name} gave 12 to {country} {flag}"
     }
   },
   "results": {

@@ -19,6 +19,7 @@ interface RoomShape {
   status: string;
   ownerUserId: string;
   announcementMode?: string;
+  announcementStyle?: 'full' | 'short';
   announcingUserId?: string | null;
   batchRevealMode: boolean;
 }
@@ -70,6 +71,10 @@ export default function PresentPage({ params }: { params: { id: string } }) {
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
   const [results, setResults] = useState<ResultsShape | null>(null);
   const [skipEvents, setSkipEvents] = useState<SkipEvent[]>([]);
+  const [splashEvent, setSplashEvent] = useState<{
+    contestantId: string;
+    triggerKey: number;
+  } | null>(null);
 
   // Force-dark — restore prior theme on unmount so the user's theme
   // toggle pick is honoured back on /room/{id} or /results/{id}.
@@ -148,6 +153,15 @@ export default function PresentPage({ params }: { params: { id: string } }) {
       void load();
     } else if (event.type === "batch_reveal_started") {
       void load();
+    } else if (event.type === "announce_next") {
+      // Only consumed by PresentScreen under short style; the page passes
+      // it down via splashEvent. Also accelerate the next poll cycle.
+      setSplashEvent({
+        contestantId: event.contestantId,
+        triggerKey: Date.now(),
+      });
+      void load();
+      return;
     } else if (event.type === "announce_skip") {
       setSkipEvents((prev) => [
         ...prev,
@@ -199,8 +213,11 @@ export default function PresentPage({ params }: { params: { id: string } }) {
         }
         announcerPosition={results?.announcement?.announcerPosition}
         announcerCount={results?.announcement?.announcerCount}
+        announcementStyle={phase.room.announcementStyle ?? 'full'}
         batchRevealMode={phase.room.batchRevealMode}
         skipEvents={skipEvents}
+        splashEvent={splashEvent}
+        onSplashDismiss={() => setSplashEvent(null)}
       />
       <FullscreenPrompt />
     </>

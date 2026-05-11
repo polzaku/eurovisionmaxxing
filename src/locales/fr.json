@@ -235,6 +235,13 @@
       "ownerSubtitle": "",
       "guestWaiting": "",
       "batchRevealChip": ""
+    },
+    "shortReveal": {
+      "cta": "",
+      "ctaMicrocopy": "",
+      "revealed": "",
+      "awaitingTwelve": "",
+      "guestToast": ""
     }
   },
   "results": {
