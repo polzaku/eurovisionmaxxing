@@ -10,6 +10,7 @@ import {
   categoryAwardName,
   findOutfitLikeCategory,
 } from "@/lib/awards/awardKeys";
+import { buildUserVectors } from "./userVectors";
 
 const EPS = 1e-9;
 
@@ -300,15 +301,7 @@ function buildNeighbourhoodVoters(
   input: ComputeAwardsInput,
 ): ComputedAward | null {
   if (input.users.length < 2) return null;
-  // For each user, build a vector of mean-of-categories per contestant.
-  const vectors = new Map<string, number[]>();
-  for (const u of input.users) {
-    const vec = input.contestants.map(
-      (c) => userContestantMean(u.userId, c.id, input.votes) ?? 0,
-    );
-    // Skip users with no signal at all (all zeros from missing data).
-    if (vec.some((x) => x !== 0)) vectors.set(u.userId, vec);
-  }
+  const vectors = buildUserVectors(input);
   if (vectors.size < 2) return null;
 
   let bestPair: { a: UserView; b: UserView; corr: number } | null = null;
