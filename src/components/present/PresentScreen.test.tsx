@@ -8,6 +8,15 @@ vi.mock("next-intl", () => ({
     params ? `${key}:${JSON.stringify(params)}` : key,
 }));
 
+// QrCode hits the `qrcode` package asynchronously; stub for determinism.
+vi.mock("@/components/ui/QrCode", () => ({
+  default: ({ url, alt }: { url: string; alt?: string }) => (
+    <div data-testid="qr-stub" data-url={url} aria-label={alt}>
+      QR
+    </div>
+  ),
+}));
+
 import PresentScreen from "./PresentScreen";
 import type { Contestant } from "@/types";
 import type { SkipEvent } from "@/components/room/SkipBannerQueue";
@@ -55,6 +64,27 @@ describe("PresentScreen — lobby", () => {
     expect(
       screen.getByText(/present\.lobby\.memberCount/),
     ).toBeInTheDocument();
+  });
+
+  it("renders the QR code in the lobby when shareUrl is provided", () => {
+    render(
+      <PresentScreen
+        status="lobby"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        shareUrl="https://app.example/room/abc-123"
+      />,
+    );
+    const qr = screen.getByTestId("qr-stub");
+    expect(qr).toBeInTheDocument();
+    expect(qr).toHaveAttribute("data-url", "https://app.example/room/abc-123");
+  });
+
+  it("omits the QR code in the lobby when shareUrl is missing", () => {
+    render(
+      <PresentScreen status="lobby" pin="ABCDEF" contestants={CONTESTANTS} />,
+    );
+    expect(screen.queryByTestId("qr-stub")).not.toBeInTheDocument();
   });
 });
 

@@ -219,6 +219,11 @@ export default function PresentPage({ params }: { params: { id: string } }) {
         splashEvent={splashEvent}
         onSplashDismiss={() => setSplashEvent(null)}
         roomId={roomId}
+        shareUrl={
+          typeof window !== "undefined"
+            ? `${window.location.origin}/room/${roomId}`
+            : undefined
+        }
       />
       <FullscreenPrompt />
     </>

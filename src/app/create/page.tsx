@@ -63,8 +63,10 @@ export default function CreateRoomPage() {
 
   // Step 2 state
   const [templateId, setTemplateId] = useState<TemplateId>("classic");
-  const [announcementMode, setAnnouncementMode] = useState<Mode>("instant");
-  const [announcementStyle, setAnnouncementStyle] = useState<'full' | 'short'>('full');
+  // Eurovision-authentic defaults: live mode with the short reveal style
+  // pre-selected (SPEC §10.2.2). Admins can still pick Full or Instant.
+  const [announcementMode, setAnnouncementMode] = useState<Mode>("live");
+  const [announcementStyle, setAnnouncementStyle] = useState<'full' | 'short'>('short');
   const [allowNowPerforming, setAllowNowPerforming] = useState<boolean>(false);
   const [submitState, setSubmitState] = useState<SubmitState>({ kind: "idle" });
 
