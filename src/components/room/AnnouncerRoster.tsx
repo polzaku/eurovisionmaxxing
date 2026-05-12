@@ -80,18 +80,19 @@ export default function AnnouncerRoster({
   reshuffling,
   canReshuffle,
 }: AnnouncerRosterProps) {
-  const t = useTranslations();
+  const t = useTranslations("announcing.roster");
+  const tRoster = useTranslations("roster");
   if (members.length === 0) return null;
 
   return (
     <section
       data-testid="announcer-roster"
-      aria-label="Announcer roster"
+      aria-label={t("ariaLabel")}
       className="rounded-2xl border-2 border-border bg-card px-4 py-3 space-y-2"
     >
       <header className="flex items-baseline justify-between gap-2">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Roster
+          {t("title")}
         </h2>
         <div className="flex items-baseline gap-3">
           <p className="text-[10px] text-muted-foreground">
@@ -99,7 +100,7 @@ export default function AnnouncerRoster({
               aria-hidden
               className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1 align-middle"
             />
-            here now
+            {t("hereNow")}
           </p>
           {onReshuffle && canReshuffle ? (
             <button
@@ -107,12 +108,12 @@ export default function AnnouncerRoster({
               onClick={onReshuffle}
               disabled={reshuffling}
               data-testid="roster-reshuffle"
-              aria-label="Re-shuffle the announcement order"
+              aria-label={t("reshuffleAria")}
               className="rounded border border-accent/50 bg-accent/5 px-2 py-0.5 text-xs font-medium text-accent transition-colors hover:bg-accent/10 active:scale-[0.98] disabled:opacity-60"
             >
               {reshuffling
-                ? t("roster.reshuffle.busyCta")
-                : t("roster.reshuffle.idleCta")}
+                ? tRoster("reshuffle.busyCta")
+                : tRoster("reshuffle.idleCta")}
             </button>
           ) : null}
         </div>
@@ -136,7 +137,7 @@ export default function AnnouncerRoster({
             >
               <span
                 aria-hidden
-                title={isOnline ? "Online" : "Offline"}
+                title={isOnline ? t("online") : t("offline")}
                 className={`relative inline-block w-2 h-2 rounded-full ${
                   isOnline ? "bg-emerald-500" : "bg-muted-foreground/30"
                 }`}
@@ -152,26 +153,26 @@ export default function AnnouncerRoster({
               {isAnnouncer ? (
                 <span
                   className="text-xs font-semibold text-primary"
-                  aria-label="Current announcer"
+                  aria-label={t("currentAnnouncerAria")}
                 >
-                  🎤 announcing
+                  {t("announcingLabel")}
                 </span>
               ) : null}
               {isDelegate ? (
                 <span
                   className="text-xs font-semibold text-accent"
-                  aria-label="Active delegate"
+                  aria-label={t("activeDelegateAria")}
                 >
-                  🛂 delegate
+                  {t("delegateLabel")}
                 </span>
               ) : null}
               {isSkipped ? (
                 <>
                   <span
                     className="text-xs font-medium text-muted-foreground"
-                    aria-label="Skipped"
+                    aria-label={t("skippedAria")}
                   >
-                    skipped
+                    {t("skippedLabel")}
                   </span>
                   {onRestore ? (
                     <button
@@ -179,10 +180,10 @@ export default function AnnouncerRoster({
                       onClick={() => onRestore(m.userId)}
                       disabled={restoringUserId === m.userId}
                       data-testid={`roster-restore-${m.userId}`}
-                      aria-label={`Restore ${m.displayName}`}
+                      aria-label={`${t("restore")} ${m.displayName}`}
                       className="rounded border border-accent/50 bg-accent/5 px-2 py-0.5 text-xs font-medium text-accent transition-colors hover:bg-accent/10 active:scale-[0.98] disabled:opacity-60"
                     >
-                      {restoringUserId === m.userId ? "Restoring…" : "Restore"}
+                      {restoringUserId === m.userId ? t("restoring") : t("restore")}
                     </button>
                   ) : null}
                 </>
