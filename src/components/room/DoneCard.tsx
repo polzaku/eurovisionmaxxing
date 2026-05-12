@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -31,6 +32,7 @@ export default function DoneCard({
   roomId,
   autoRedirectSeconds = DEFAULT_REDIRECT_SECONDS,
 }: DoneCardProps) {
+  const t = useTranslations("room.done");
   const router = useRouter();
   const initialSeconds = autoRedirectSeconds ?? 0;
   const [secondsRemaining, setSecondsRemaining] = useState(initialSeconds);
@@ -60,25 +62,25 @@ export default function DoneCard({
     <main className="flex min-h-screen flex-col items-center justify-center px-4 py-8">
       <div className="max-w-md w-full space-y-6 motion-safe:animate-fade-in text-center">
         <h1 className="text-3xl font-extrabold tracking-tight emx-wordmark">
-          Show&rsquo;s over
+          {t("title")}
         </h1>
         <p className="text-base text-muted-foreground">
-          Every score has been revealed. Time for the final picture.
+          {t("subtitle")}
         </p>
         <Link
           href={`/results/${roomId}`}
           aria-label={
             showCountdown
-              ? `See full results, auto-opens in ${secondsRemaining} seconds`
-              : "See full results"
+              ? t("seeResultsAria", { secondsRemaining })
+              : t("seeResults")
           }
           className="relative block overflow-hidden rounded-xl bg-primary px-6 py-4 text-lg font-semibold text-primary-foreground transition-transform hover:scale-[1.02] hover:emx-glow-gold active:scale-[0.98]"
         >
           <span className="relative">
-            See full results
+            {t("seeResults")}
             {showCountdown ? (
               <span className="ml-1 font-normal opacity-80 tabular-nums">
-                (in {secondsRemaining}s)
+                {t("countdownSuffix", { secondsRemaining })}
               </span>
             ) : null}
           </span>
@@ -96,7 +98,7 @@ export default function DoneCard({
             onClick={() => setCancelled(true)}
             className="text-xs text-muted-foreground underline hover:text-foreground"
           >
-            Stay here
+            {t("stayHere")}
           </button>
         ) : null}
       </div>
