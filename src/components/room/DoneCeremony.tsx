@@ -7,8 +7,10 @@ import AwardsCeremony from "@/components/awards/AwardsCeremony";
 import EndOfShowCtas from "@/components/awards/EndOfShowCtas";
 import { awardCeremonySequence } from "@/lib/awards/awardCeremonySequence";
 import { formatRoomSummary } from "@/lib/results/formatRoomSummary";
+import { getSession } from "@/lib/session";
 import type { Contestant, EventType, RoomAward } from "@/types";
 import type { LeaderboardEntry } from "@/lib/results/formatRoomSummary";
+import type { PersonalNeighbour } from "@/lib/awards/buildPersonalNeighbours";
 
 interface DoneCeremonyProps {
   roomId: string;
@@ -25,6 +27,8 @@ interface DoneFixture {
   leaderboard: LeaderboardEntry[];
   awards: RoomAward[];
   members: Array<{ userId: string; displayName: string; avatarSeed: string }>;
+  /** SPEC §11.2 your_neighbour — per-viewer entries, possibly []. */
+  personalNeighbours?: PersonalNeighbour[];
 }
 
 type Phase = "leaderboard" | "awards" | "ctas";
@@ -44,6 +48,11 @@ export default function DoneCeremony({
   const t = useTranslations();
   const [data, setData] = useState<DoneFixture | null>(null);
   const [phase, setPhase] = useState<Phase>("leaderboard");
+  const [viewerUserId, setViewerUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setViewerUserId(getSession()?.userId ?? null);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,8 +79,12 @@ export default function DoneCeremony({
       data.contestants,
       data.members,
       categories,
+      {
+        personalNeighbours: data.personalNeighbours ?? [],
+        viewerUserId,
+      },
     );
-  }, [data, categories]);
+  }, [data, categories, viewerUserId]);
 
   const shareUrl = useMemo(() => {
     if (typeof window === "undefined") return "";
