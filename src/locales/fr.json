@@ -412,6 +412,11 @@
       "nextAwardAria": "Récompense suivante ({current} sur {total})",
       "advanceHint": "Appuie n'importe où pour révéler la prochaine récompense"
     },
+    "your_neighbour": {
+      "name": "Ton plus proche voisin",
+      "caption": "a voté le plus comme toi",
+      "reciprocalBadge": "vous vous êtes choisis"
+    },
     "endOfShow": {
       "copyLink": "Copier le lien de partage",
       "copyLinkConfirm": "Lien copié !",
@@ -428,7 +433,8 @@
       "neighbourhood_voters": "Toi et une autre personne avez voté de façon très similaire — vos scores ont évolué ensemble plus que n'importe qui d'autre.",
       "the_dark_horse": "Le candidat sur lequel le salon était le plus divisé — certains ont adoré, d'autres détesté.",
       "fashion_stan": "Tu as donné le score le plus élevé dans la catégorie tenue / costume.",
-      "the_enabler": "Tu as donné tes 12 points au gagnant général du salon."
+      "the_enabler": "Tu as donné tes 12 points au gagnant général du salon.",
+      "your_neighbour": "Parmi tous les participants, tes votes correspondent le plus à ceux de cette personne."
     },
     "personality": {
       "biggest_stan": { "name": "Grand(e) fan", "stat": "moy {value}/10" },
@@ -436,6 +442,7 @@
       "most_contrarian": { "name": "Le plus anticonformiste", "stat": "dist Spearman {value}" },
       "hive_mind_master": { "name": "Maître de l'esprit de ruche", "stat": "dist Spearman {value}" },
       "neighbourhood_voters": { "name": "Votes du voisinage", "stat": "Pearson {value}" },
+      "your_neighbour": { "name": "Ton plus proche voisin", "stat": "Pearson {value}" },
       "the_dark_horse": { "name": "Le cheval noir", "stat": "variance {value}" },
       "fashion_stan": { "name": "Fan de mode", "stat": "{value}/10 en mode" },
       "the_enabler": { "name": "Le complice", "stat": "12 points au gagnant" }

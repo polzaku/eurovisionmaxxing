@@ -30,6 +30,16 @@ export const PERSONALITY_AWARD_EXPLAINERS: Record<PersonalityAwardKey, string> =
   the_enabler: "You gave your 12 points to the room's overall winner.",
 };
 
+/**
+ * SPEC §11.2 V1.1 your_neighbour — explainer text used by both the
+ * cinematic reveal card and the static results-page card. Not part of
+ * PERSONALITY_AWARD_KEYS because the award isn't persisted in
+ * `room_awards` (read-side compute only), but it reuses the same
+ * explainer machinery.
+ */
+export const YOUR_NEIGHBOUR_EXPLAINER =
+  "Of everyone in the room, your votes lined up most closely with this person's.";
+
 const PERSONALITY_KEY_SET = new Set<string>(PERSONALITY_AWARD_KEYS);
 
 /**
@@ -38,6 +48,7 @@ const PERSONALITY_KEY_SET = new Set<string>(PERSONALITY_AWARD_KEYS);
  * disclosure UI.
  */
 export function explainerForAward(awardKey: string): string | null {
+  if (awardKey === "your_neighbour") return YOUR_NEIGHBOUR_EXPLAINER;
   if (!PERSONALITY_KEY_SET.has(awardKey)) return null;
   return PERSONALITY_AWARD_EXPLAINERS[awardKey as PersonalityAwardKey];
 }

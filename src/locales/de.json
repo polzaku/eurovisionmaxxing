@@ -412,6 +412,11 @@
       "nextAwardAria": "Nächste Auszeichnung ({current} von {total})",
       "advanceHint": "Überall tippen, um die nächste Auszeichnung zu enthüllen"
     },
+    "your_neighbour": {
+      "name": "Dein engster Nachbar",
+      "caption": "hat am ähnlichsten wie du gewählt",
+      "reciprocalBadge": "ihr habt euch gegenseitig gewählt"
+    },
     "endOfShow": {
       "copyLink": "Link kopieren",
       "copyLinkConfirm": "Link kopiert!",
@@ -428,7 +433,8 @@
       "neighbourhood_voters": "Du und eine andere Person haben am ähnlichsten abgestimmt — eure Punkte bewegten sich mehr zusammen als bei allen anderen.",
       "the_dark_horse": "Der Teilnehmende, über den der Raum am meisten uneinig war — manche liebten ihn, manche hassten ihn.",
       "fashion_stan": "Du gabst die einzeln höchste Punktzahl in der Outfit-/Kostüm-Kategorie.",
-      "the_enabler": "Du gabst deine 12 Punkte an den Gesamtsieger des Raums."
+      "the_enabler": "Du gabst deine 12 Punkte an den Gesamtsieger des Raums.",
+      "your_neighbour": "Von allen im Raum stimmten deine Bewertungen am stärksten mit denen dieser Person überein."
     },
     "personality": {
       "biggest_stan": { "name": "Größter Fan", "stat": "Ø {value}/10" },
@@ -436,6 +442,7 @@
       "most_contrarian": { "name": "Größter Querdenker", "stat": "Spearman-Dist. {value}" },
       "hive_mind_master": { "name": "Schwarmbewusstsein", "stat": "Spearman-Dist. {value}" },
       "neighbourhood_voters": { "name": "Gleichgesinnte Wähler", "stat": "Pearson {value}" },
+      "your_neighbour": { "name": "Dein engster Nachbar", "stat": "Pearson {value}" },
       "the_dark_horse": { "name": "Der Außenseiter", "stat": "Varianz {value}" },
       "fashion_stan": { "name": "Fashion-Fan", "stat": "{value}/10 in Mode" },
       "the_enabler": { "name": "Der Ermöglicher", "stat": "12 Punkte an den Sieger" }

@@ -12,6 +12,10 @@ vi.mock("next-intl", () => ({
     params ? `${key}:${JSON.stringify(params)}` : key,
 }));
 
+vi.mock("@/lib/session", () => ({
+  getSession: () => null,
+}));
+
 // Skip the leaderboard replay so the awards phase shows up immediately.
 vi.mock("@/lib/instant/sessionRevealedFlag", () => ({
   hasRevealed: () => true,

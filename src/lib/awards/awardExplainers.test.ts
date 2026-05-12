@@ -44,4 +44,10 @@ describe("explainerForAward", () => {
   it("returns null for unknown keys (graceful fallback)", () => {
     expect(explainerForAward("definitely_not_an_award")).toBeNull();
   });
+
+  it("returns the your_neighbour explainer", () => {
+    expect(explainerForAward("your_neighbour")).toMatch(
+      /your votes lined up most closely/,
+    );
+  });
 });

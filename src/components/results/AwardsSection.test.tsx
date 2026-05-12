@@ -1,9 +1,19 @@
 // @vitest-environment jsdom
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string) => key,
+}));
+
+vi.mock("@/lib/session", () => ({
+  getSession: () => null,
+}));
+
 import AwardsSection from "./AwardsSection";
 import type { Contestant, RoomAward } from "@/types";
+import type { PersonalNeighbour } from "@/lib/awards/buildPersonalNeighbours";
 
 const labels = {
   sectionHeading: "Awards",
@@ -166,5 +176,115 @@ describe("<AwardsSection> — explainer disclosure", () => {
     // Dual-avatar layout sanity check — expect two avatars in the card.
     const card = container.querySelector("li") as HTMLElement;
     expect(within(card).getAllByRole("img").length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("<AwardsSection> — YourNeighbourCard slot", () => {
+  it("renders YourNeighbourCard slot immediately after neighbourhood_voters when personalNeighbours is provided", () => {
+    // Note: <YourNeighbourCard> renders nothing without a matching session;
+    // we assert ordering by testid presence on the wrapper <li> instead.
+    const members = [
+      { userId: "u1", displayName: "Alice", avatarSeed: "alice" },
+      { userId: "u2", displayName: "Bob", avatarSeed: "bob" },
+    ];
+    const personalNeighbours: PersonalNeighbour[] = [
+      { userId: "u1", neighbourUserId: "u2", pearson: 0.9, isReciprocal: true },
+    ];
+    render(
+      <AwardsSection
+        awards={[
+          {
+            roomId: "r",
+            awardKey: "neighbourhood_voters",
+            awardName: "Neighbourhood voters",
+            winnerUserId: "u1",
+            winnerUserIdB: "u2",
+            winnerContestantId: null,
+            statValue: null,
+            statLabel: null,
+          },
+          {
+            roomId: "r",
+            awardKey: "the_dark_horse",
+            awardName: "The dark horse",
+            winnerUserId: null,
+            winnerUserIdB: null,
+            winnerContestantId: "2026-SE",
+            statValue: null,
+            statLabel: null,
+          },
+        ]}
+        contestants={[
+          {
+            id: "2026-SE",
+            year: 2026,
+            event: "final",
+            countryCode: "SE",
+            country: "Sweden",
+            artist: "A",
+            song: "S",
+            flagEmoji: "🇸🇪",
+            runningOrder: 1,
+          },
+        ]}
+        members={members}
+        personalNeighbours={personalNeighbours}
+        labels={{
+          sectionHeading: "Awards",
+          categoryHeading: "Best in category",
+          personalityHeading: "And the room said…",
+          jointCaption: "joint winners",
+          neighbourhoodCaption: "voted most alike",
+        }}
+      />,
+    );
+    const slot = screen.getByTestId("your-neighbour-slot");
+    expect(slot).toBeInTheDocument();
+    // Slot must sit immediately after the neighbourhood_voters card in the
+    // personality list, before the_dark_horse.
+    const items = Array.from(
+      slot.parentElement?.querySelectorAll(":scope > li") ?? [],
+    );
+    const idxOfPair = items.findIndex(
+      (li) => li.textContent?.includes("Neighbourhood voters") ?? false,
+    );
+    const idxOfSlot = items.indexOf(slot);
+    const idxOfHorse = items.findIndex(
+      (li) => li.textContent?.includes("The dark horse") ?? false,
+    );
+    expect(idxOfSlot).toBe(idxOfPair + 1);
+    expect(idxOfHorse).toBe(idxOfSlot + 1);
+  });
+
+  it("does not render the slot when personalNeighbours is undefined", () => {
+    render(
+      <AwardsSection
+        awards={[
+          {
+            roomId: "r",
+            awardKey: "neighbourhood_voters",
+            awardName: "Neighbourhood voters",
+            winnerUserId: "u1",
+            winnerUserIdB: "u2",
+            winnerContestantId: null,
+            statValue: null,
+            statLabel: null,
+          },
+        ]}
+        contestants={[]}
+        members={[
+          { userId: "u1", displayName: "Alice", avatarSeed: "alice" },
+          { userId: "u2", displayName: "Bob", avatarSeed: "bob" },
+        ]}
+        labels={{
+          sectionHeading: "Awards",
+          categoryHeading: "Best in category",
+          personalityHeading: "And the room said…",
+          jointCaption: "joint winners",
+          neighbourhoodCaption: "voted most alike",
+        }}
+      />,
+    );
+    expect(screen.queryByTestId("your-neighbour-slot")).not.toBeInTheDocument();
   });
 });

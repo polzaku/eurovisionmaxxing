@@ -130,3 +130,76 @@ describe("AwardCeremonyCard", () => {
     expect(screen.getByText("🇸🇪")).toBeInTheDocument();
   });
 });
+
+import type { CeremonyCard } from "@/lib/awards/awardCeremonySequence";
+
+const VIEWER = { userId: "u3", displayName: "Carol", avatarSeed: "carol-seed" };
+const NEIGHBOUR = { userId: "u1", displayName: "Alice", avatarSeed: "alice-seed" };
+
+function mkPersonalNeighbourCard(
+  overrides: Partial<{ pearson: number; isReciprocal: boolean }> = {},
+): CeremonyCard {
+  return {
+    kind: "personal-neighbour",
+    award: {
+      roomId: "",
+      awardKey: "your_neighbour",
+      awardName: "Your closest neighbour",
+      winnerUserId: VIEWER.userId,
+      winnerUserIdB: NEIGHBOUR.userId,
+      winnerContestantId: null,
+      statValue: overrides.pearson ?? 0.84,
+      statLabel: `Pearson ${(overrides.pearson ?? 0.84).toFixed(2)}`,
+    },
+    viewerUser: VIEWER,
+    neighbourUser: NEIGHBOUR,
+    pearson: overrides.pearson ?? 0.84,
+    isReciprocal: overrides.isReciprocal ?? false,
+  };
+}
+
+describe("AwardCeremonyCard — personal-neighbour", () => {
+  it("renders the award name + neighbour name + 'You & {name}' line", () => {
+    render(<AwardCeremonyCard card={mkPersonalNeighbourCard()} />);
+    expect(screen.getByText("Your closest neighbour")).toBeInTheDocument();
+    expect(screen.getByText(/Alice/)).toBeInTheDocument();
+    expect(screen.getByText(/awards\.your_neighbour\.caption/)).toBeInTheDocument();
+    expect(screen.getByText(/You\s*&\s*Alice/)).toBeInTheDocument();
+  });
+
+  it("shows the reciprocity badge when isReciprocal=true", () => {
+    render(
+      <AwardCeremonyCard
+        card={mkPersonalNeighbourCard({ isReciprocal: true })}
+      />,
+    );
+    expect(
+      screen.getByText(/awards\.your_neighbour\.reciprocalBadge/),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the reciprocity badge when isReciprocal=false", () => {
+    render(
+      <AwardCeremonyCard
+        card={mkPersonalNeighbourCard({ isReciprocal: false })}
+      />,
+    );
+    expect(
+      screen.queryByText(/awards\.your_neighbour\.reciprocalBadge/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders the Pearson stat line via the synthetic award.statLabel", () => {
+    render(
+      <AwardCeremonyCard card={mkPersonalNeighbourCard({ pearson: 0.84 })} />,
+    );
+    expect(screen.getByText("Pearson 0.84")).toBeInTheDocument();
+  });
+
+  it("renders the explainer paragraph", () => {
+    render(<AwardCeremonyCard card={mkPersonalNeighbourCard()} />);
+    expect(
+      screen.getByText(/your votes lined up most closely/),
+    ).toBeInTheDocument();
+  });
+});

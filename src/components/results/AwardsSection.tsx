@@ -1,6 +1,9 @@
+import { Fragment } from "react";
 import Avatar from "@/components/ui/Avatar";
 import type { Contestant, RoomAward } from "@/types";
 import { explainerForAward } from "@/lib/awards/awardExplainers";
+import type { PersonalNeighbour } from "@/lib/awards/buildPersonalNeighbours";
+import YourNeighbourCard from "./YourNeighbourCard";
 
 interface MemberView {
   userId: string;
@@ -12,6 +15,8 @@ interface AwardsSectionProps {
   awards: RoomAward[];
   contestants: Contestant[];
   members: MemberView[];
+  /** SPEC §11.2 V1.1 your_neighbour — per-viewer pairings. Omit on pre-V1.1 fixtures. */
+  personalNeighbours?: PersonalNeighbour[];
   labels: {
     sectionHeading: string;
     categoryHeading: string;
@@ -37,6 +42,7 @@ export default function AwardsSection({
   awards,
   contestants,
   members,
+  personalNeighbours,
   labels,
 }: AwardsSectionProps) {
   if (awards.length === 0) return null;
@@ -80,24 +86,22 @@ export default function AwardsSection({
           </h3>
           <ul className="space-y-2">
             {personality.map((a) => {
+              let node: React.ReactNode;
               if (a.winnerContestantId) {
-                return (
-                  <li key={a.awardKey}>
-                    <ContestantAwardCard
-                      award={a}
-                      contestant={contestantById.get(a.winnerContestantId)}
-                    />
-                  </li>
+                node = (
+                  <ContestantAwardCard
+                    award={a}
+                    contestant={contestantById.get(a.winnerContestantId)}
+                  />
                 );
-              }
-              const winner = a.winnerUserId
-                ? memberById.get(a.winnerUserId)
-                : undefined;
-              const partner = a.winnerUserIdB
-                ? memberById.get(a.winnerUserIdB)
-                : undefined;
-              return (
-                <li key={a.awardKey}>
+              } else {
+                const winner = a.winnerUserId
+                  ? memberById.get(a.winnerUserId)
+                  : undefined;
+                const partner = a.winnerUserIdB
+                  ? memberById.get(a.winnerUserIdB)
+                  : undefined;
+                node = (
                   <UserAwardCard
                     award={a}
                     winner={winner}
@@ -110,7 +114,23 @@ export default function AwardsSection({
                           : null
                     }
                   />
-                </li>
+                );
+              }
+              const showYourNeighbour =
+                a.awardKey === "neighbourhood_voters" &&
+                personalNeighbours !== undefined;
+              return (
+                <Fragment key={a.awardKey}>
+                  <li>{node}</li>
+                  {showYourNeighbour ? (
+                    <li data-testid="your-neighbour-slot">
+                      <YourNeighbourCard
+                        members={members}
+                        personalNeighbours={personalNeighbours!}
+                      />
+                    </li>
+                  ) : null}
+                </Fragment>
               );
             })}
           </ul>
