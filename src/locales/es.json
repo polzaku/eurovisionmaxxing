@@ -340,8 +340,11 @@
       "skippedAria": "Saltado",
       "skippedLabel": "saltado",
       "restoring": "Restaurando…",
-      "restore": "Restaurar"
-    }
+      "restore": "Restaurar",
+      "reshuffleErrorInProgress": "No se puede reordenar después de que haya comenzado el anuncio.",
+      "reshuffleErrorGeneric": "No se pudo reordenar a los presentadores. Inténtalo de nuevo."
+    },
+    "fallbackAnnouncerName": "Alguien"
   },
   "announce": {
     "skipBanner": {

@@ -340,8 +340,11 @@
       "skippedAria": "Übersprungen",
       "skippedLabel": "übersprungen",
       "restoring": "Wird wiederhergestellt…",
-      "restore": "Wiederherstellen"
-    }
+      "restore": "Wiederherstellen",
+      "reshuffleErrorInProgress": "Reihenfolge kann nach Ansage-Start nicht mehr geändert werden.",
+      "reshuffleErrorGeneric": "Ansage-Reihenfolge konnte nicht neu gemischt werden. Versuch es nochmal."
+    },
+    "fallbackAnnouncerName": "Jemand"
   },
   "announce": {
     "skipBanner": {

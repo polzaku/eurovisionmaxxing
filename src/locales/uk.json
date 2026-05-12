@@ -340,8 +340,11 @@
       "skippedAria": "Пропущено",
       "skippedLabel": "пропущено",
       "restoring": "Відновлюємо…",
-      "restore": "Відновити"
-    }
+      "restore": "Відновити",
+      "reshuffleErrorInProgress": "Не можна перетасувати після початку оголошення.",
+      "reshuffleErrorGeneric": "Не вдалося перетасувати порядок ведучих. Спробуй ще раз."
+    },
+    "fallbackAnnouncerName": "Хтось"
   },
   "announce": {
     "skipBanner": {

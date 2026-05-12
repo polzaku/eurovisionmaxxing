@@ -230,7 +230,9 @@ export default function AnnouncingView({
         currentUserId !== event.announcingUserId
       ) {
         const contestant = contestantById.current.get(event.contestantId);
-        const announcerName = announcement?.announcingDisplayName ?? "Someone";
+        const announcerName =
+          announcement?.announcingDisplayName ??
+          t("announcing.fallbackAnnouncerName");
         if (contestant) {
           setToastEvents((prev) => [
             ...prev,
@@ -364,8 +366,8 @@ export default function AnnouncingView({
       if (!result.ok) {
         setReshuffleError(
           result.code === "ANNOUNCE_IN_PROGRESS"
-            ? "Cannot reshuffle after announcing has started."
-            : "Failed to reshuffle announcer order. Please try again.",
+            ? t("announcing.roster.reshuffleErrorInProgress")
+            : t("announcing.roster.reshuffleErrorGeneric"),
         );
       }
       // On success: the broadcast subscriber handles the refetch.

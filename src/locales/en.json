@@ -340,8 +340,11 @@
       "skippedAria": "Skipped",
       "skippedLabel": "skipped",
       "restoring": "Restoring…",
-      "restore": "Restore"
-    }
+      "restore": "Restore",
+      "reshuffleErrorInProgress": "Cannot reshuffle after announcing has started.",
+      "reshuffleErrorGeneric": "Failed to reshuffle announcer order. Please try again."
+    },
+    "fallbackAnnouncerName": "Someone"
   },
   "announce": {
     "skipBanner": {

@@ -340,8 +340,11 @@
       "skippedAria": "Passé",
       "skippedLabel": "passé",
       "restoring": "Restauration…",
-      "restore": "Restaurer"
-    }
+      "restore": "Restaurer",
+      "reshuffleErrorInProgress": "Impossible de réordonner une fois l'annonce commencée.",
+      "reshuffleErrorGeneric": "Échec du réordonnancement des annonceurs. Réessaie."
+    },
+    "fallbackAnnouncerName": "Quelqu'un"
   },
   "announce": {
     "skipBanner": {
