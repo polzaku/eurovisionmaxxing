@@ -249,6 +249,7 @@ async function DoneBody({
           awards={data.awards}
           contestants={data.contestants}
           members={data.members}
+          personalNeighbours={data.personalNeighbours}
           labels={{
             sectionHeading: t("headings.awards"),
             categoryHeading: t("headings.categoryAwards"),
