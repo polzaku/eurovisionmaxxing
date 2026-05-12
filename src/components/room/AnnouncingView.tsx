@@ -951,7 +951,11 @@ function LeaderboardRow({
   const flagCls = density === "watcher" ? "text-base" : "text-xl";
 
   return (
-    <li className={rowCls} data-testid={`leaderboard-row-${density}`}>
+    <li
+      className={rowCls}
+      data-testid="leaderboard-row"
+      data-density={density}
+    >
       <div className="flex items-center gap-2">
         <span className={rankCls}>{entry.rank}</span>
         <span className={flagCls} aria-hidden>
