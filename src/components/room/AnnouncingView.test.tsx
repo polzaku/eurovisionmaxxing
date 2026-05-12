@@ -93,8 +93,8 @@ vi.mock("next-intl", () => ({
       "announce.shortReveal.cta": "Reveal 12 points",
       "announce.shortReveal.ctaMicrocopy": "Tap when you say it",
       "announce.shortReveal.revealed": "Revealed ✓",
-      "announce.shortReveal.guestToast": params
-        ? `${params.name} gave 12 to ${params.country} ${params.flag}`
+      "announce.revealToast": params
+        ? `${params.name} gave ${params.points} to ${params.flag} ${params.country}`
         : key,
       "announcing.giveBack.label": "Give back control",
     };
@@ -129,9 +129,9 @@ vi.mock("@/components/room/TwelvePointSplash", () => ({
   ),
 }));
 
-// TwelvePointToast — render a minimal stub that preserves the
-// data-testid attribute and shows the formatted text.
-vi.mock("@/components/room/TwelvePointToast", () => ({
+// RevealToast — render a minimal stub that preserves the data-testid
+// attribute and shows the formatted text including the points value.
+vi.mock("@/components/room/RevealToast", () => ({
   default: ({
     events,
   }: {
@@ -140,15 +140,16 @@ vi.mock("@/components/room/TwelvePointToast", () => ({
       announcingUserDisplayName: string;
       country: string;
       flagEmoji: string;
+      points: number;
       at: number;
     }>;
   }) => {
     if (!events || events.length === 0) return null;
     const latest = events[events.length - 1];
     return (
-      <div data-testid="twelve-point-toast">
-        {latest.announcingUserDisplayName} gave 12 to {latest.country}{" "}
-        {latest.flagEmoji}
+      <div data-testid="reveal-toast">
+        {latest.announcingUserDisplayName} gave {latest.points} to{" "}
+        {latest.country} {latest.flagEmoji}
       </div>
     );
   },
@@ -1274,10 +1275,10 @@ describe("AnnouncingView — short style (SPEC §10.2.2)", () => {
     });
     // Toast should appear with the announcer name + country
     await waitFor(() =>
-      expect(screen.getByTestId("twelve-point-toast")).toBeInTheDocument(),
+      expect(screen.getByTestId("reveal-toast")).toBeInTheDocument(),
     );
-    expect(screen.getByTestId("twelve-point-toast")).toHaveTextContent("Bob");
-    expect(screen.getByTestId("twelve-point-toast")).toHaveTextContent("Austria");
+    expect(screen.getByTestId("reveal-toast")).toHaveTextContent("Bob");
+    expect(screen.getByTestId("reveal-toast")).toHaveTextContent("Austria");
   });
 
   // Case E: guest watching + style='full' (control) — no toast on announce_next
@@ -1306,6 +1307,6 @@ describe("AnnouncingView — short style (SPEC §10.2.2)", () => {
       // Wait for refetch to settle (Austria in leaderboard)
       expect(screen.getByText("Austria")).toBeInTheDocument(),
     );
-    expect(screen.queryByTestId("twelve-point-toast")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("reveal-toast")).not.toBeInTheDocument();
   });
 });

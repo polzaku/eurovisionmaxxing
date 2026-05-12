@@ -11,9 +11,9 @@ import AnnouncerRoster, {
   type RosterMember,
 } from "@/components/room/AnnouncerRoster";
 import TwelvePointSplash from "@/components/room/TwelvePointSplash";
-import TwelvePointToast, {
+import RevealToast, {
   type ToastEvent,
-} from "@/components/room/TwelvePointToast";
+} from "@/components/room/RevealToast";
 import { useRoomRealtime } from "@/hooks/useRoomRealtime";
 import { useRoomPresence } from "@/hooks/useRoomPresence";
 import {
@@ -67,8 +67,8 @@ interface AnnouncingViewProps {
   announcement?: AnnouncementState | null;
   /**
    * SPEC §10.2.2 — when 'short', the active driver sees a compressed
-   * 'Reveal 12 points' CTA and non-drivers see a TwelvePointToast on
-   * each announce_next broadcast. Render branches in subsequent commits.
+   * 'Reveal 12 points' CTA. Non-drivers see a RevealToast on each
+   * announce_next broadcast regardless of style (full or short).
    */
   announcementStyle?: 'full' | 'short';
   /**
@@ -241,6 +241,7 @@ export default function AnnouncingView({
               announcingUserDisplayName: announcerName,
               country: contestant.country,
               flagEmoji: contestant.flagEmoji,
+              points: event.points,
               at: Date.now(),
             },
           ]);
@@ -481,7 +482,7 @@ export default function AnnouncingView({
   return (
     <main className="flex min-h-screen flex-col items-center px-4 py-8">
       <SkipBannerQueue events={skipEvents} />
-      <TwelvePointToast events={toastEvents} />
+      <RevealToast events={toastEvents} />
       <div className="max-w-xl w-full space-y-6 motion-safe:animate-fade-in">
         <header className="space-y-3 text-center">
           <h1 className="text-xl font-bold tracking-tight emx-wordmark">
