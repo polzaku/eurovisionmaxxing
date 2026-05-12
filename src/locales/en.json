@@ -412,6 +412,11 @@
       "nextAwardAria": "Next award ({current} of {total})",
       "advanceHint": "Tap anywhere to reveal the next award"
     },
+    "your_neighbour": {
+      "name": "Your closest neighbour",
+      "caption": "voted most like you",
+      "reciprocalBadge": "you picked each other"
+    },
     "endOfShow": {
       "copyLink": "Copy share link",
       "copyLinkConfirm": "Link copied!",
@@ -428,7 +433,8 @@
       "neighbourhood_voters": "You and one other person voted most alike — your scores moved up and down together more than anyone else's.",
       "the_dark_horse": "The contestant the room disagreed most about — some loved them, some hated them.",
       "fashion_stan": "You gave the single highest score in the outfit / costume category.",
-      "the_enabler": "You gave your 12 points to the room's overall winner."
+      "the_enabler": "You gave your 12 points to the room's overall winner.",
+      "your_neighbour": "Of everyone in the room, your votes lined up most closely with this person's."
     },
     "personality": {
       "biggest_stan": { "name": "Biggest stan", "stat": "avg {value}/10" },
@@ -436,6 +442,7 @@
       "most_contrarian": { "name": "Most contrarian", "stat": "Spearman dist {value}" },
       "hive_mind_master": { "name": "Hive mind master", "stat": "Spearman dist {value}" },
       "neighbourhood_voters": { "name": "Neighbourhood voters", "stat": "Pearson {value}" },
+      "your_neighbour": { "name": "Your closest neighbour", "stat": "Pearson {value}" },
       "the_dark_horse": { "name": "The dark horse", "stat": "variance {value}" },
       "fashion_stan": { "name": "Fashion stan", "stat": "{value}/10 in fashion" },
       "the_enabler": { "name": "The enabler", "stat": "12 points to the winner" }
