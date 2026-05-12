@@ -51,7 +51,7 @@ export default function AnnouncementStyleSubRadio({
             <span
               role="button"
               tabIndex={0}
-              aria-label="About short reveal"
+              aria-label={t("announcementStyle.subradioLabel")}
               aria-expanded={tooltipOpen}
               onClick={(e) => {
                 e.stopPropagation();

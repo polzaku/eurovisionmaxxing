@@ -59,8 +59,9 @@ describe("AnnouncementStyleSubRadio", () => {
       <AnnouncementStyleSubRadio value="full" onChange={vi.fn()} />,
     );
     expect(screen.queryByText(/Just like the real Eurovision/)).toBeNull();
+    // aria-label is now the subradioLabel key ("Reveal style" from messages fixture)
     fireEvent.click(
-      screen.getByRole("button", { name: /About short reveal/i }),
+      screen.getByRole("button", { name: /Reveal style/i }),
     );
     expect(screen.getByText(/Just like the real Eurovision/)).toBeInTheDocument();
   });

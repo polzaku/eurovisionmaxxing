@@ -3,6 +3,11 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string, params?: Record<string, unknown>) =>
+    params ? `${key}:${JSON.stringify(params)}` : key,
+}));
+
 import EventSelection from "./EventSelection";
 
 const BASE_PROPS = {
@@ -24,9 +29,9 @@ describe("EventSelection", () => {
         onNext={vi.fn()}
       />,
     );
-    expect(screen.getByLabelText(/Year/i)).toBeInTheDocument();
-    expect(screen.getByText(/Grand Final/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Next/ })).toBeDisabled();
+    expect(screen.getByLabelText(/create\.eventSelection\.yearLabel/i)).toBeInTheDocument();
+    expect(screen.getByText(/create\.eventLabels\.final/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /create\.actions\.next/ })).toBeDisabled();
   });
 
   it("enables Next only when contestants.kind is 'ready'", () => {
@@ -38,7 +43,7 @@ describe("EventSelection", () => {
         onNext={vi.fn()}
       />,
     );
-    expect(screen.getByRole("button", { name: /Next/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /create\.actions\.next/ })).toBeDisabled();
     rerender(
       <EventSelection
         {...BASE_PROPS}
@@ -47,7 +52,7 @@ describe("EventSelection", () => {
         onNext={vi.fn()}
       />,
     );
-    expect(screen.getByRole("button", { name: /Next/ })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: /create\.actions\.next/ })).not.toBeDisabled();
   });
 
   it("renders the loading shimmer when contestants is loading", () => {
@@ -59,7 +64,7 @@ describe("EventSelection", () => {
         onNext={vi.fn()}
       />,
     );
-    expect(screen.getByText(/Loading contestants/i)).toBeInTheDocument();
+    expect(screen.getByText(/create\.eventSelection\.loading/i)).toBeInTheDocument();
   });
 
   it("renders the loaded count when contestants is ready", () => {
@@ -71,9 +76,8 @@ describe("EventSelection", () => {
         onNext={vi.fn()}
       />,
     );
-    // 'countries loaded' is unique; the count '26' would collide with the
-    // year option 2026 in the year dropdown.
-    expect(screen.getByText(/countries loaded/i)).toBeInTheDocument();
+    // With the i18n mock, the key is returned verbatim (with params).
+    expect(screen.getByText(/create\.eventSelection\.countryCount/i)).toBeInTheDocument();
   });
 
   it("renders the inline error with role='alert' when contestants is in error state", () => {
@@ -90,10 +94,11 @@ describe("EventSelection", () => {
     );
     const alert = screen.getByRole("alert");
     expect(alert).toBeInTheDocument();
+    // errorMessage is passed directly and rendered as-is
     expect(alert).toHaveTextContent(/couldn.?t load contestant data/i);
   });
 
-  it("falls back to the default error message when no errorMessage is provided", () => {
+  it("falls back to the i18n key when no errorMessage is provided", () => {
     render(
       <EventSelection
         {...BASE_PROPS}
@@ -103,7 +108,7 @@ describe("EventSelection", () => {
       />,
     );
     expect(screen.getByRole("alert")).toHaveTextContent(
-      /couldn.?t load contestant data/i,
+      /create\.eventSelection\.error/i,
     );
   });
 
@@ -118,7 +123,7 @@ describe("EventSelection", () => {
       />,
     );
     expect(
-      screen.queryByRole("button", { name: /Back/ }),
+      screen.queryByRole("button", { name: /create\.actions\.back/ }),
     ).not.toBeInTheDocument();
   });
 
@@ -132,7 +137,7 @@ describe("EventSelection", () => {
       />,
     );
     expect(
-      screen.queryByRole("button", { name: /Back/ }),
+      screen.queryByRole("button", { name: /create\.actions\.back/ }),
     ).not.toBeInTheDocument();
   });
 
@@ -147,7 +152,7 @@ describe("EventSelection", () => {
       />,
     );
     expect(
-      screen.getByRole("button", { name: /Back/ }),
+      screen.getByRole("button", { name: /create\.actions\.back/ }),
     ).toBeInTheDocument();
   });
 
@@ -162,7 +167,7 @@ describe("EventSelection", () => {
         onBack={onBack}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /Back/ }));
+    fireEvent.click(screen.getByRole("button", { name: /create\.actions\.back/ }));
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
@@ -176,7 +181,7 @@ describe("EventSelection", () => {
         onNext={vi.fn()}
       />,
     );
-    fireEvent.change(screen.getByLabelText(/Year/i), {
+    fireEvent.change(screen.getByLabelText(/create\.eventSelection\.yearLabel/i), {
       target: { value: "2025" },
     });
     expect(onChange).toHaveBeenCalledWith({ year: 2025 });
@@ -192,7 +197,7 @@ describe("EventSelection", () => {
         onNext={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByText("Semi-Final 1"));
+    fireEvent.click(screen.getByText("create.eventLabels.semi1"));
     expect(onChange).toHaveBeenCalledWith({ event: "semi1" });
   });
 
@@ -208,9 +213,9 @@ describe("EventSelection", () => {
       />,
     );
     expect(screen.getByTestId("contestants-slow")).toHaveTextContent(
-      /taking longer than usual/i,
+      /create\.eventSelection\.slow/i,
     );
-    expect(screen.queryByText(/Loading contestants/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/create\.eventSelection\.loading/i)).not.toBeInTheDocument();
   });
 
   it("renders the timeout error with role='alert' when contestants is in timeout state", () => {
@@ -230,6 +235,7 @@ describe("EventSelection", () => {
     );
     const alert = screen.getByRole("alert");
     expect(alert).toBeInTheDocument();
+    // errorMessage is passed directly and rendered as-is
     expect(alert).toHaveTextContent(/taking too long/i);
     expect(screen.getByTestId("contestants-timeout")).toBeInTheDocument();
   });
@@ -248,7 +254,7 @@ describe("EventSelection", () => {
       />,
     );
     expect(
-      screen.getByRole("button", { name: /Back/ }),
+      screen.getByRole("button", { name: /create\.actions\.back/ }),
     ).toBeInTheDocument();
   });
 
@@ -261,7 +267,7 @@ describe("EventSelection", () => {
         onNext={vi.fn()}
       />,
     );
-    expect(screen.getByRole("button", { name: /Next/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /create\.actions\.next/ })).toBeDisabled();
     rerender(
       <EventSelection
         {...BASE_PROPS}
@@ -270,7 +276,7 @@ describe("EventSelection", () => {
         onNext={vi.fn()}
       />,
     );
-    expect(screen.getByRole("button", { name: /Next/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /create\.actions\.next/ })).toBeDisabled();
   });
 
   it("calls onNext when the Next button is clicked (and enabled)", () => {
@@ -283,7 +289,7 @@ describe("EventSelection", () => {
         onNext={onNext}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /Next/ }));
+    fireEvent.click(screen.getByRole("button", { name: /create\.actions\.next/ }));
     expect(onNext).toHaveBeenCalledTimes(1);
   });
 
@@ -301,7 +307,7 @@ describe("EventSelection", () => {
         />,
       );
       expect(screen.getByTestId("allocation-draw-caveat")).toHaveTextContent(
-        /allocation draw/i,
+        /create\.eventSelection\.allocationDrawCaveat/i,
       );
     });
 

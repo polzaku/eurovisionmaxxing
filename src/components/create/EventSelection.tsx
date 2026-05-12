@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import Button from "@/components/ui/Button";
 
 type Event = "semi1" | "semi2" | "final";
@@ -34,12 +35,6 @@ interface EventSelectionProps {
   onBack?: () => void;
 }
 
-const EVENT_LABELS: Record<Event, string> = {
-  semi1: "Semi-Final 1",
-  semi2: "Semi-Final 2",
-  final: "Grand Final",
-};
-
 export default function EventSelection({
   year,
   event,
@@ -51,6 +46,12 @@ export default function EventSelection({
   onNext,
   onBack,
 }: EventSelectionProps) {
+  const t = useTranslations();
+  const EVENT_LABELS: Record<Event, string> = {
+    semi1: t("create.eventLabels.semi1"),
+    semi2: t("create.eventLabels.semi2"),
+    final: t("create.eventLabels.final"),
+  };
   const years: number[] = [];
   for (const ey of extraYears ?? []) years.push(ey);
   for (let y = maxYear; y >= minYear; y--) years.push(y);
@@ -71,15 +72,15 @@ export default function EventSelection({
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h2 className="text-xl font-bold tracking-tight">Pick an event</h2>
+        <h2 className="text-xl font-bold tracking-tight">{t("create.eventSelection.heading")}</h2>
         <p className="text-sm text-muted-foreground">
-          Which Eurovision event are you watching?
+          {t("create.eventSelection.subheading")}
         </p>
       </div>
 
       <div className="space-y-2">
         <label htmlFor="year" className="text-sm font-medium">
-          Year
+          {t("create.eventSelection.yearLabel")}
         </label>
         <select
           id="year"
@@ -89,14 +90,14 @@ export default function EventSelection({
         >
           {years.map((y) => (
             <option key={y} value={y}>
-              {y === 9999 ? "9999 (test fixture)" : y}
+              {y === 9999 ? `9999 ${t("create.eventSelection.testFixtureSuffix")}` : y}
             </option>
           ))}
         </select>
       </div>
 
       <div className="space-y-2">
-        <p className="text-sm font-medium">Event</p>
+        <p className="text-sm font-medium">{t("create.eventSelection.eventLabel")}</p>
         <div className="grid grid-cols-1 gap-2">
           {(Object.keys(EVENT_LABELS) as Event[]).map((ev) => {
             const selected = ev === event;
@@ -124,7 +125,7 @@ export default function EventSelection({
             data-testid="contestants-loading"
             className="text-sm text-muted-foreground animate-shimmer"
           >
-            Loading contestants&hellip;
+            {t("create.eventSelection.loading")}
           </p>
         )}
         {contestants.kind === "slow" && (
@@ -132,19 +133,18 @@ export default function EventSelection({
             data-testid="contestants-slow"
             className="text-sm text-muted-foreground animate-shimmer"
           >
-            Loading is taking longer than usual&hellip;
+            {t("create.eventSelection.slow")}
           </p>
         )}
         {contestants.kind === "ready" && (
           <p className="text-sm">
-            <span className="font-semibold">{contestants.count}</span>{" "}
-            {contestants.count === 1 ? "country" : "countries"} loaded
+            {t("create.eventSelection.countryCount", { count: contestants.count ?? 0 })}
           </p>
         )}
         {contestants.kind === "error" && (
           <p role="alert" className="text-sm text-destructive">
             {contestants.errorMessage ??
-              "We couldn't load contestant data for this event."}
+              t("create.eventSelection.error")}
           </p>
         )}
         {contestants.kind === "timeout" && (
@@ -154,7 +154,7 @@ export default function EventSelection({
             className="text-sm text-destructive"
           >
             {contestants.errorMessage ??
-              "Loading is taking too long. Try again, or pick a different year/event."}
+              t("create.eventSelection.timeout")}
           </p>
         )}
         {showAllocationDrawCaveat && (
@@ -162,10 +162,7 @@ export default function EventSelection({
             data-testid="allocation-draw-caveat"
             className="mt-2 text-xs text-muted-foreground"
           >
-            Tip: semi-final running orders are published only after the
-            allocation draw (typically ~2 weeks before each semi). If the draw
-            hasn&rsquo;t happened yet, try the Grand Final, pick a past year
-            for a practice room, or wait for the draw.
+            {t("create.eventSelection.allocationDrawCaveat")}
           </p>
         )}
       </div>
@@ -174,13 +171,13 @@ export default function EventSelection({
         {(contestants.kind === "error" || contestants.kind === "timeout") &&
         onBack ? (
           <Button variant="ghost" onClick={onBack}>
-            Back
+            {t("create.actions.back")}
           </Button>
         ) : (
           <span aria-hidden />
         )}
         <Button onClick={onNext} disabled={!canProceed}>
-          Next
+          {t("create.actions.next")}
         </Button>
       </div>
     </div>
