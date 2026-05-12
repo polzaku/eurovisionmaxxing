@@ -26,29 +26,29 @@ const BASE_PROPS = {
 describe("VotingConfig — initial render", () => {
   it("renders the template section and announcement section", () => {
     render(<VotingConfig {...BASE_PROPS} onChange={vi.fn()} onBack={vi.fn()} onSubmit={vi.fn()} />);
-    expect(screen.getByText(/Voting setup/i)).toBeInTheDocument();
-    // "Template" and "Announcement" are the section label paragraphs with font-medium
-    expect(screen.getByText("Template")).toBeInTheDocument();
-    expect(screen.getByText("Announcement")).toBeInTheDocument();
+    expect(screen.getByText(/create\.votingConfig\.heading/i)).toBeInTheDocument();
+    // "Template" and "Announcement" section label paragraphs
+    expect(screen.getByText("create.votingConfig.templateLabel")).toBeInTheDocument();
+    expect(screen.getByText("create.votingConfig.announcementLabel")).toBeInTheDocument();
   });
 
   it("renders the Back and Create room buttons", () => {
     render(<VotingConfig {...BASE_PROPS} onChange={vi.fn()} onBack={vi.fn()} onSubmit={vi.fn()} />);
-    expect(screen.getByRole("button", { name: /Back/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Create room/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /create\.actions\.back/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /create\.actions\.createRoom/i })).toBeInTheDocument();
   });
 
   it("calls onBack when Back is clicked", () => {
     const onBack = vi.fn();
     render(<VotingConfig {...BASE_PROPS} onChange={vi.fn()} onBack={onBack} onSubmit={vi.fn()} />);
-    fireEvent.click(screen.getByRole("button", { name: /Back/i }));
+    fireEvent.click(screen.getByRole("button", { name: /create\.actions\.back/i }));
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
   it("calls onSubmit when Create room is clicked", () => {
     const onSubmit = vi.fn();
     render(<VotingConfig {...BASE_PROPS} onChange={vi.fn()} onBack={vi.fn()} onSubmit={onSubmit} />);
-    fireEvent.click(screen.getByRole("button", { name: /Create room/i }));
+    fireEvent.click(screen.getByRole("button", { name: /create\.actions\.createRoom/i }));
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
@@ -62,8 +62,8 @@ describe("VotingConfig — initial render", () => {
         onSubmit={vi.fn()}
       />,
     );
-    expect(screen.getByRole("button", { name: /Back/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /Creating/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /create\.actions\.back/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /create\.actions\.creating/i })).toBeDisabled();
   });
 
   it("renders the error message when submitState is error", () => {

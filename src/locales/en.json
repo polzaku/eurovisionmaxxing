@@ -342,7 +342,70 @@
       "dismissAria": "Dismiss fullscreen prompt"
     }
   },
+  "create": {
+    "title": "Create a Room",
+    "stepIndicator": "Step {step} of 2",
+    "eventSelection": {
+      "heading": "Pick an event",
+      "subheading": "Which Eurovision event are you watching?",
+      "yearLabel": "Year",
+      "eventLabel": "Event",
+      "testFixtureSuffix": "(test fixture)",
+      "loading": "Loading contestants\u2026",
+      "slow": "Loading is taking longer than usual\u2026",
+      "countryCount": "{count, plural, one {# country loaded} other {# countries loaded}}",
+      "error": "We couldn't load contestant data for this event.",
+      "timeout": "Loading is taking too long. Try again, or pick a different year/event.",
+      "allocationDrawCaveat": "Tip: semi-final running orders are published only after the allocation draw (typically ~2 weeks before each semi). If the draw hasn\u2019t happened yet, try the Grand Final, pick a past year for a practice room, or wait for the draw."
+    },
+    "eventLabels": {
+      "semi1": "Semi-Final 1",
+      "semi2": "Semi-Final 2",
+      "final": "Grand Final"
+    },
+    "votingConfig": {
+      "heading": "Voting setup",
+      "subheading": "Pick a template and how you want results revealed.",
+      "templateLabel": "Template",
+      "announcementLabel": "Announcement",
+      "nowPerformingLabel": "Sync everyone to the performing act",
+      "nowPerformingInfo": "Lets you tap the currently-performing country to bring all guests to that card during voting. Off by default."
+    },
+    "actions": {
+      "next": "Next",
+      "back": "Back",
+      "createRoom": "Create room",
+      "creating": "Creating\u2026"
+    }
+  },
   "lobby": {
+    "hostEyebrow": "Host lobby",
+    "hostHeading": "You\u2019re the host",
+    "hostSubheading": "Share the PIN or QR with your guests, then start voting once everyone\u2019s in.",
+    "roomPinLabel": "Room PIN",
+    "copyPin": "Copy",
+    "pinCopied": "Copied!",
+    "scanToJoin": "Scan to join",
+    "shareLinkLabel": "Share link",
+    "copyLink": "Copy",
+    "linkCopied": "Copied!",
+    "openPresentView": "Open present view on TV",
+    "openPresentSubtext": "Mirror this tab to your TV, or AirPlay it.",
+    "whoIsHere": "Who\u2019s here ({count})",
+    "startVoting": "Start voting",
+    "startVotingBusy": "Starting\u2026",
+    "startVotingHelper": "Starts voting for everyone in the room \u2014 wait until your guests are here.",
+    "waitingForHost": "Waiting for the host to start voting\u2026",
+    "votingTemplateLabel": "Voting template",
+    "templateCategoryCount": "{count, plural, one {# category} other {# categories}}",
+    "templateCustomNote": "Custom categories \u2014 pick a template to swap, or keep the current set.",
+    "templateSwitchNote": "Switch any time before voting starts.",
+    "announcementModeLabel": "Announcement mode",
+    "modeSwitchNote": "Switch any time before voting starts. Year and event are locked.",
+    "modeLive": "Live",
+    "modeInstant": "Instant",
+    "youllBeRating": "You\u2019ll be rating",
+    "tapForDetails": "Tap for details",
     "countdown": {
       "label": "Showtime in",
       "fallback": "Ready whenever you are."

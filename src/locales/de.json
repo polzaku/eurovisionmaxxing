@@ -342,7 +342,70 @@
       "dismissAria": "Vollbild-Aufforderung schließen"
     }
   },
+  "create": {
+    "title": "Raum erstellen",
+    "stepIndicator": "Schritt {step} von 2",
+    "eventSelection": {
+      "heading": "Event ausw\u00e4hlen",
+      "subheading": "Welches Eurovision-Event schaust du dir an?",
+      "yearLabel": "Jahr",
+      "eventLabel": "Event",
+      "testFixtureSuffix": "(Testdaten)",
+      "loading": "Teilnehmende werden geladen\u2026",
+      "slow": "Das Laden dauert l\u00e4nger als \u00fcblich\u2026",
+      "countryCount": "{count, plural, one {# Land geladen} other {# L\u00e4nder geladen}}",
+      "error": "Die Teilnehmendendaten f\u00fcr dieses Event konnten nicht geladen werden.",
+      "timeout": "Das Laden dauert zu lange. Versuch es erneut oder w\u00e4hle ein anderes Jahr\u2009/\u2009Event.",
+      "allocationDrawCaveat": "Hinweis: Die Startreihenfolge der Halbfinale wird erst nach der Auslosung ver\u00f6ffentlicht (typischerweise ~2 Wochen vor jedem Halbfinale). Falls die Auslosung noch nicht stattgefunden hat, probiere das Finale, w\u00e4hle ein vergangenes Jahr f\u00fcr einen \u00dcbungsraum oder warte auf die Auslosung."
+    },
+    "eventLabels": {
+      "semi1": "Erstes Halbfinale",
+      "semi2": "Zweites Halbfinale",
+      "final": "Finale"
+    },
+    "votingConfig": {
+      "heading": "Abstimmungseinstellungen",
+      "subheading": "W\u00e4hle eine Vorlage und wie du die Ergebnisse enthüllen m\u00f6chtest.",
+      "templateLabel": "Vorlage",
+      "announcementLabel": "Ansage",
+      "nowPerformingLabel": "Alle mit dem aktuellen Auftritt synchronisieren",
+      "nowPerformingInfo": "Erm\u00f6glicht es, auf das aktuell auftretende Land zu tippen, um alle G\u00e4ste w\u00e4hrend der Abstimmung zu dieser Karte zu bringen. Standardm\u00e4\u00dfig deaktiviert."
+    },
+    "actions": {
+      "next": "Weiter",
+      "back": "Zur\u00fcck",
+      "createRoom": "Raum erstellen",
+      "creating": "Wird erstellt\u2026"
+    }
+  },
   "lobby": {
+    "hostEyebrow": "Host-Raum",
+    "hostHeading": "Du bist der Host",
+    "hostSubheading": "Teile die PIN oder den QR mit deinen G\u00e4sten und starte die Abstimmung, wenn alle da sind.",
+    "roomPinLabel": "Raum-PIN",
+    "copyPin": "Kopieren",
+    "pinCopied": "Kopiert!",
+    "scanToJoin": "Scannen zum Beitreten",
+    "shareLinkLabel": "Link teilen",
+    "copyLink": "Kopieren",
+    "linkCopied": "Kopiert!",
+    "openPresentView": "Pr\u00e4sentationsansicht auf dem TV \u00f6ffnen",
+    "openPresentSubtext": "Spiegel diesen Tab auf deinen TV oder nutze AirPlay.",
+    "whoIsHere": "Wer ist hier ({count})",
+    "startVoting": "Abstimmung starten",
+    "startVotingBusy": "Wird gestartet\u2026",
+    "startVotingHelper": "Startet die Abstimmung f\u00fcr alle im Raum \u2014 warte, bis deine G\u00e4ste da sind.",
+    "waitingForHost": "Warte darauf, dass der Host die Abstimmung startet\u2026",
+    "votingTemplateLabel": "Abstimmungsvorlage",
+    "templateCategoryCount": "{count, plural, one {# Kategorie} other {# Kategorien}}",
+    "templateCustomNote": "Eigene Kategorien \u2014 w\u00e4hle eine Vorlage zum Wechseln oder behalte das aktuelle Set.",
+    "templateSwitchNote": "Jederzeit vor dem Start der Abstimmung wechselbar.",
+    "announcementModeLabel": "Ansagemodus",
+    "modeSwitchNote": "Jederzeit vor dem Start der Abstimmung wechselbar. Jahr und Event sind fixiert.",
+    "modeLive": "Live",
+    "modeInstant": "Sofort",
+    "youllBeRating": "Du wirst bewerten",
+    "tapForDetails": "Tippen f\u00fcr Details",
     "countdown": {
       "label": "Show beginnt in",
       "fallback": "Bereit, wann immer du es bist."

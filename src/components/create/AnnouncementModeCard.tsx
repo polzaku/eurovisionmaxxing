@@ -12,11 +12,6 @@ interface AnnouncementModeCardProps {
   onToggleInfo: () => void;
 }
 
-const TITLES: Record<Mode, string> = {
-  live: "Live",
-  instant: "Instant",
-};
-
 export default function AnnouncementModeCard({
   mode,
   selected,
@@ -25,6 +20,10 @@ export default function AnnouncementModeCard({
   onToggleInfo,
 }: AnnouncementModeCardProps) {
   const t = useTranslations();
+  const TITLES: Record<Mode, string> = {
+    live: t("lobby.modeLive"),
+    instant: t("lobby.modeInstant"),
+  };
   return (
     <div
       className={`rounded-lg border-2 transition-all ${

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import Button from "@/components/ui/Button";
 import { VOTING_TEMPLATES } from "@/lib/templates";
 import TemplateCard from "./TemplateCard";
@@ -42,6 +43,7 @@ export default function VotingConfig({
   onBack,
   onSubmit,
 }: VotingConfigProps) {
+  const t = useTranslations();
   const [infoOpen, setInfoOpen] = useState(false);
   const [expandedTemplateId, setExpandedTemplateId] =
     useState<TemplateId | null>(null);
@@ -53,14 +55,14 @@ export default function VotingConfig({
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <h2 className="text-xl font-bold tracking-tight">Voting setup</h2>
+        <h2 className="text-xl font-bold tracking-tight">{t("create.votingConfig.heading")}</h2>
         <p className="text-sm text-muted-foreground">
-          Pick a template and how you want results revealed.
+          {t("create.votingConfig.subheading")}
         </p>
       </div>
 
       <div className="space-y-3">
-        <p className="text-sm font-medium">Template</p>
+        <p className="text-sm font-medium">{t("create.votingConfig.templateLabel")}</p>
         <div className="grid grid-cols-1 gap-3">
           {templates.map((tpl) => (
             <TemplateCard
@@ -82,7 +84,7 @@ export default function VotingConfig({
       </div>
 
       <div className="space-y-3">
-        <p className="text-sm font-medium">Announcement</p>
+        <p className="text-sm font-medium">{t("create.votingConfig.announcementLabel")}</p>
         <div className="grid grid-cols-1 gap-2">
           {(["live", "instant"] as Mode[]).map((m) => (
             <AnnouncementModeCard
@@ -117,7 +119,7 @@ export default function VotingConfig({
           />
           <span className="space-y-1">
             <span className="text-sm font-medium flex items-center gap-2">
-              Sync everyone to the performing act
+              {t("create.votingConfig.nowPerformingLabel")}
               <button
                 type="button"
                 aria-label="About this toggle"
@@ -132,8 +134,7 @@ export default function VotingConfig({
             </span>
             {infoOpen && (
               <span className="block text-xs text-muted-foreground">
-                Lets you tap the currently-performing country to bring all
-                guests to that card during voting. Off by default.
+                {t("create.votingConfig.nowPerformingInfo")}
               </span>
             )}
           </span>
@@ -148,10 +149,10 @@ export default function VotingConfig({
 
       <div className="flex justify-between gap-3">
         <Button variant="ghost" onClick={onBack} disabled={submitting}>
-          Back
+          {t("create.actions.back")}
         </Button>
         <Button onClick={onSubmit} disabled={submitting}>
-          {submitting ? "Creating…" : "Create room"}
+          {submitting ? t("create.actions.creating") : t("create.actions.createRoom")}
         </Button>
       </div>
     </div>

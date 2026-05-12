@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { getSession } from "@/lib/session";
 import { VOTING_TEMPLATES } from "@/lib/templates";
 import {
@@ -44,6 +45,7 @@ const MIN_YEAR = 2000;
 
 export default function CreateRoomPage() {
   const router = useRouter();
+  const t = useTranslations();
   const maxYear = new Date().getUTCFullYear();
 
   // Session guard — existing pattern across /join and /room/[id].
@@ -131,7 +133,7 @@ export default function CreateRoomPage() {
           kind: "error",
           errorMessage:
             result.code === "CONTEST_DATA_NOT_FOUND"
-              ? "We couldn't load contestant data for this event. Try a different year or event."
+              ? t("create.eventSelection.error")
               : mapCreateError(result.code),
         });
       }
@@ -197,10 +199,10 @@ export default function CreateRoomPage() {
       <div className="max-w-md w-full space-y-6 animate-fade-in">
         <header className="space-y-1 text-center">
           <h1 className="text-3xl font-bold tracking-tight emx-wordmark">
-            Create a Room
+            {t("create.title")}
           </h1>
           <p className="text-xs uppercase tracking-widest text-muted-foreground">
-            Step {step} of 2
+            {t("create.stepIndicator", { step })}
           </p>
         </header>
 
