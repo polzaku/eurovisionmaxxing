@@ -369,7 +369,8 @@
       "templateLabel": "Mod\u00e8le",
       "announcementLabel": "Annonce",
       "nowPerformingLabel": "Synchroniser tout le monde avec l\u2019acte en cours",
-      "nowPerformingInfo": "Te permet d\u2019appuyer sur le pays qui performe en ce moment pour amener tous les invit\u00e9s \u00e0 cette carte pendant le vote. D\u00e9sactiv\u00e9 par d\u00e9faut."
+      "nowPerformingInfo": "Te permet d\u2019appuyer sur le pays qui performe en ce moment pour amener tous les invit\u00e9s \u00e0 cette carte pendant le vote. D\u00e9sactiv\u00e9 par d\u00e9faut.",
+      "nowPerformingInfoAria": "\u00c0 propos de cette bascule"
     },
     "actions": {
       "next": "Suivant",
@@ -392,6 +393,8 @@
     "openPresentView": "Ouvrir la vue pr\u00e9sentation sur la TV",
     "openPresentSubtext": "Reflète cet onglet sur ta TV ou utilise AirPlay.",
     "whoIsHere": "Qui est l\u00e0 ({count})",
+    "presenceOnline": "En ligne",
+    "presenceOffline": "Hors ligne",
     "startVoting": "Lancer le vote",
     "startVotingBusy": "Lancement\u2026",
     "startVotingHelper": "Lance le vote pour tout le monde dans le salon \u2014 attends que tes invit\u00e9s soient l\u00e0.",

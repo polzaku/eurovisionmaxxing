@@ -369,7 +369,8 @@
       "templateLabel": "Template",
       "announcementLabel": "Announcement",
       "nowPerformingLabel": "Sync everyone to the performing act",
-      "nowPerformingInfo": "Lets you tap the currently-performing country to bring all guests to that card during voting. Off by default."
+      "nowPerformingInfo": "Lets you tap the currently-performing country to bring all guests to that card during voting. Off by default.",
+      "nowPerformingInfoAria": "About this toggle"
     },
     "actions": {
       "next": "Next",
@@ -392,6 +393,8 @@
     "openPresentView": "Open present view on TV",
     "openPresentSubtext": "Mirror this tab to your TV, or AirPlay it.",
     "whoIsHere": "Who\u2019s here ({count})",
+    "presenceOnline": "Online",
+    "presenceOffline": "Offline",
     "startVoting": "Start voting",
     "startVotingBusy": "Starting\u2026",
     "startVotingHelper": "Starts voting for everyone in the room \u2014 wait until your guests are here.",

@@ -369,7 +369,8 @@
       "templateLabel": "Plantilla",
       "announcementLabel": "Anuncio",
       "nowPerformingLabel": "Sincronizar a todos con el acto en escena",
-      "nowPerformingInfo": "Te permite tocar el pa\u00eds que act\u00faa en ese momento para llevar a todos los invitados a esa tarjeta durante la votaci\u00f3n. Desactivado por defecto."
+      "nowPerformingInfo": "Te permite tocar el pa\u00eds que act\u00faa en ese momento para llevar a todos los invitados a esa tarjeta durante la votaci\u00f3n. Desactivado por defecto.",
+      "nowPerformingInfoAria": "Sobre este interruptor"
     },
     "actions": {
       "next": "Siguiente",
@@ -392,6 +393,8 @@
     "openPresentView": "Abrir vista de presentaci\u00f3n en la tele",
     "openPresentSubtext": "Espeja esta pesta\u00f1a en tu tele o usa AirPlay.",
     "whoIsHere": "Qui\u00e9n est\u00e1 aqu\u00ed ({count})",
+    "presenceOnline": "En l\u00ednea",
+    "presenceOffline": "Desconectado",
     "startVoting": "Empezar a votar",
     "startVotingBusy": "Iniciando\u2026",
     "startVotingHelper": "Inicia la votaci\u00f3n para todos en la sala \u2014 espera a que lleguen tus invitados.",

@@ -430,7 +430,7 @@ export default function LobbyView({
                     <Avatar seed={m.avatarSeed} size={64} />
                     <span
                       aria-hidden
-                      title={isOnline ? "Online" : "Offline"}
+                      title={isOnline ? t("lobby.presenceOnline") : t("lobby.presenceOffline")}
                       className={`absolute bottom-0 right-0 inline-block w-3 h-3 rounded-full border-2 border-card ${
                         isOnline ? "bg-emerald-500" : "bg-muted-foreground/40"
                       }`}

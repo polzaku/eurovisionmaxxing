@@ -122,7 +122,7 @@ export default function VotingConfig({
               {t("create.votingConfig.nowPerformingLabel")}
               <button
                 type="button"
-                aria-label="About this toggle"
+                aria-label={t("create.votingConfig.nowPerformingInfoAria")}
                 onClick={(e) => {
                   e.preventDefault();
                   setInfoOpen((v) => !v);

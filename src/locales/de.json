@@ -369,7 +369,8 @@
       "templateLabel": "Vorlage",
       "announcementLabel": "Ansage",
       "nowPerformingLabel": "Alle mit dem aktuellen Auftritt synchronisieren",
-      "nowPerformingInfo": "Erm\u00f6glicht es, auf das aktuell auftretende Land zu tippen, um alle G\u00e4ste w\u00e4hrend der Abstimmung zu dieser Karte zu bringen. Standardm\u00e4\u00dfig deaktiviert."
+      "nowPerformingInfo": "Erm\u00f6glicht es, auf das aktuell auftretende Land zu tippen, um alle G\u00e4ste w\u00e4hrend der Abstimmung zu dieser Karte zu bringen. Standardm\u00e4\u00dfig deaktiviert.",
+      "nowPerformingInfoAria": "\u00dcber diesen Schalter"
     },
     "actions": {
       "next": "Weiter",
@@ -392,6 +393,8 @@
     "openPresentView": "Pr\u00e4sentationsansicht auf dem TV \u00f6ffnen",
     "openPresentSubtext": "Spiegel diesen Tab auf deinen TV oder nutze AirPlay.",
     "whoIsHere": "Wer ist hier ({count})",
+    "presenceOnline": "Online",
+    "presenceOffline": "Offline",
     "startVoting": "Abstimmung starten",
     "startVotingBusy": "Wird gestartet\u2026",
     "startVotingHelper": "Startet die Abstimmung f\u00fcr alle im Raum \u2014 warte, bis deine G\u00e4ste da sind.",
