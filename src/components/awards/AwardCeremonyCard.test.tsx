@@ -164,6 +164,7 @@ describe("AwardCeremonyCard — personal-neighbour", () => {
     expect(screen.getByText("Your closest neighbour")).toBeInTheDocument();
     expect(screen.getByText(/Alice/)).toBeInTheDocument();
     expect(screen.getByText(/awards\.your_neighbour\.caption/)).toBeInTheDocument();
+    expect(screen.getByText(/You\s*&\s*Alice/)).toBeInTheDocument();
   });
 
   it("shows the reciprocity badge when isReciprocal=true", () => {

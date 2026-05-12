@@ -146,6 +146,15 @@ export function awardCeremonySequence(
           pearson: entry.pearson,
           isReciprocal: entry.isReciprocal,
         });
+      } else {
+        // Defensive: by construction `buildPersonalNeighbours` only emits entries
+        // for users in the room roster, so a miss here points at upstream drift
+        // (stale data, race, or wrong call site). Log to aid live-event debugging
+        // without breaking the ceremony — the slot just degrades silently.
+        console.warn(
+          "[awardCeremonySequence] personal-neighbour card dropped: could not resolve viewer or neighbour in members pool",
+          { viewerId: entry.userId, neighbourId: entry.neighbourUserId },
+        );
       }
     }
   }

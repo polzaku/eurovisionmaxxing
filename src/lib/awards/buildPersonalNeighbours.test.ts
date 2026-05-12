@@ -249,4 +249,61 @@ describe("buildPersonalNeighbours", () => {
     ) => [...rows].sort((x, y) => x.userId.localeCompare(y.userId));
     expect(sortById(a)).toEqual(sortById(b));
   });
+
+  it("completes under 50ms for 30 users × 40 contestants", () => {
+    // SPEC §9.1 sanity perf — `loadResults` calls this once per `done` request.
+    // O(N² · C) at N=30, C=40 ⇒ ~36k floating-point ops; budget is 50ms to
+    // give ~4× headroom over the measured ~12ms on dev hardware. Mostly guards
+    // against accidental algorithmic regressions (e.g. an O(N³) bug).
+    const NUM_USERS = 30;
+    const NUM_CONTESTANTS = 40;
+
+    const contestants = Array.from({ length: NUM_CONTESTANTS }, (_, i) => ({
+      id: `2026-c${i.toString().padStart(2, "0")}`,
+      country: `Country${i}`,
+    }));
+    const users = Array.from({ length: NUM_USERS }, (_, i) => ({
+      userId: `u-${i.toString().padStart(2, "0")}`,
+      displayName: `User${i}`,
+    }));
+    // Seeded scores: each user gives a distinct linear pattern so vectors
+    // differ enough for the argmax to do real work.
+    const votes: Vote[] = [];
+    for (const u of users) {
+      const offset = parseInt(u.userId.slice(2), 10);
+      for (const c of contestants) {
+        const cIdx = parseInt(c.id.slice(-2), 10);
+        votes.push(
+          vote(u.userId, c.id, {
+            Vocals: 1 + ((cIdx + offset) % 10),
+            Outfit: 1 + ((cIdx * 2 + offset) % 10),
+          }),
+        );
+      }
+    }
+
+    // Warm-up call: V8 JIT compiles the hot path on first invocation;
+    // without this the cold-start overhead (~10-20ms) dwarfs the actual
+    // algorithm cost and produces flaky timing assertions.
+    buildPersonalNeighbours({
+      categories: CATS,
+      contestants,
+      users,
+      votes,
+      results: [],
+    });
+
+    const t0 = performance.now();
+    const result = buildPersonalNeighbours({
+      categories: CATS,
+      contestants,
+      users,
+      votes,
+      results: [],
+    });
+    const elapsed = performance.now() - t0;
+
+    expect(result).toHaveLength(NUM_USERS);
+    expect(elapsed).toBeLessThan(50);
+  });
 });
