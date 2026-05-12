@@ -14,6 +14,13 @@
   },
   "onboarding": {
     "metaTitle": "Join — eurovisionmaxxing",
+    "picker": {
+      "title": "Is this you?",
+      "subtitle": "Someone with that name is already in this room. Tap your avatar to rejoin, or create a new identity.",
+      "pickAria": "Pick this avatar",
+      "createNew": "Create new identity",
+      "changeName": "← Change name"
+    },
     "displayName": {
       "label": "Your display name",
       "placeholder": "e.g. Alice",
@@ -111,6 +118,7 @@
       "cardLabel": "This one's marked as missed",
       "estimatedLabel": "Estimated score",
       "perCategoryLabel": "Per category (estimated)",
+      "updatedLabel": "updated from your recent votes",
       "rescoreButton": "Rescore this contestant",
       "toast": {
         "body": "Marked missed — we'll estimate your scores as ~{overall}.",
@@ -174,20 +182,71 @@
     },
     "endVoting": {
       "button": "End voting",
+      "buttonAria": "End voting",
       "modal": {
         "title": "End voting?",
         "body": "Tapping End voting starts a 5-second countdown. You can tap Undo during the countdown to cancel.",
         "confirm": "End voting",
-        "cancel": "Cancel"
+        "cancel": "Cancel",
+        "busy": "Ending…"
       },
       "countdown": {
         "body": "Voting ends in {seconds}s",
         "finalising": "Finalising…",
-        "undo": "Undo"
+        "label": "{remainingSeconds, plural, one {Voting ends in #s} other {Voting ends in #s}}",
+        "undo": "Undo",
+        "undoAria": "Undo end voting",
+        "undoBusy": "Undoing…"
       },
       "guest": {
         "body": "Voting ending in {seconds}s…"
       }
+    },
+    "progress": {
+      "ariaLabel": "{fullyScoredCount} of {totalContestants} contestants fully scored",
+      "scoredLabel": "scored"
+    },
+    "nav": {
+      "prevAria": "Previous contestant",
+      "prevLabel": "Prev",
+      "nextAria": "Next contestant",
+      "nextLabel": "Next",
+      "missedLabel": "Missed"
+    },
+    "errors": {
+      "noCategories": "No voting categories configured — ask the host to check the room setup.",
+      "noContestants": "No contestants for this event."
+    },
+    "drain": {
+      "votingEnded": "Voting ended while you were offline — your unsaved changes for this room were discarded.",
+      "dismissAria": "Dismiss",
+      "skipped": "{skippedCount, plural, one {# offline edit couldn't be applied (newer values on the server).} other {# offline edits couldn't be applied (newer values on the server).}}",
+      "view": "View"
+    },
+    "lateJoiner": {
+      "body": "You joined mid-show. Catch up by scoring the songs you've seen — skip the rest, or mark them \"I missed this\".",
+      "dismissAria": "Dismiss"
+    },
+    "queue": {
+      "overflow": "Too many offline changes — oldest may be lost. Reconnect to save."
+    },
+    "offline": {
+      "banner": "You're offline — changes will sync when you reconnect."
+    },
+    "save": {
+      "saving": "Saving…",
+      "saved": "✓ Saved",
+      "offline": "Offline — changes queued",
+      "failed": "Save failed"
+    },
+    "ending": {
+      "expired": "Voting ending…",
+      "countdown": "{remainingSeconds, plural, one {Voting ending in #s…} other {Voting ending in #s…}}"
+    },
+    "score": {
+      "weightBadge": "counts {weightMultiplier}×",
+      "rowAria": "{categoryName} — score from 1 to 10",
+      "buttonAria": "{categoryName}: score {n}"
     }
   },
   "errors": {
@@ -199,6 +258,90 @@
     "USER_NOT_FOUND": "We couldn't find that session.",
     "INVALID_TOKEN": "Your session has expired. Please rejoin.",
     "INTERNAL_ERROR": "Something went wrong on our end. Please try again."
+  },
+  "announcing": {
+    "noAnnouncer": "Waiting for an announcer…",
+    "title": "Live announcement",
+    "batchReveal": {
+      "chip": "Host is finishing the show"
+    },
+    "position": {
+      "label": "Announcer {announcerPosition} of {announcerCount} · Reveal {currentReveal} / {queueLength}"
+    },
+    "justRevealed": {
+      "label": "Just revealed",
+      "pointsLabel": "{points, plural, one {# point goes to} other {# points go to}}"
+    },
+    "upNext": {
+      "label": "Up next",
+      "pointsHint": "{points, plural, one {# point — tap anywhere to reveal} other {# points — tap anywhere to reveal}}"
+    },
+    "reveal": {
+      "busy": "Revealing…",
+      "button": "Reveal next point",
+      "explanation": "Eurovision style — points reveal lowest to highest. Tap the button or anywhere on this card to call the next country. After your last reveal it'll automatically pass to the next announcer."
+    },
+    "giveBack": {
+      "label": "Give back control to {announcerName}"
+    },
+    "ownerWatching": {
+      "title": "{announcerName} is announcing",
+      "message": "If they're away or stuck, you can take over their reveals (you can hand back any time) or skip past them entirely. Skipped points still appear on the leaderboard."
+    },
+    "takeControl": {
+      "button": "Announce for {announcerName}",
+      "busy": "Taking over…"
+    },
+    "skip": {
+      "button": "Skip {announcerName} — they're not here",
+      "aria": "Skip {announcerName}'s turn — they're not here",
+      "busy": "Skipping…"
+    },
+    "giveBackBusy": "Releasing…",
+    "passive": {
+      "message": "The room admin is announcing on your behalf. Sit back and watch."
+    },
+    "allPointsRevealed": "All your points revealed. Passing to the next announcer…",
+    "leaderboard": {
+      "title": "Leaderboard",
+      "empty": "No points revealed yet."
+    },
+    "cascadeExhaust": {
+      "message": "All remaining announcers are absent — finish revealing on their behalf",
+      "waitingMessage": "Waiting for the host to continue…"
+    },
+    "finishShow": {
+      "busy": "Starting…",
+      "button": "Finish the show"
+    },
+    "activeAnnouncer": {
+      "title": "🎤 It's your turn to announce!",
+      "subtitle": "The room is watching. Reveal your points one at a time."
+    },
+    "activeDelegate": {
+      "title": "You're announcing for {announcerName}",
+      "subtitle": "Their points are still attributed to them — you're just driving."
+    },
+    "adminAnnouncingOnBehalf": {
+      "prefix": "The admin",
+      "suffix": "is announcing on your behalf"
+    },
+    "roster": {
+      "ariaLabel": "Announcer roster",
+      "title": "Roster",
+      "hereNow": "here now",
+      "reshuffleAria": "Re-shuffle the announcement order",
+      "online": "Online",
+      "offline": "Offline",
+      "currentAnnouncerAria": "Current announcer",
+      "announcingLabel": "🎤 announcing",
+      "activeDelegateAria": "Active delegate",
+      "delegateLabel": "🛂 delegate",
+      "skippedAria": "Skipped",
+      "skippedLabel": "skipped",
+      "restoring": "Restoring…",
+      "restore": "Restore"
+    }
   },
   "announce": {
     "skipBanner": {
@@ -303,13 +446,30 @@
     "subtitle": "Hold tight — we're crunching the numbers."
   },
   "room": {
-    "catchingUp": "Catching up…"
+    "catchingUp": "Catching up…",
+    "done": {
+      "title": "Show's over",
+      "subtitle": "Every score has been revealed. Time for the final picture.",
+      "seeResultsAria": "{secondsRemaining, plural, one {See full results, auto-opens in # second} other {See full results, auto-opens in # seconds}}",
+      "seeResults": "See full results",
+      "countdownSuffix": "(in {secondsRemaining}s)",
+      "stayHere": "Stay here"
+    },
+    "status": {
+      "voting": "Voting in progress",
+      "scoring": "Tallying results",
+      "announcing": "Announcement in progress",
+      "done": "Show's over",
+      "fallback": "Room active",
+      "wip": "This part of the room isn't built yet — coming soon."
+    }
   },
   "present": {
     "lobby": {
       "eyebrow": "Room PIN",
       "callToJoin": "Open eurovisionmaxxing.com and enter the PIN to join.",
-      "memberCount": "{count, plural, =0 {Waiting for guests…} =1 {1 person here} other {# people here}}"
+      "memberCount": "{count, plural, =0 {Waiting for guests…} =1 {1 person here} other {# people here}}",
+      "qrAlt": "Scan to join this room"
     },
     "voting": {
       "eyebrow": "Voting in progress",

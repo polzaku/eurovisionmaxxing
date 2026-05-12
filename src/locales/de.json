@@ -14,6 +14,13 @@
   },
   "onboarding": {
     "metaTitle": "Beitreten — eurovisionmaxxing",
+    "picker": {
+      "title": "Bist du das?",
+      "subtitle": "Jemand mit diesem Namen ist bereits in diesem Raum. Tippe auf deinen Avatar, um erneut beizutreten, oder erstelle eine neue Identität.",
+      "pickAria": "Diesen Avatar auswählen",
+      "createNew": "Neue Identität erstellen",
+      "changeName": "← Namen ändern"
+    },
     "displayName": {
       "label": "Dein Anzeigename",
       "placeholder": "z. B. Alice",
@@ -111,6 +118,7 @@
       "cardLabel": "Als verpasst markiert",
       "estimatedLabel": "Geschätzte Punktzahl",
       "perCategoryLabel": "Pro Kategorie (geschätzt)",
+      "updatedLabel": "anhand deiner letzten Bewertungen aktualisiert",
       "rescoreButton": "Neu bewerten",
       "toast": {
         "body": "Als verpasst markiert — wir schätzen deine Punkte auf ~{overall}.",
@@ -174,20 +182,71 @@
     },
     "endVoting": {
       "button": "Abstimmung beenden",
+      "buttonAria": "Abstimmung beenden",
       "modal": {
         "title": "Abstimmung beenden?",
         "body": "Tippen auf \"Abstimmung beenden\" startet einen 5-Sekunden-Countdown. Du kannst während des Countdowns auf \"Rückgängig\" tippen, um abzubrechen.",
         "confirm": "Abstimmung beenden",
-        "cancel": "Abbrechen"
+        "cancel": "Abbrechen",
+        "busy": "Wird beendet…"
       },
       "countdown": {
         "body": "Abstimmung endet in {seconds}s",
         "finalising": "Wird abgeschlossen…",
-        "undo": "Rückgängig"
+        "label": "{remainingSeconds, plural, one {Abstimmung endet in #s} other {Abstimmung endet in #s}}",
+        "undo": "Rückgängig",
+        "undoAria": "Abstimmungsende rückgängig machen",
+        "undoBusy": "Wird rückgängig gemacht…"
       },
       "guest": {
         "body": "Abstimmung endet in {seconds}s…"
       }
+    },
+    "progress": {
+      "ariaLabel": "{fullyScoredCount} von {totalContestants} Teilnehmenden vollständig bewertet",
+      "scoredLabel": "bewertet"
+    },
+    "nav": {
+      "prevAria": "Vorherige/r Teilnehmende/r",
+      "prevLabel": "Zurück",
+      "nextAria": "Nächste/r Teilnehmende/r",
+      "nextLabel": "Weiter",
+      "missedLabel": "Verpasst"
+    },
+    "errors": {
+      "noCategories": "Keine Abstimmungskategorien konfiguriert — bitte den Host, die Raumeinstellungen zu prüfen.",
+      "noContestants": "Keine Teilnehmenden für diese Veranstaltung."
+    },
+    "drain": {
+      "votingEnded": "Die Abstimmung endete, während du offline warst — deine nicht gespeicherten Änderungen für diesen Raum wurden verworfen.",
+      "dismissAria": "Schließen",
+      "skipped": "{skippedCount, plural, one {# Offline-Bearbeitung konnte nicht angewendet werden (neuere Werte auf dem Server).} other {# Offline-Bearbeitungen konnten nicht angewendet werden (neuere Werte auf dem Server).}}",
+      "view": "Ansehen"
+    },
+    "lateJoiner": {
+      "body": "Du bist mitten in der Show beigetreten. Hole auf, indem du die Lieder bewertest, die du gesehen hast — überspringe den Rest oder markiere sie als \"Hab ich verpasst\".",
+      "dismissAria": "Schließen"
+    },
+    "queue": {
+      "overflow": "Zu viele Offline-Änderungen — älteste könnten verloren gehen. Verbinde dich, um zu speichern."
+    },
+    "offline": {
+      "banner": "Du bist offline — Änderungen werden synchronisiert, wenn du wieder verbunden bist."
+    },
+    "save": {
+      "saving": "Wird gespeichert…",
+      "saved": "✓ Gespeichert",
+      "offline": "Offline — Änderungen in der Warteschlange",
+      "failed": "Speichern fehlgeschlagen"
+    },
+    "ending": {
+      "expired": "Abstimmung endet…",
+      "countdown": "{remainingSeconds, plural, one {Abstimmung endet in #s…} other {Abstimmung endet in #s…}}"
+    },
+    "score": {
+      "weightBadge": "zählt {weightMultiplier}×",
+      "rowAria": "{categoryName} — Bewertung von 1 bis 10",
+      "buttonAria": "{categoryName}: Bewertung {n}"
     }
   },
   "errors": {
@@ -199,6 +258,90 @@
     "USER_NOT_FOUND": "Wir konnten diese Sitzung nicht finden.",
     "INVALID_TOKEN": "Deine Sitzung ist abgelaufen. Bitte erneut beitreten.",
     "INTERNAL_ERROR": "Bei uns ist etwas schiefgelaufen. Bitte versuch es erneut."
+  },
+  "announcing": {
+    "noAnnouncer": "Warte auf eine/n Ansagende/n…",
+    "title": "Live-Ansage",
+    "batchReveal": {
+      "chip": "Host beendet die Show"
+    },
+    "position": {
+      "label": "Ansagende/r {announcerPosition} von {announcerCount} · Enthüllung {currentReveal} / {queueLength}"
+    },
+    "justRevealed": {
+      "label": "Gerade enthüllt",
+      "pointsLabel": "{points, plural, one {# Punkt geht an} other {# Punkte gehen an}}"
+    },
+    "upNext": {
+      "label": "Als nächstes",
+      "pointsHint": "{points, plural, one {# Punkt — überall tippen zum Enthüllen} other {# Punkte — überall tippen zum Enthüllen}}"
+    },
+    "reveal": {
+      "busy": "Wird enthüllt…",
+      "button": "Nächsten Punkt enthüllen",
+      "explanation": "Eurovision-Style — Punkte werden von niedrig nach hoch enthüllt. Tippe den Knopf oder überall auf dieser Karte, um das nächste Land aufzurufen. Nach deiner letzten Enthüllung wird automatisch zur nächsten Person übergegeben."
+    },
+    "giveBack": {
+      "label": "Kontrolle zurückgeben an {announcerName}"
+    },
+    "ownerWatching": {
+      "title": "{announcerName} sagt an",
+      "message": "Wenn sie weg oder feststecken, kannst du die Kontrolle über ihre Enthüllungen übernehmen (du kannst jederzeit zurückgeben) oder sie komplett überspringen. Übersprungene Punkte erscheinen weiterhin in der Rangliste."
+    },
+    "takeControl": {
+      "button": "Für {announcerName} ansagen",
+      "busy": "Kontrolle wird übernommen…"
+    },
+    "skip": {
+      "button": "{announcerName} überspringen — sie sind nicht da",
+      "aria": "Turn von {announcerName} überspringen — sie sind nicht da",
+      "busy": "Wird übersprungen…"
+    },
+    "giveBackBusy": "Wird freigegeben…",
+    "passive": {
+      "message": "Der Raumadmin sagt für dich an. Lehn dich zurück und schau zu."
+    },
+    "allPointsRevealed": "Alle deine Punkte enthüllt. Weitergabe an die nächste Person…",
+    "leaderboard": {
+      "title": "Rangliste",
+      "empty": "Noch keine Punkte enthüllt."
+    },
+    "cascadeExhaust": {
+      "message": "Alle verbleibenden Ansagenden sind abwesend — enthülle in ihrem Namen",
+      "waitingMessage": "Warte auf den Host, um fortzufahren…"
+    },
+    "finishShow": {
+      "busy": "Wird gestartet…",
+      "button": "Show beenden"
+    },
+    "activeAnnouncer": {
+      "title": "🎤 Du bist dran zum Ansagen!",
+      "subtitle": "Der Raum schaut zu. Enthülle deine Punkte einzeln."
+    },
+    "activeDelegate": {
+      "title": "Du sagst für {announcerName} an",
+      "subtitle": "Ihre Punkte werden ihnen trotzdem zugerechnet — du steuerst nur."
+    },
+    "adminAnnouncingOnBehalf": {
+      "prefix": "Der Admin",
+      "suffix": "sagt für dich an"
+    },
+    "roster": {
+      "ariaLabel": "Ansage-Roster",
+      "title": "Roster",
+      "hereNow": "jetzt hier",
+      "reshuffleAria": "Ansage-Reihenfolge neu mischen",
+      "online": "Online",
+      "offline": "Offline",
+      "currentAnnouncerAria": "Aktuelle/r Ansagende/r",
+      "announcingLabel": "🎤 sagt an",
+      "activeDelegateAria": "Aktive/r Delegierte/r",
+      "delegateLabel": "🛂 Delegierte/r",
+      "skippedAria": "Übersprungen",
+      "skippedLabel": "übersprungen",
+      "restoring": "Wird wiederhergestellt…",
+      "restore": "Wiederherstellen"
+    }
   },
   "announce": {
     "skipBanner": {
@@ -303,13 +446,30 @@
     "subtitle": "Moment — wir rechnen gerade alles zusammen."
   },
   "room": {
-    "catchingUp": "Wird synchronisiert…"
+    "catchingUp": "Wird synchronisiert…",
+    "done": {
+      "title": "Show ist vorbei",
+      "subtitle": "Alle Punkte wurden enthüllt. Zeit für das Abschlussbild.",
+      "seeResultsAria": "{secondsRemaining, plural, one {Vollständige Ergebnisse anzeigen, öffnet in # Sekunde} other {Vollständige Ergebnisse anzeigen, öffnet in # Sekunden}}",
+      "seeResults": "Vollständige Ergebnisse",
+      "countdownSuffix": "(in {secondsRemaining}s)",
+      "stayHere": "Hier bleiben"
+    },
+    "status": {
+      "voting": "Abstimmung läuft",
+      "scoring": "Ergebnisse werden ermittelt",
+      "announcing": "Ansage läuft",
+      "done": "Show ist vorbei",
+      "fallback": "Raum aktiv",
+      "wip": "Dieser Teil des Raums ist noch nicht fertig — bald verfügbar."
+    }
   },
   "present": {
     "lobby": {
       "eyebrow": "Raum-PIN",
       "callToJoin": "Öffne eurovisionmaxxing.com und gib die PIN ein, um beizutreten.",
-      "memberCount": "{count, plural, =0 {Warte auf Gäste…} =1 {1 Person hier} other {# Personen hier}}"
+      "memberCount": "{count, plural, =0 {Warte auf Gäste…} =1 {1 Person hier} other {# Personen hier}}",
+      "qrAlt": "Scannen zum Beitreten"
     },
     "voting": {
       "eyebrow": "Abstimmung läuft",

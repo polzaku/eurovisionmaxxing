@@ -165,7 +165,7 @@ export default function PresentScreen({
             <QrCode
               url={shareUrl}
               size={320}
-              alt="Scan to join this room"
+              alt={t("present.lobby.qrAlt")}
               className="bg-white p-2"
             />
           ) : null}

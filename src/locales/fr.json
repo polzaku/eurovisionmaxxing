@@ -14,6 +14,13 @@
   },
   "onboarding": {
     "metaTitle": "Rejoindre — eurovisionmaxxing",
+    "picker": {
+      "title": "C'est toi ?",
+      "subtitle": "Quelqu'un avec ce nom est déjà dans ce salon. Appuie sur ton avatar pour te reconnecter, ou crée une nouvelle identité.",
+      "pickAria": "Choisir cet avatar",
+      "createNew": "Créer une nouvelle identité",
+      "changeName": "← Changer de nom"
+    },
     "displayName": {
       "label": "Ton pseudo",
       "placeholder": "ex. Alice",
@@ -111,6 +118,7 @@
       "cardLabel": "Celui-ci est marqué comme raté",
       "estimatedLabel": "Score estimé",
       "perCategoryLabel": "Par catégorie (estimé)",
+      "updatedLabel": "mis à jour à partir de tes votes récents",
       "rescoreButton": "Renoter ce candidat",
       "toast": {
         "body": "Marqué comme raté — on estimera ton score à ~{overall}.",
@@ -174,20 +182,71 @@
     },
     "endVoting": {
       "button": "Clore le vote",
+      "buttonAria": "Clore le vote",
       "modal": {
         "title": "Clore le vote ?",
         "body": "Appuyer sur Clore le vote lance un compte à rebours de 5 secondes. Tu peux appuyer sur Annuler pendant le compte à rebours.",
         "confirm": "Clore le vote",
-        "cancel": "Annuler"
+        "cancel": "Annuler",
+        "busy": "Clôture…"
       },
       "countdown": {
         "body": "Le vote se termine dans {seconds}s",
         "finalising": "Finalisation…",
-        "undo": "Annuler"
+        "label": "{remainingSeconds, plural, one {Le vote se termine dans #s} other {Le vote se termine dans #s}}",
+        "undo": "Annuler",
+        "undoAria": "Annuler la clôture du vote",
+        "undoBusy": "Annulation…"
       },
       "guest": {
         "body": "Le vote se termine dans {seconds}s…"
       }
+    },
+    "progress": {
+      "ariaLabel": "{fullyScoredCount} sur {totalContestants} candidats entièrement notés",
+      "scoredLabel": "notés"
+    },
+    "nav": {
+      "prevAria": "Candidat précédent",
+      "prevLabel": "Préc.",
+      "nextAria": "Candidat suivant",
+      "nextLabel": "Suiv.",
+      "missedLabel": "Raté"
+    },
+    "errors": {
+      "noCategories": "Aucune catégorie de vote configurée — demande à l'hôte de vérifier les paramètres du salon.",
+      "noContestants": "Aucun candidat pour cet événement."
+    },
+    "drain": {
+      "votingEnded": "Le vote s'est terminé pendant que tu étais hors ligne — tes modifications non sauvegardées pour ce salon ont été supprimées.",
+      "dismissAria": "Fermer",
+      "skipped": "{skippedCount, plural, one {# modification hors ligne n'a pas pu être appliquée (valeurs plus récentes sur le serveur).} other {# modifications hors ligne n'ont pas pu être appliquées (valeurs plus récentes sur le serveur).}}",
+      "view": "Voir"
+    },
+    "lateJoiner": {
+      "body": "Tu as rejoint en cours de show. Rattrape-toi en notant les chansons que tu as vues — passe les autres ou marque-les « J'ai raté ça ».",
+      "dismissAria": "Fermer"
+    },
+    "queue": {
+      "overflow": "Trop de modifications hors ligne — les plus anciennes risquent d'être perdues. Reconnecte-toi pour sauvegarder."
+    },
+    "offline": {
+      "banner": "Tu es hors ligne — les modifications se synchroniseront quand tu te reconnecteras."
+    },
+    "save": {
+      "saving": "Sauvegarde…",
+      "saved": "✓ Sauvegardé",
+      "offline": "Hors ligne — modifications en file",
+      "failed": "Échec de sauvegarde"
+    },
+    "ending": {
+      "expired": "Le vote se termine…",
+      "countdown": "{remainingSeconds, plural, one {Le vote se termine dans #s…} other {Le vote se termine dans #s…}}"
+    },
+    "score": {
+      "weightBadge": "compte {weightMultiplier}×",
+      "rowAria": "{categoryName} — note de 1 à 10",
+      "buttonAria": "{categoryName} : note {n}"
     }
   },
   "errors": {
@@ -199,6 +258,90 @@
     "USER_NOT_FOUND": "On n'a pas trouvé cette session.",
     "INVALID_TOKEN": "Ta session a expiré. Rejoins à nouveau.",
     "INTERNAL_ERROR": "Quelque chose s'est mal passé de notre côté. Réessaie."
+  },
+  "announcing": {
+    "noAnnouncer": "En attente d'un annonceur…",
+    "title": "Annonce en direct",
+    "batchReveal": {
+      "chip": "L'hôte termine le show"
+    },
+    "position": {
+      "label": "Annonceur {announcerPosition} sur {announcerCount} · Révélation {currentReveal} / {queueLength}"
+    },
+    "justRevealed": {
+      "label": "Vient d'être révélé",
+      "pointsLabel": "{points, plural, one {# point va à} other {# points vont à}}"
+    },
+    "upNext": {
+      "label": "Ensuite",
+      "pointsHint": "{points, plural, one {# point — appuie n'importe où pour révéler} other {# points — appuie n'importe où pour révéler}}"
+    },
+    "reveal": {
+      "busy": "Révélation…",
+      "button": "Révéler le prochain point",
+      "explanation": "Style Eurovision — les points se révèlent du plus bas au plus haut. Appuie sur le bouton ou n'importe où sur cette carte pour appeler le prochain pays. Après ta dernière révélation, ça passera automatiquement à l'annonceur suivant."
+    },
+    "giveBack": {
+      "label": "Rendre le contrôle à {announcerName}"
+    },
+    "ownerWatching": {
+      "title": "{announcerName} annonce",
+      "message": "S'il est absent ou bloqué, tu peux prendre le contrôle de ses révélations (tu peux le rendre à tout moment) ou le passer entièrement. Les points passés apparaissent quand même sur le classement."
+    },
+    "takeControl": {
+      "button": "Annoncer pour {announcerName}",
+      "busy": "Prise de contrôle…"
+    },
+    "skip": {
+      "button": "Passer {announcerName} — il n'est pas là",
+      "aria": "Passer le tour de {announcerName} — il n'est pas là",
+      "busy": "Passage…"
+    },
+    "giveBackBusy": "Libération…",
+    "passive": {
+      "message": "L'admin du salon annonce en ton nom. Assieds-toi et profite."
+    },
+    "allPointsRevealed": "Tous tes points révélés. Passage à l'annonceur suivant…",
+    "leaderboard": {
+      "title": "Classement",
+      "empty": "Aucun point révélé pour l'instant."
+    },
+    "cascadeExhaust": {
+      "message": "Tous les annonceurs restants sont absents — termine de révéler en leur nom",
+      "waitingMessage": "En attente que l'hôte continue…"
+    },
+    "finishShow": {
+      "busy": "Démarrage…",
+      "button": "Terminer le show"
+    },
+    "activeAnnouncer": {
+      "title": "🎤 C'est ton tour d'annoncer !",
+      "subtitle": "Le salon regarde. Révèle tes points un par un."
+    },
+    "activeDelegate": {
+      "title": "Tu annonces pour {announcerName}",
+      "subtitle": "Ses points lui sont quand même attribués — tu pilotes juste."
+    },
+    "adminAnnouncingOnBehalf": {
+      "prefix": "L'admin",
+      "suffix": "annonce en ton nom"
+    },
+    "roster": {
+      "ariaLabel": "Liste des annonceurs",
+      "title": "Liste",
+      "hereNow": "ici maintenant",
+      "reshuffleAria": "Remélanger l'ordre des annonceurs",
+      "online": "En ligne",
+      "offline": "Hors ligne",
+      "currentAnnouncerAria": "Annonceur actuel",
+      "announcingLabel": "🎤 annonce",
+      "activeDelegateAria": "Délégué actif",
+      "delegateLabel": "🛂 délégué",
+      "skippedAria": "Passé",
+      "skippedLabel": "passé",
+      "restoring": "Restauration…",
+      "restore": "Restaurer"
+    }
   },
   "announce": {
     "skipBanner": {
@@ -303,13 +446,30 @@
     "subtitle": "Patiente — on fait les comptes."
   },
   "room": {
-    "catchingUp": "Mise à jour…"
+    "catchingUp": "Mise à jour…",
+    "done": {
+      "title": "Le show est terminé",
+      "subtitle": "Tous les scores ont été révélés. Place au tableau final.",
+      "seeResultsAria": "{secondsRemaining, plural, one {Voir les résultats complets, s'ouvre dans # seconde} other {Voir les résultats complets, s'ouvre dans # secondes}}",
+      "seeResults": "Voir les résultats complets",
+      "countdownSuffix": "(dans {secondsRemaining}s)",
+      "stayHere": "Rester ici"
+    },
+    "status": {
+      "voting": "Vote en cours",
+      "scoring": "Calcul des résultats",
+      "announcing": "Annonce en cours",
+      "done": "Le show est terminé",
+      "fallback": "Salon actif",
+      "wip": "Cette partie du salon n'est pas encore construite — bientôt disponible."
+    }
   },
   "present": {
     "lobby": {
       "eyebrow": "Code PIN du salon",
       "callToJoin": "Ouvre eurovisionmaxxing.com et entre le PIN pour rejoindre.",
-      "memberCount": "{count, plural, =0 {En attente de participants…} =1 {1 personne ici} other {# personnes ici}}"
+      "memberCount": "{count, plural, =0 {En attente de participants…} =1 {1 personne ici} other {# personnes ici}}",
+      "qrAlt": "Scanne pour rejoindre ce salon"
     },
     "voting": {
       "eyebrow": "Vote en cours",
