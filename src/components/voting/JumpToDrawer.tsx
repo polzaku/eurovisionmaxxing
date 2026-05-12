@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import type { Contestant } from "@/types";
 import {
   summarizeContestantStatus,
@@ -23,12 +24,6 @@ export interface JumpToDrawerProps {
   roomMemberTotal?: number;
 }
 
-const STATUS_LABEL: Record<ContestantStatus, string> = {
-  unscored: "Not scored yet",
-  scored: "✓ Scored",
-  missed: "👻 Missed",
-};
-
 const STATUS_CLASS: Record<ContestantStatus, string> = {
   unscored: "text-muted-foreground",
   scored: "text-primary font-medium",
@@ -47,6 +42,7 @@ export default function JumpToDrawer({
   scoredByCounts,
   roomMemberTotal,
 }: JumpToDrawerProps) {
+  const t = useTranslations("voting.jumpTo");
   const currentRowRef = useRef<HTMLLIElement>(null);
 
   useEffect(() => {
@@ -75,11 +71,11 @@ export default function JumpToDrawer({
       <div className="fixed inset-x-0 bottom-0 max-h-[85dvh] z-40 rounded-t-xl border-t border-border bg-background shadow-2xl flex flex-col">
         <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border sticky top-0 bg-background">
           <h3 id="jump-to-title" className="text-lg font-semibold">
-            Jump to contestant
+            {t("title")}
           </h3>
           <button
             type="button"
-            aria-label="Close"
+            aria-label={t("closeAria")}
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground px-2 py-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           >
@@ -123,7 +119,7 @@ export default function JumpToDrawer({
                   <span
                     className={`text-xs whitespace-nowrap flex-shrink-0 ${STATUS_CLASS[status]}`}
                   >
-                    {STATUS_LABEL[status]}
+                    {t(`status.${status}`)}
                   </span>
                   {roomMemberTotal && roomMemberTotal > 0 ? (
                     <ScoredByChip

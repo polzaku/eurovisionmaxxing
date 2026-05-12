@@ -230,7 +230,9 @@ export default function AnnouncingView({
         currentUserId !== event.announcingUserId
       ) {
         const contestant = contestantById.current.get(event.contestantId);
-        const announcerName = announcement?.announcingDisplayName ?? "Someone";
+        const announcerName =
+          announcement?.announcingDisplayName ??
+          t("announcing.fallbackAnnouncerName");
         if (contestant) {
           setToastEvents((prev) => [
             ...prev,
@@ -364,8 +366,8 @@ export default function AnnouncingView({
       if (!result.ok) {
         setReshuffleError(
           result.code === "ANNOUNCE_IN_PROGRESS"
-            ? "Cannot reshuffle after announcing has started."
-            : "Failed to reshuffle announcer order. Please try again.",
+            ? t("announcing.roster.reshuffleErrorInProgress")
+            : t("announcing.roster.reshuffleErrorGeneric"),
         );
       }
       // On success: the broadcast subscriber handles the refetch.
@@ -411,6 +413,8 @@ export default function AnnouncingView({
     }
   }, [roomId, currentUserId, finishingShow]);
 
+  const t = useTranslations("announcing");
+
   const flashContestant = justRevealed
     ? contestantById.current.get(justRevealed.contestantId)
     : null;
@@ -430,7 +434,7 @@ export default function AnnouncingView({
         <main className="flex min-h-screen flex-col items-center justify-center px-4 py-8">
           <div className="emx-cascade-exhaust max-w-sm w-full space-y-4 text-center">
             <h2 className="text-base text-muted-foreground">
-              All remaining announcers are absent — finish revealing on their behalf
+              {t("cascadeExhaust.message")}
             </h2>
             <button
               type="button"
@@ -438,7 +442,7 @@ export default function AnnouncingView({
               disabled={finishingShow}
               className="emx-cta-primary w-full rounded-xl bg-primary px-6 py-4 text-lg font-semibold text-primary-foreground transition-all hover:scale-[1.01] hover:emx-glow-gold active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {finishingShow ? "Starting…" : "Finish the show"}
+              {finishingShow ? t("finishShow.busy") : t("finishShow.button")}
             </button>
           </div>
         </main>
@@ -448,7 +452,7 @@ export default function AnnouncingView({
       <main className="flex min-h-screen flex-col items-center justify-center px-4 py-8">
         <div className="emx-cascade-exhaust max-w-sm w-full text-center">
           <p className="text-base text-muted-foreground">
-            Waiting for the host to continue…
+            {t("cascadeExhaust.waitingMessage")}
           </p>
         </div>
       </main>
@@ -457,18 +461,20 @@ export default function AnnouncingView({
 
   const announcerName = announcement?.announcingDisplayName ?? "";
   const headerCard = announcement
-    ? renderHeader({
-        mode: pickMode({
+    ? (
+      <HeaderCard
+        mode={pickMode({
           isActiveDriver,
           isAnnouncer,
           adminHasTakenControl,
           isOwner,
-        }),
-        announcer: announcement,
-      })
+        })}
+        announcer={announcement}
+      />
+    )
     : (
       <p className="text-muted-foreground text-sm text-center">
-        Waiting for an announcer&hellip;
+        {t("noAnnouncer")}
       </p>
     );
 
@@ -479,7 +485,7 @@ export default function AnnouncingView({
       <div className="max-w-xl w-full space-y-6 motion-safe:animate-fade-in">
         <header className="space-y-3 text-center">
           <h1 className="text-xl font-bold tracking-tight emx-wordmark">
-            Live announcement
+            {t("title")}
           </h1>
           {headerCard}
           {isBatchReveal && (
@@ -487,21 +493,18 @@ export default function AnnouncingView({
               className="emx-batch-reveal-chip inline-block rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
               aria-live="polite"
             >
-              Host is finishing the show
+              {t("batchReveal.chip")}
             </span>
           )}
           {announcement ? (
             <div className="space-y-1.5">
               <p className="text-xs font-medium text-muted-foreground tabular-nums">
-                Announcer{" "}
-                <span className="font-bold text-foreground">
-                  {announcement.announcerPosition}
-                </span>{" "}
-                of {announcement.announcerCount} &middot; Reveal{" "}
-                <span className="font-bold text-foreground">
-                  {announcement.currentAnnounceIdx + 1}
-                </span>{" "}
-                / {announcement.queueLength}
+                {t("position.label", {
+                  announcerPosition: announcement.announcerPosition,
+                  announcerCount: announcement.announcerCount,
+                  currentReveal: announcement.currentAnnounceIdx + 1,
+                  queueLength: announcement.queueLength,
+                })}
               </p>
               <AnnouncerProgressBar
                 position={announcement.announcerPosition}
@@ -516,13 +519,10 @@ export default function AnnouncingView({
         {justRevealed ? (
           <div className="rounded-2xl border-2 border-primary bg-primary/10 px-6 py-5 text-center motion-safe:animate-fade-in">
             <p className="text-xs uppercase tracking-widest text-primary/80">
-              Just revealed
+              {t("justRevealed.label")}
             </p>
             <p className="mt-2 text-3xl font-extrabold tabular-nums">
-              {justRevealed.points}{" "}
-              <span className="text-base font-medium text-muted-foreground">
-                {justRevealed.points === 1 ? "point goes to" : "points go to"}
-              </span>
+              {t("justRevealed.pointsLabel", { points: justRevealed.points })}
             </p>
             <p className="mt-1 text-2xl">
               <span className="mr-2" aria-hidden>
@@ -574,7 +574,7 @@ export default function AnnouncingView({
             className="cursor-pointer select-none rounded-2xl border-2 border-accent/60 bg-accent/5 px-5 py-4 space-y-3 transition-all hover:border-accent hover:bg-accent/10 active:scale-[0.995]"
           >
             <p className="text-xs uppercase tracking-widest text-accent">
-              Up next
+              {t("upNext.label")}
             </p>
             <p className="text-xl font-bold">
               <span className="text-2xl mr-2" aria-hidden>
@@ -583,15 +583,8 @@ export default function AnnouncingView({
               {pendingContestant?.country ??
                 announcement.pendingReveal.contestantId}
             </p>
-            <p className="text-sm">
-              <span className="font-mono text-lg font-bold tabular-nums">
-                {announcement.pendingReveal.points}
-              </span>{" "}
-              <span className="text-muted-foreground">
-                {announcement.pendingReveal.points === 1
-                  ? "point — tap anywhere to reveal"
-                  : "points — tap anywhere to reveal"}
-              </span>
+            <p className="text-sm text-muted-foreground">
+              {t("upNext.pointsHint", { points: announcement.pendingReveal.points })}
             </p>
             <button
               type="button"
@@ -603,14 +596,11 @@ export default function AnnouncingView({
               className="w-full rounded-xl bg-primary px-6 py-4 text-lg font-semibold text-primary-foreground transition-all hover:scale-[1.01] hover:emx-glow-gold active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {advanceState.kind === "submitting"
-                ? "Revealing…"
-                : "Reveal next point"}
+                ? t("reveal.busy")
+                : t("reveal.button")}
             </button>
             <p className="text-xs text-muted-foreground">
-              Eurovision style — points reveal lowest to highest. Tap the
-              button or anywhere on this card to call the next country. After
-              your last reveal it&rsquo;ll automatically pass to the next
-              announcer.
+              {t("reveal.explanation")}
             </p>
             {advanceState.error ? (
               <p
@@ -631,8 +621,8 @@ export default function AnnouncingView({
                 className="w-full rounded-lg border-2 border-border bg-background px-3 py-2 text-sm font-medium transition-all hover:border-accent active:scale-[0.98] disabled:opacity-60"
               >
                 {handoffState.kind === "submitting"
-                  ? "Releasing…"
-                  : `Give back control to ${announcerName}`}
+                  ? t("giveBackBusy")
+                  : t("giveBack.label", { announcerName })}
               </button>
             ) : null}
             {handoffState.error ? (
@@ -647,12 +637,10 @@ export default function AnnouncingView({
         {isOwner && !isActiveDriver && !adminHasTakenControl && announcement ? (
           <div className="rounded-2xl border-2 border-border bg-card px-5 py-4 space-y-2">
             <p className="text-sm font-semibold">
-              {announcerName} is announcing
+              {t("ownerWatching.title", { announcerName })}
             </p>
             <p className="text-xs text-muted-foreground">
-              If they&rsquo;re away or stuck, you can take over their reveals
-              (you can hand back any time) or skip past them entirely. Skipped
-              points still appear on the leaderboard.
+              {t("ownerWatching.message")}
             </p>
             <button
               type="button"
@@ -664,8 +652,8 @@ export default function AnnouncingView({
               className="w-full rounded-lg border-2 border-accent bg-accent/5 px-3 py-2 text-sm font-medium transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60"
             >
               {handoffState.kind === "submitting"
-                ? "Taking over…"
-                : `Announce for ${announcerName}`}
+                ? t("takeControl.busy")
+                : t("takeControl.button", { announcerName })}
             </button>
             <button
               type="button"
@@ -674,12 +662,12 @@ export default function AnnouncingView({
                 skipState.kind === "submitting" ||
                 handoffState.kind === "submitting"
               }
-              aria-label={`Skip ${announcerName}'s turn — they're not here`}
+              aria-label={t("skip.aria", { announcerName })}
               className="w-full rounded-lg border-2 border-muted-foreground/30 bg-muted/30 px-3 py-2 text-sm font-medium transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60"
             >
               {skipState.kind === "submitting"
-                ? "Skipping…"
-                : `Skip ${announcerName} — they're not here`}
+                ? t("skip.busy")
+                : t("skip.button", { announcerName })}
             </button>
             {handoffState.error ? (
               <p role="alert" className="text-xs text-destructive">
@@ -698,7 +686,7 @@ export default function AnnouncingView({
         {isAnnouncer && adminHasTakenControl && !isActiveDriver ? (
           <div className="rounded-2xl border-2 border-muted-foreground/20 bg-muted/30 px-5 py-4 text-center">
             <p className="text-sm text-muted-foreground">
-              The room admin is announcing on your behalf. Sit back and watch.
+              {t("passive.message")}
             </p>
           </div>
         ) : null}
@@ -706,17 +694,17 @@ export default function AnnouncingView({
         {/* Active driver, queue exhausted but rotation broadcast hasn't landed. */}
         {isActiveDriver && announcement && !announcement.pendingReveal ? (
           <div className="rounded-2xl border-2 border-border bg-card px-5 py-4 text-center text-muted-foreground text-sm">
-            All your points revealed. Passing to the next announcer&hellip;
+            {t("allPointsRevealed")}
           </div>
         ) : null}
 
         <section className="space-y-2">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            Leaderboard
+            {t("leaderboard.title")}
           </h2>
           {leaderboard.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">
-              No points revealed yet.
+              {t("leaderboard.empty")}
             </p>
           ) : (
             <ol className="space-y-1.5">
@@ -926,21 +914,22 @@ function ShortStyleRevealCard({
           className="w-full rounded-lg border-2 border-border bg-background px-3 py-2 text-sm font-medium transition-all hover:border-accent disabled:opacity-60"
         >
           {handoffState.kind === "submitting"
-            ? "Releasing…"
-            : `Give back control to ${announcerName}`}
+            ? t("announcing.giveBackBusy")
+            : t("announcing.giveBack.label", { announcerName })}
         </button>
       ) : null}
     </div>
   );
 }
 
-function renderHeader({
+function HeaderCard({
   mode,
   announcer,
 }: {
   mode: Mode;
   announcer: AnnouncementState;
 }) {
+  const t = useTranslations("announcing");
   const announcerName = announcer.announcingDisplayName;
   const announcerSeed = announcer.announcingAvatarSeed;
 
@@ -948,10 +937,10 @@ function renderHeader({
     return (
       <div className="rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 border-2 border-primary px-5 py-4 space-y-2">
         <p className="text-2xl font-extrabold text-primary">
-          🎤 It&rsquo;s your turn to announce!
+          {t("activeAnnouncer.title")}
         </p>
         <p className="text-sm text-muted-foreground">
-          The room is watching. Reveal your points one at a time.
+          {t("activeAnnouncer.subtitle")}
         </p>
       </div>
     );
@@ -961,11 +950,10 @@ function renderHeader({
     return (
       <div className="rounded-2xl bg-accent/10 border-2 border-accent px-5 py-4 space-y-2">
         <p className="text-lg font-bold">
-          You&rsquo;re announcing for {announcerName}
+          {t("activeDelegate.title", { announcerName })}
         </p>
         <p className="text-xs text-muted-foreground">
-          Their points are still attributed to them — you&rsquo;re just
-          driving.
+          {t("activeDelegate.subtitle")}
         </p>
       </div>
     );
@@ -976,9 +964,9 @@ function renderHeader({
       <div className="flex items-center justify-center gap-3">
         <Avatar seed={announcerSeed} size={36} />
         <p className="text-base">
-          <span className="font-semibold">The admin</span>{" "}
+          <span className="font-semibold">{t("adminAnnouncingOnBehalf.prefix")}</span>{" "}
           <span className="text-muted-foreground">
-            is announcing on your behalf
+            {t("adminAnnouncingOnBehalf.suffix")}
           </span>
         </p>
       </div>
@@ -988,9 +976,8 @@ function renderHeader({
   return (
     <div className="flex items-center justify-center gap-3">
       <Avatar seed={announcerSeed} size={40} />
-      <p className="text-base">
-        <span className="font-semibold">{announcerName}</span>{" "}
-        <span className="text-muted-foreground">is announcing</span>
+      <p className="text-base font-semibold">
+        {t("ownerWatching.title", { announcerName })}
       </p>
     </div>
   );

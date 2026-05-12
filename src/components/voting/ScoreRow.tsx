@@ -63,7 +63,7 @@ export default function ScoreRow({
         </span>
         {showWeightBadge && (
           <span className="inline-flex flex-shrink-0 px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground">
-            counts {weightMultiplier}×
+            {t("voting.score.weightBadge", { weightMultiplier })}
           </span>
         )}
         {hint && onToggleHint && (
@@ -102,7 +102,7 @@ export default function ScoreRow({
       <div
         className="relative grid grid-cols-10 w-full h-11 rounded-lg overflow-hidden border border-border bg-muted"
         role="group"
-        aria-label={`${categoryName} — score from 1 to 10`}
+        aria-label={t("voting.score.rowAria", { categoryName })}
         data-no-swipe
       >
         {BUTTONS.map((n, i) => {
@@ -116,7 +116,7 @@ export default function ScoreRow({
               type="button"
               onClick={() => handleClick(n)}
               disabled={disabled}
-              aria-label={`${categoryName}: score ${n}`}
+              aria-label={t("voting.score.buttonAria", { categoryName, n })}
               aria-pressed={selected}
               aria-describedby={hint && hintExpanded ? hintId : undefined}
               className={`

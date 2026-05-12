@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import type { DrainNotice as DrainNoticePayload } from "@/lib/voting/OfflineAdapter";
 
 export interface DrainNoticeProps {
@@ -17,6 +18,7 @@ export interface DrainNoticeProps {
  * × dismiss button and an inline expand-for-details for the skipped case.
  */
 export default function DrainNotice({ notice, onDismiss }: DrainNoticeProps) {
+  const t = useTranslations("voting.drain");
   const [expanded, setExpanded] = useState(false);
   if (!notice) return null;
 
@@ -31,12 +33,11 @@ export default function DrainNotice({ notice, onDismiss }: DrainNoticeProps) {
         className="sticky top-2 mx-4 z-10 rounded-lg border border-accent/30 bg-accent/10 text-accent text-center px-4 py-2 text-sm font-medium backdrop-blur-sm flex items-center justify-between gap-2"
       >
         <span>
-          Voting ended while you were offline — your unsaved changes for this
-          room were discarded.
+          {t("votingEnded")}
         </span>
         <button
           type="button"
-          aria-label="Dismiss"
+          aria-label={t("dismissAria")}
           onClick={onDismiss}
           className="flex-shrink-0 px-1 text-accent/80 hover:text-accent"
         >
@@ -56,21 +57,20 @@ export default function DrainNotice({ notice, onDismiss }: DrainNoticeProps) {
     >
       <div className="flex items-start justify-between gap-2">
         <span className="flex-1">
-          {skippedCount} offline edit{skippedCount === 1 ? "" : "s"} couldn&rsquo;t
-          be applied (newer values on the server).
+          {t("skipped", { skippedCount })}
           {!expanded && (
             <button
               type="button"
               onClick={() => setExpanded(true)}
               className="ml-2 underline"
             >
-              View
+              {t("view")}
             </button>
           )}
         </span>
         <button
           type="button"
-          aria-label="Dismiss"
+          aria-label={t("dismissAria")}
           onClick={onDismiss}
           className="flex-shrink-0 px-1 text-accent/80 hover:text-accent"
         >

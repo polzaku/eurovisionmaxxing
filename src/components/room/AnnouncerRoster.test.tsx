@@ -11,7 +11,8 @@ vi.mock("@/components/ui/Avatar", () => ({
 }));
 
 vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
+  useTranslations: () => (key: string, params?: Record<string, unknown>) =>
+    params ? `${key}:${JSON.stringify(params)}` : key,
 }));
 
 import AnnouncerRoster, { type RosterMember } from "./AnnouncerRoster";
@@ -86,7 +87,7 @@ describe("<AnnouncerRoster>", () => {
       "data-current-announcer",
       "true",
     );
-    expect(screen.getByLabelText("Current announcer")).toBeInTheDocument();
+    expect(screen.getByLabelText("currentAnnouncerAria")).toBeInTheDocument();
     expect(
       screen.getByTestId("roster-row-u-alice"),
     ).toHaveAttribute("data-current-announcer", "false");
@@ -101,10 +102,10 @@ describe("<AnnouncerRoster>", () => {
         delegateUserId="u-alice"
       />,
     );
-    expect(screen.getByLabelText("Active delegate")).toBeInTheDocument();
+    expect(screen.getByLabelText("activeDelegateAria")).toBeInTheDocument();
     // Alice (delegate) is not the current announcer — both markers exist
     // and don't collide.
-    expect(screen.getByLabelText("Current announcer")).toBeInTheDocument();
+    expect(screen.getByLabelText("currentAnnouncerAria")).toBeInTheDocument();
   });
 
   it("renders skipped members with strikethrough + data-skipped + 'skipped' label", () => {
@@ -117,7 +118,7 @@ describe("<AnnouncerRoster>", () => {
     );
     const aliceRow = screen.getByTestId("roster-row-u-alice");
     expect(aliceRow).toHaveAttribute("data-skipped", "true");
-    expect(screen.getByLabelText("Skipped")).toBeInTheDocument();
+    expect(screen.getByLabelText("skippedAria")).toBeInTheDocument();
     // Strikethrough class on the name span (we render the class on the name
     // wrapper, not the row itself).
     expect(aliceRow.querySelector(".line-through")).not.toBeNull();
@@ -133,9 +134,9 @@ describe("<AnnouncerRoster>", () => {
       <AnnouncerRoster members={[ALICE]} presenceUserIds={new Set()} />,
     );
     expect(screen.getByTestId("roster-row-u-alice")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Current announcer")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Active delegate")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Skipped")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("currentAnnouncerAria")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("activeDelegateAria")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("skippedAria")).not.toBeInTheDocument();
   });
 
   // ─── §10.2.1 stage 2 — Restore CTA on skipped rows ──────────────────────
@@ -200,13 +201,15 @@ describe("<AnnouncerRoster>", () => {
         "roster-restore-u-alice",
       ) as HTMLButtonElement;
       expect(aliceBtn).toBeDisabled();
-      expect(aliceBtn).toHaveTextContent(/restoring/i);
+      // With mock: t("restoring") → "restoring"
+      expect(aliceBtn).toHaveTextContent("restoring");
       // Other skipped rows stay clickable.
       const bobBtn = screen.getByTestId(
         "roster-restore-u-bob",
       ) as HTMLButtonElement;
       expect(bobBtn).not.toBeDisabled();
-      expect(bobBtn).toHaveTextContent(/^Restore$/);
+      // With mock: t("restore") → "restore"
+      expect(bobBtn).toHaveTextContent("restore");
     });
   });
 });
@@ -267,8 +270,9 @@ describe("AnnouncerRoster — re-shuffle button (R4 #4)", () => {
         reshuffling={true}
       />,
     );
+    // With mock + useTranslations("roster"): tRoster("reshuffle.busyCta") → "reshuffle.busyCta"
     expect(screen.getByTestId("roster-reshuffle")).toHaveTextContent(
-      "roster.reshuffle.busyCta",
+      "reshuffle.busyCta",
     );
   });
 

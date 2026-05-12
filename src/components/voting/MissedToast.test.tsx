@@ -3,6 +3,11 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string, params?: Record<string, unknown>) =>
+    params ? `${key}:${JSON.stringify(params)}` : key,
+}));
+
 import MissedToast from "./MissedToast";
 
 const TOAST = {
@@ -19,29 +24,29 @@ describe("MissedToast", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
-  it("renders the missed body copy with the projected overall score", () => {
+  it("renders the missed body copy with the projected overall score (key form)", () => {
     render(<MissedToast toast={TOAST} onUndo={vi.fn()} />);
     expect(screen.getByRole("status")).toBeInTheDocument();
-    expect(screen.getByText(/Marked missed/)).toBeInTheDocument();
-    expect(screen.getByText(/~6\.4/)).toBeInTheDocument();
+    // With next-intl mock, t("body", {...}) returns "body:{"overall":6.4}"
+    expect(screen.getByText(/body:/)).toBeInTheDocument();
   });
 
   it("renders the Undo button", () => {
     render(<MissedToast toast={TOAST} onUndo={vi.fn()} />);
-    expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "undo" })).toBeInTheDocument();
   });
 
   it("calls onUndo when the Undo button is clicked", () => {
     const onUndo = vi.fn();
     render(<MissedToast toast={TOAST} onUndo={onUndo} />);
-    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    fireEvent.click(screen.getByRole("button", { name: "undo" }));
     expect(onUndo).toHaveBeenCalledTimes(1);
   });
 
   it("does NOT render the dismiss × button when onDismiss is omitted", () => {
     render(<MissedToast toast={TOAST} onUndo={vi.fn()} />);
     expect(
-      screen.queryByRole("button", { name: /Dismiss/i }),
+      screen.queryByRole("button", { name: /dismissAria/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -50,7 +55,7 @@ describe("MissedToast", () => {
       <MissedToast toast={TOAST} onUndo={vi.fn()} onDismiss={vi.fn()} />,
     );
     expect(
-      screen.getByRole("button", { name: /Dismiss/i }),
+      screen.getByRole("button", { name: /dismissAria/i }),
     ).toBeInTheDocument();
   });
 
@@ -59,7 +64,7 @@ describe("MissedToast", () => {
     render(
       <MissedToast toast={TOAST} onUndo={vi.fn()} onDismiss={onDismiss} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /Dismiss/i }));
+    fireEvent.click(screen.getByRole("button", { name: /dismissAria/i }));
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 

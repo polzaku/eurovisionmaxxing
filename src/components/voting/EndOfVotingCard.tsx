@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { EndOfVotingCardVariant } from "@/lib/voting/endOfVotingCardVariant";
 import Button from "@/components/ui/Button";
 
@@ -22,12 +23,13 @@ export default function EndOfVotingCard({
   onJumpTo,
   onEndVoting,
 }: EndOfVotingCardProps) {
+  const t = useTranslations("voting.endOfVoting");
   if (variant.kind === "none") return null;
 
   if (variant.kind === "guestAllScored") {
     const message = adminDisplayName
-      ? `✅ All ${variant.total} scored — waiting for ${adminDisplayName} to end voting.`
-      : `✅ All ${variant.total} scored — waiting for the host to end voting.`;
+      ? t("allScored", { count: variant.total, admin: adminDisplayName })
+      : t("allScoredFallback", { count: variant.total });
     return (
       <div
         role="status"
@@ -48,10 +50,7 @@ export default function EndOfVotingCard({
         data-variant="guest-missed-some"
         className="rounded-md border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-foreground space-y-3"
       >
-        <p>
-          ⚠️ You marked {variant.missed.length} as missed — they&rsquo;ll be
-          filled with your average. Tap to rescore any.
-        </p>
+        <p>{t("missedSome", { count: variant.missed.length })}</p>
         <ul className="space-y-2">
           {variant.missed.map((c) => (
             <li
@@ -66,9 +65,9 @@ export default function EndOfVotingCard({
                 size="sm"
                 variant="secondary"
                 onClick={() => onJumpTo(c.id)}
-                aria-label={`Rescore ${c.country}`}
+                aria-label={`${t("rescoreCta")} ${c.country}`}
               >
-                Rescore
+                {t("rescoreCta")}
               </Button>
             </li>
           ))}
@@ -85,11 +84,11 @@ export default function EndOfVotingCard({
         data-variant="guest-unscored"
         className="rounded-md border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-foreground space-y-3"
       >
-        <p>⚠️ {variant.unscored.length} still unscored</p>
+        <p>{t("unscoredCount", { count: variant.unscored.length })}</p>
         <UnscoredJumpList
           contestants={variant.unscored}
           onJumpTo={onJumpTo}
-          ctaLabel="Score now"
+          ctaLabel={t("jumpToCta")}
         />
       </div>
     );
@@ -103,14 +102,11 @@ export default function EndOfVotingCard({
         data-variant="guest-room-momentum"
         className="rounded-md border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-foreground space-y-3"
       >
-        <p>
-          ⏳ Most of the room has finished — you have {variant.unscored.length}{" "}
-          still to score.
-        </p>
+        <p>{t("roomMomentum", { count: variant.unscored.length })}</p>
         <UnscoredJumpList
           contestants={variant.unscored}
           onJumpTo={onJumpTo}
-          ctaLabel="Score now"
+          ctaLabel={t("jumpToCta")}
         />
       </div>
     );
@@ -124,10 +120,10 @@ export default function EndOfVotingCard({
         data-variant="host-all-done"
         className="rounded-md border border-primary/40 bg-primary/10 px-4 py-3 text-sm text-foreground space-y-3"
       >
-        <p>🎉 Everyone&rsquo;s done — ready to end voting?</p>
+        <p>{t("host.allDone")}</p>
         {onEndVoting && (
           <Button onClick={onEndVoting} className="w-full">
-            End voting
+            {t("host.endVotingCta")}
           </Button>
         )}
       </div>
@@ -142,17 +138,14 @@ export default function EndOfVotingCard({
         data-variant="host-most-done"
         className="rounded-md border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-foreground space-y-3"
       >
-        <p>
-          ⏳ {variant.ready} of {variant.total} have finished — give the rest a
-          moment, then end voting.
-        </p>
+        <p>{t("host.mostDone", { ready: variant.ready, total: variant.total })}</p>
         {onEndVoting && (
           <Button
             variant="secondary"
             onClick={onEndVoting}
             className="w-full"
           >
-            End voting
+            {t("host.endVotingCta")}
           </Button>
         )}
       </div>
@@ -171,7 +164,7 @@ export default function EndOfVotingCard({
         data-variant="host-self-done-only-no-count"
         className="rounded-md border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-foreground"
       >
-        ✅ Your vote is in.
+        {t("host.selfDoneOnlyNoCount")}
       </div>
     );
   }
@@ -185,7 +178,7 @@ export default function EndOfVotingCard({
       data-variant="host-self-done-only"
       className="rounded-md border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-foreground"
     >
-      ✅ Your vote is in — {variant.ready} of {variant.total} done so far.
+      {t("host.selfDoneOnly", { ready: variant.ready, total: variant.total })}
     </div>
   );
 }

@@ -50,19 +50,55 @@ vi.mock("@/components/room/DoneCard", () => ({
 
 // next-intl — mock useTranslations so AnnouncingView and its internal
 // ShortStyleRevealCard don't need a NextIntlClientProvider in tests.
-// The mock returns the key's last segment as the translation value so
-// assertions can match on the actual locale string (e.g. "Reveal 12 points").
+// The mock returns English text for commonly-asserted keys so test
+// assertions remain readable (e.g. "Reveal 12 points", "Bob is announcing").
 vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string, params?: Record<string, string>) => {
+  useTranslations: (_ns?: string) => (key: string, params?: Record<string, string>) => {
+    const fullKey = _ns ? `${_ns}.${key}` : key;
+    // Interpolated keys: substitute params if provided.
+    if (fullKey === "announcing.ownerWatching.title" && params?.announcerName) {
+      return `${params.announcerName} is announcing`;
+    }
+    if (fullKey === "announcing.takeControl.button" && params?.announcerName) {
+      return `Announce for ${params.announcerName}`;
+    }
+    if (fullKey === "announcing.skip.aria" && params?.announcerName) {
+      return `Skip ${params.announcerName}'s turn — they're not here`;
+    }
+    if (fullKey === "announcing.skip.button" && params?.announcerName) {
+      return `Skip ${params.announcerName} — they're not here`;
+    }
+    if (fullKey === "announcing.giveBack.label" && params?.announcerName) {
+      return `Give back control to ${params.announcerName}`;
+    }
+    if (fullKey === "announcing.activeDelegate.title" && params?.announcerName) {
+      return `You're announcing for ${params.announcerName}`;
+    }
     const translations: Record<string, string> = {
+      "announcing.noAnnouncer": "Waiting for an announcer…",
+      "announcing.takeControl.busy": "Taking over…",
+      "announcing.skip.busy": "Skipping…",
+      "announcing.giveBackBusy": "Releasing…",
+      "announcing.reveal.button": "Reveal next point",
+      "announcing.reveal.busy": "Revealing…",
+      "announcing.finishShow.button": "Finish the show",
+      "announcing.finishShow.busy": "Starting…",
+      "announcing.cascadeExhaust.waitingMessage": "Waiting for the host to continue…",
+      "announcing.batchReveal.chip": "Host is finishing the show",
+      "announcing.upNext.label": "Up next",
+      "announcing.upNext.pointsHint": params?.points
+        ? `${params.points === "1" ? "1 point" : `${params.points} points`} — tap anywhere to reveal`
+        : "tap anywhere to reveal",
+      // Short-reveal keys (used without namespace by ShortStyleRevealCard which uses useTranslations())
       "announce.shortReveal.cta": "Reveal 12 points",
       "announce.shortReveal.ctaMicrocopy": "Tap when you say it",
       "announce.shortReveal.revealed": "Revealed ✓",
       "announce.shortReveal.guestToast": params
         ? `${params.name} gave 12 to ${params.country} ${params.flag}`
         : key,
+      "announcing.giveBack.label": "Give back control",
     };
-    return translations[key] ?? key;
+    return translations[fullKey] ?? key;
   },
 }));
 
@@ -286,8 +322,10 @@ describe("<AnnouncingView> — owner-watching skip CTA", () => {
       />,
     );
     // Wait for the on-mount refetch to populate the announcement state.
+    // Two elements may render the same "Bob is announcing" text (HeaderCard +
+    // ownerWatching panel), so use getAllByText.
     await waitFor(() =>
-      expect(screen.getByText(/bob is announcing/i)).toBeInTheDocument(),
+      expect(screen.getAllByText(/bob is announcing/i).length).toBeGreaterThan(0),
     );
     return utils;
   }
@@ -441,7 +479,7 @@ describe("<AnnouncingView> — owner-watching skip CTA", () => {
       />,
     );
     await waitFor(() =>
-      expect(screen.getByText(/bob is announcing/i)).toBeInTheDocument(),
+      expect(screen.getAllByText(/bob is announcing/i).length).toBeGreaterThan(0),
     );
 
     // Swap the fetch mock so the next refetch returns Carol.
@@ -460,7 +498,7 @@ describe("<AnnouncingView> — owner-watching skip CTA", () => {
       screen.getByRole("button", { name: /skip bob/i }),
     );
     await waitFor(() =>
-      expect(screen.getByText(/carol is announcing/i)).toBeInTheDocument(),
+      expect(screen.getAllByText(/carol is announcing/i).length).toBeGreaterThan(0),
     );
     expect(
       screen.getByRole("button", { name: /skip carol/i }),

@@ -165,7 +165,7 @@ export default function PresentScreen({
             <QrCode
               url={shareUrl}
               size={320}
-              alt="Scan to join this room"
+              alt={t("present.lobby.qrAlt")}
               className="bg-white p-2"
             />
           ) : null}
@@ -352,7 +352,7 @@ function ShortStyleOverlay({
   return (
     <div
       role="dialog"
-      aria-label="Short reveal mode"
+      aria-label={t("announcementStyle.short.presentOverlay.title")}
       data-testid="present-short-overlay"
       className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/95 px-12 py-12 text-center motion-safe:animate-fade-in"
     >

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import Avatar from "@/components/ui/Avatar";
 
 interface Candidate {
@@ -22,16 +23,16 @@ export default function CandidatePicker({
   onChangeName,
   submitting,
 }: CandidatePickerProps) {
+  const t = useTranslations("onboarding.picker");
   return (
     <div
       className="mx-auto w-full max-w-md space-y-8 px-6 py-10 animate-fade-in"
       aria-live="polite"
     >
       <div className="text-center space-y-2">
-        <h1 className="text-2xl font-bold text-foreground">Is this you?</h1>
+        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
         <p className="text-muted-foreground text-sm text-balance">
-          Someone with that name is already in this room. Tap your avatar to
-          rejoin, or create a new identity.
+          {t("subtitle")}
         </p>
       </div>
 
@@ -42,7 +43,7 @@ export default function CandidatePicker({
             type="button"
             onClick={() => onPick(c)}
             disabled={submitting}
-            aria-label="Pick this avatar"
+            aria-label={t("pickAria")}
             className="rounded-full border-2 border-border p-1 transition-colors hover:border-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Avatar seed={c.avatarSeed} size={96} />
@@ -56,7 +57,7 @@ export default function CandidatePicker({
         disabled={submitting}
         className="block w-full rounded-xl bg-primary px-6 py-4 text-lg font-semibold text-primary-foreground transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
       >
-        Create new identity
+        {t("createNew")}
       </button>
 
       <div className="text-center">
@@ -66,7 +67,7 @@ export default function CandidatePicker({
           disabled={submitting}
           className="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
         >
-          ← Change name
+          {t("changeName")}
         </button>
       </div>
     </div>
