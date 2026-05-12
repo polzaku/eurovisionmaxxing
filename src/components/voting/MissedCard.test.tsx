@@ -3,6 +3,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
 
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string) => {
+    const translations: Record<string, string> = {
+      cardLabel: "This one's marked as missed",
+      estimatedLabel: "Estimated score",
+      updatedLabel: "updated from your recent votes",
+      perCategoryLabel: "Per category (estimated)",
+      rescoreButton: "Rescore this contestant",
+    };
+    return translations[key] ?? key;
+  },
+}));
+
 import MissedCard from "./MissedCard";
 
 const CATEGORIES = [

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import Button from "@/components/ui/Button";
 import type { ProjectedAverage } from "@/lib/voting/computeProjectedAverage";
 
@@ -28,6 +29,7 @@ export default function MissedCard({
   categories,
   onRescore,
 }: MissedCardProps) {
+  const t = useTranslations("voting.missed");
   // SPEC §8.4 / V8: when projected values shift due to the user scoring
   // other contestants, fire animate-score-pop on the changed cells and
   // surface a brief "updated from your recent votes" label so the user
@@ -60,11 +62,11 @@ export default function MissedCard({
     setChangedCats(nextChangedCats);
     setAnimKey((n) => n + 1);
     setUpdatedLabelVisible(true);
-    const t = window.setTimeout(
+    const timerId = window.setTimeout(
       () => setUpdatedLabelVisible(false),
       UPDATED_LABEL_MS,
     );
-    return () => window.clearTimeout(t);
+    return () => window.clearTimeout(timerId);
   }, [projected]);
 
   const overallClass =
@@ -78,12 +80,12 @@ export default function MissedCard({
       data-testid="missed-card"
     >
       <p className="text-sm text-muted-foreground text-center">
-        This one&rsquo;s marked as missed
+        {t("cardLabel")}
       </p>
 
       <div className="text-center space-y-1">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">
-          Estimated score
+          {t("estimatedLabel")}
         </p>
         <p
           key={`overall-${animKey}`}
@@ -98,14 +100,14 @@ export default function MissedCard({
             data-testid="missed-updated-label"
             className="text-xs text-accent motion-safe:animate-fade-in"
           >
-            updated from your recent votes
+            {t("updatedLabel")}
           </p>
         ) : null}
       </div>
 
       <div className="space-y-2">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">
-          Per category (estimated)
+          {t("perCategoryLabel")}
         </p>
         <ul className="space-y-1.5">
           {categories.map((c) => {
@@ -135,7 +137,7 @@ export default function MissedCard({
         className="w-full"
         onClick={onRescore}
       >
-        Rescore this contestant
+        {t("rescoreButton")}
       </Button>
     </div>
   );

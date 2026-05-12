@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, type ChangeEvent } from "react";
+import { useTranslations } from "next-intl";
 import { countHotTakeChars } from "@/lib/voting/countHotTakeChars";
 
 export interface HotTakeFieldProps {
@@ -14,6 +15,7 @@ export default function HotTakeField({
   onChange,
   maxChars = 140,
 }: HotTakeFieldProps) {
+  const t = useTranslations("voting.hotTake");
   const [isExpanded, setIsExpanded] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -30,10 +32,10 @@ export default function HotTakeField({
       <button
         type="button"
         onClick={() => setIsExpanded(true)}
-        aria-label="Add a hot take"
+        aria-label={t("addPillAria")}
         className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-2 px-2 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring rounded"
       >
-        + Add a hot take
+        {t("addPill")}
       </button>
     );
   }
@@ -58,9 +60,9 @@ export default function HotTakeField({
         value={value}
         onChange={handleChange}
         onBlur={handleBlur}
-        placeholder="Your one-liner"
+        placeholder={t("placeholder")}
         rows={2}
-        aria-label="Hot take"
+        aria-label={t("fieldAria")}
         data-no-swipe
         className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring resize-none"
       />

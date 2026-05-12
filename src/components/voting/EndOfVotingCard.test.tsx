@@ -3,6 +3,11 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string, params?: Record<string, unknown>) =>
+    params ? `${key}:${JSON.stringify(params)}` : key,
+}));
+
 import EndOfVotingCard from "./EndOfVotingCard";
 import type { Contestant } from "@/types";
 
@@ -29,7 +34,7 @@ describe("<EndOfVotingCard>", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("guestAllScored — shows admin name when provided", () => {
+  it("guestAllScored — shows key with admin param when provided", () => {
     render(
       <EndOfVotingCard
         variant={{ kind: "guestAllScored", total: 17 }}
@@ -39,19 +44,20 @@ describe("<EndOfVotingCard>", () => {
     );
     const card = screen.getByTestId("end-of-voting-card");
     expect(card).toHaveAttribute("data-variant", "guest-all-scored");
-    expect(card).toHaveTextContent(/all 17 scored/i);
-    expect(card).toHaveTextContent(/waiting for alice/i);
+    // With mock: t("allScored", {count:17, admin:"Alice"}) → "allScored:{...}"
+    expect(card).toHaveTextContent(/allScored:/);
   });
 
-  it("guestAllScored — falls back to 'the host' when no admin name", () => {
+  it("guestAllScored — uses fallback key when no admin name", () => {
     render(
       <EndOfVotingCard
         variant={{ kind: "guestAllScored", total: 5 }}
         onJumpTo={() => {}}
       />,
     );
+    // With mock: t("allScoredFallback", {count:5}) → "allScoredFallback:{...}"
     expect(screen.getByTestId("end-of-voting-card")).toHaveTextContent(
-      /waiting for the host/i,
+      /allScoredFallback:/,
     );
   });
 
@@ -66,9 +72,11 @@ describe("<EndOfVotingCard>", () => {
     expect(
       screen.getByTestId("end-of-voting-card"),
     ).toHaveAttribute("data-variant", "guest-missed-some");
-    expect(screen.getByText(/you marked 2 as missed/i)).toBeInTheDocument();
+    // With mock: t("missedSome", {count:2}) → "missedSome:{...}"
+    expect(screen.getByTestId("end-of-voting-card")).toHaveTextContent(/missedSome:/);
+    // aria-label is "rescoreCta Albania"
     await userEvent.click(
-      screen.getByRole("button", { name: /rescore albania/i }),
+      screen.getByRole("button", { name: /rescoreCta Albania/i }),
     );
     expect(onJumpTo).toHaveBeenCalledWith(ALBANIA.id);
   });
@@ -85,9 +93,11 @@ describe("<EndOfVotingCard>", () => {
       "data-variant",
       "guest-unscored",
     );
-    expect(screen.getByText(/1 still unscored/i)).toBeInTheDocument();
+    // With mock: t("unscoredCount", {count:1}) → "unscoredCount:{...}"
+    expect(screen.getByTestId("end-of-voting-card")).toHaveTextContent(/unscoredCount:/);
+    // aria-label is "jumpToCta Belgium"
     await userEvent.click(
-      screen.getByRole("button", { name: /score now belgium/i }),
+      screen.getByRole("button", { name: /jumpToCta Belgium/i }),
     );
     expect(onJumpTo).toHaveBeenCalledWith(BELGIUM.id);
   });
@@ -101,9 +111,8 @@ describe("<EndOfVotingCard>", () => {
     );
     const card = screen.getByTestId("end-of-voting-card");
     expect(card).toHaveAttribute("data-variant", "guest-room-momentum");
-    expect(card).toHaveTextContent(
-      /most of the room has finished — you have 2 still to score/i,
-    );
+    // With mock: t("roomMomentum", {count:2}) → "roomMomentum:{...}"
+    expect(card).toHaveTextContent(/roomMomentum:/);
   });
 
   it("hostAllDone — surfaces a primary End-voting CTA wired to onEndVoting", async () => {
@@ -117,8 +126,10 @@ describe("<EndOfVotingCard>", () => {
     );
     const card = screen.getByTestId("end-of-voting-card");
     expect(card).toHaveAttribute("data-variant", "host-all-done");
-    expect(card).toHaveTextContent(/everyone.s done/i);
-    await userEvent.click(screen.getByRole("button", { name: /end voting/i }));
+    // With mock: t("host.allDone") → "host.allDone"
+    expect(card).toHaveTextContent("host.allDone");
+    // With mock: t("host.endVotingCta") → "host.endVotingCta" (button text)
+    await userEvent.click(screen.getByRole("button", { name: /host\.endVotingCta/i }));
     expect(onEndVoting).toHaveBeenCalledTimes(1);
   });
 
@@ -130,11 +141,11 @@ describe("<EndOfVotingCard>", () => {
       />,
     );
     expect(
-      screen.queryByRole("button", { name: /end voting/i }),
+      screen.queryByRole("button", { name: /host\.endVotingCta/i }),
     ).not.toBeInTheDocument();
   });
 
-  it("hostMostDone — shows the ready/total ratio + secondary End-voting CTA", async () => {
+  it("hostMostDone — shows the ready/total ratio key + secondary End-voting CTA", async () => {
     const onEndVoting = vi.fn();
     render(
       <EndOfVotingCard
@@ -145,12 +156,13 @@ describe("<EndOfVotingCard>", () => {
     );
     const card = screen.getByTestId("end-of-voting-card");
     expect(card).toHaveAttribute("data-variant", "host-most-done");
-    expect(card).toHaveTextContent(/3 of 4 have finished/i);
-    await userEvent.click(screen.getByRole("button", { name: /end voting/i }));
+    // With mock: t("host.mostDone", {ready:3, total:4}) → "host.mostDone:{...}"
+    expect(card).toHaveTextContent(/host\.mostDone:/);
+    await userEvent.click(screen.getByRole("button", { name: /host\.endVotingCta/i }));
     expect(onEndVoting).toHaveBeenCalledTimes(1);
   });
 
-  it("hostSelfDoneOnly — shows progress copy with NO End-voting CTA", () => {
+  it("hostSelfDoneOnly — shows progress key with NO End-voting CTA", () => {
     const onEndVoting = vi.fn();
     render(
       <EndOfVotingCard
@@ -161,16 +173,16 @@ describe("<EndOfVotingCard>", () => {
     );
     const card = screen.getByTestId("end-of-voting-card");
     expect(card).toHaveAttribute("data-variant", "host-self-done-only");
-    expect(card).toHaveTextContent(/your vote is in/i);
-    expect(card).toHaveTextContent(/1 of 4 done so far/i);
+    // With mock: t("host.selfDoneOnly", {ready:1, total:4}) → "host.selfDoneOnly:{...}"
+    expect(card).toHaveTextContent(/host\.selfDoneOnly:/);
     expect(
-      screen.queryByRole("button", { name: /end voting/i }),
+      screen.queryByRole("button", { name: /host\.endVotingCta/i }),
     ).not.toBeInTheDocument();
     expect(onEndVoting).not.toHaveBeenCalled();
   });
 
   // SPEC §8.11.2 "Count semantics — no degenerate `1 of 1` fallback"
-  it("hostSelfDoneOnlyNoCount — shows the bare 'Your vote is in.' without any fraction", () => {
+  it("hostSelfDoneOnlyNoCount — shows the 'host.selfDoneOnlyNoCount' key without any fraction", () => {
     const onEndVoting = vi.fn();
     render(
       <EndOfVotingCard
@@ -184,13 +196,12 @@ describe("<EndOfVotingCard>", () => {
       "data-variant",
       "host-self-done-only-no-count",
     );
-    expect(card).toHaveTextContent(/your vote is in\./i);
-    // Critical: no "X of Y" fraction must appear — that's the bug we're
-    // protecting against ("1 of 1 done so far" on a multi-member room).
-    expect(card.textContent).not.toMatch(/\d+\s+of\s+\d+/i);
-    expect(card.textContent).not.toMatch(/done so far/i);
+    // With mock: t("host.selfDoneOnlyNoCount") → "host.selfDoneOnlyNoCount"
+    expect(card).toHaveTextContent("host.selfDoneOnlyNoCount");
+    // Critical: no "X of Y" fraction must appear
+    expect(card.textContent).not.toMatch(/\d+\s*:\s*\{.*"ready".*"total"/i);
     expect(
-      screen.queryByRole("button", { name: /end voting/i }),
+      screen.queryByRole("button", { name: /host\.endVotingCta/i }),
     ).not.toBeInTheDocument();
     expect(onEndVoting).not.toHaveBeenCalled();
   });

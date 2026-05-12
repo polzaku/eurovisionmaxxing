@@ -3,53 +3,58 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string, params?: Record<string, unknown>) =>
+    params ? `${key}:${JSON.stringify(params)}` : key,
+}));
+
 import HotTakeField from "./HotTakeField";
 
 describe("HotTakeField", () => {
-  it("renders the '+ Add a hot take' pill when value is empty and not yet expanded", () => {
+  it("renders the add-pill button when value is empty and not yet expanded", () => {
     render(<HotTakeField value="" onChange={vi.fn()} />);
     expect(
-      screen.getByRole("button", { name: /Add a hot take/i }),
+      screen.getByRole("button", { name: /addPillAria/i }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 
   it("expands to textarea when the pill is clicked", () => {
     render(<HotTakeField value="" onChange={vi.fn()} />);
-    fireEvent.click(screen.getByRole("button", { name: /Add a hot take/i }));
-    expect(screen.getByRole("textbox", { name: /Hot take/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /addPillAria/i }));
+    expect(screen.getByRole("textbox", { name: /fieldAria/i })).toBeInTheDocument();
   });
 
   it("renders the textarea directly when there's already a saved value (skips the pill)", () => {
     render(<HotTakeField value="this is a hot take" onChange={vi.fn()} />);
-    expect(screen.queryByRole("button", { name: /Add a hot take/i })).toBeNull();
-    expect(screen.getByRole("textbox", { name: /Hot take/i })).toHaveValue(
+    expect(screen.queryByRole("button", { name: /addPillAria/i })).toBeNull();
+    expect(screen.getByRole("textbox", { name: /fieldAria/i })).toHaveValue(
       "this is a hot take",
     );
   });
 
   it("collapses back to the pill when textarea blurs while empty", () => {
     render(<HotTakeField value="" onChange={vi.fn()} />);
-    fireEvent.click(screen.getByRole("button", { name: /Add a hot take/i }));
-    const textarea = screen.getByRole("textbox", { name: /Hot take/i });
+    fireEvent.click(screen.getByRole("button", { name: /addPillAria/i }));
+    const textarea = screen.getByRole("textbox", { name: /fieldAria/i });
     fireEvent.blur(textarea);
     expect(
-      screen.getByRole("button", { name: /Add a hot take/i }),
+      screen.getByRole("button", { name: /addPillAria/i }),
     ).toBeInTheDocument();
   });
 
   it("does NOT collapse when textarea blurs with a value (rendered text mode)", () => {
     render(<HotTakeField value="something" onChange={vi.fn()} />);
-    const textarea = screen.getByRole("textbox", { name: /Hot take/i });
+    const textarea = screen.getByRole("textbox", { name: /fieldAria/i });
     fireEvent.blur(textarea);
     // Still renders the textarea because value !== "" forces showInput.
-    expect(screen.getByRole("textbox", { name: /Hot take/i })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /fieldAria/i })).toBeInTheDocument();
   });
 
   it("calls onChange with each typed value", () => {
     const onChange = vi.fn();
     render(<HotTakeField value="hi" onChange={onChange} />);
-    const textarea = screen.getByRole("textbox", { name: /Hot take/i });
+    const textarea = screen.getByRole("textbox", { name: /fieldAria/i });
     fireEvent.change(textarea, { target: { value: "hi there" } });
     expect(onChange).toHaveBeenCalledWith("hi there");
   });
@@ -76,7 +81,7 @@ describe("HotTakeField", () => {
   it("rejects edits that would exceed maxChars (no onChange call)", () => {
     const onChange = vi.fn();
     render(<HotTakeField value={"x".repeat(140)} onChange={onChange} maxChars={140} />);
-    const textarea = screen.getByRole("textbox", { name: /Hot take/i });
+    const textarea = screen.getByRole("textbox", { name: /fieldAria/i });
     // Try to push over the limit.
     fireEvent.change(textarea, { target: { value: "x".repeat(141) } });
     expect(onChange).not.toHaveBeenCalled();
@@ -94,7 +99,7 @@ describe("HotTakeField", () => {
 
   it("marks textarea with data-no-swipe so VotingView's swipe-nav doesn't fire", () => {
     render(<HotTakeField value="hi" onChange={vi.fn()} />);
-    const textarea = screen.getByRole("textbox", { name: /Hot take/i });
+    const textarea = screen.getByRole("textbox", { name: /fieldAria/i });
     expect(textarea).toHaveAttribute("data-no-swipe");
   });
 });

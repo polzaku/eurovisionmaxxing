@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { votingEndingTimer } from "@/lib/rooms/votingEndingTimer";
 
 export interface EndingPillProps {
@@ -8,6 +9,7 @@ export interface EndingPillProps {
 }
 
 export default function EndingPill({ votingEndsAt }: EndingPillProps) {
+  const t = useTranslations("voting.ending");
   const [, setTick] = useState(0);
 
   useEffect(() => {
@@ -29,8 +31,8 @@ export default function EndingPill({ votingEndsAt }: EndingPillProps) {
       className="fixed top-3 left-1/2 z-30 -translate-x-1/2 rounded-full bg-accent/15 px-4 py-1.5 text-xs font-medium text-foreground shadow-sm"
     >
       {expired
-        ? "Voting ending…"
-        : `Voting ending in ${remainingSeconds}s…`}
+        ? t("expired")
+        : t("countdown", { remainingSeconds })}
     </div>
   );
 }

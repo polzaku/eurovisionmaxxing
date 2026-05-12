@@ -81,7 +81,7 @@ describe("JumpToDrawer", () => {
     expect(screen.getByText("France")).toBeInTheDocument();
   });
 
-  it("renders the 'Not scored yet' status pill for unscored rows", () => {
+  it("renders the 'status.unscored' status pill for unscored rows", () => {
     render(
       <JumpToDrawer
         isOpen
@@ -94,10 +94,10 @@ describe("JumpToDrawer", () => {
         onClose={vi.fn()}
       />,
     );
-    expect(screen.getAllByText("Not scored yet").length).toBe(3);
+    expect(screen.getAllByText("status.unscored").length).toBe(3);
   });
 
-  it("renders the '✓ Scored' status pill for fully-scored rows", () => {
+  it("renders the 'status.scored' status pill for fully-scored rows", () => {
     render(
       <JumpToDrawer
         isOpen
@@ -112,12 +112,12 @@ describe("JumpToDrawer", () => {
         onClose={vi.fn()}
       />,
     );
-    expect(screen.getByText("✓ Scored")).toBeInTheDocument();
+    expect(screen.getByText("status.scored")).toBeInTheDocument();
     // The other two rows remain unscored.
-    expect(screen.getAllByText("Not scored yet").length).toBe(2);
+    expect(screen.getAllByText("status.unscored").length).toBe(2);
   });
 
-  it("renders the '👻 Missed' status pill for missed rows", () => {
+  it("renders the 'status.missed' status pill for missed rows", () => {
     render(
       <JumpToDrawer
         isOpen
@@ -130,7 +130,7 @@ describe("JumpToDrawer", () => {
         onClose={vi.fn()}
       />,
     );
-    expect(screen.getByText("👻 Missed")).toBeInTheDocument();
+    expect(screen.getByText("status.missed")).toBeInTheDocument();
   });
 
   it("highlights the current row with the muted background", () => {
@@ -186,7 +186,7 @@ describe("JumpToDrawer", () => {
         onClose={onClose}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /Close/i }));
+    fireEvent.click(screen.getByRole("button", { name: /closeAria/i }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
