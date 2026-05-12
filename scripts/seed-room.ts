@@ -253,6 +253,14 @@ interface SeedReport {
   url: string;
   notes: string[];
   ownerSession: { userId: string; rejoinToken: string };
+  /** Optional non-owner sessions, exposed by seeds that produce multiple
+   *  identifiable participants (e.g. multi-window E2E specs that need to
+   *  drive both an announcer + a watcher in parallel browser contexts). */
+  guestSessions?: Array<{
+    userId: string;
+    displayName: string;
+    rejoinToken: string;
+  }>;
 }
 
 async function seedLobbyWith3Guests(db: Db): Promise<SeedReport> {
@@ -595,6 +603,11 @@ async function seedAnnouncingMidQueueLive(db: Db): Promise<SeedReport> {
       userId: owner.userId,
       rejoinToken: owner.rejoinToken,
     },
+    guestSessions: guests.map((g) => ({
+      userId: g.userId,
+      displayName: g.displayName,
+      rejoinToken: g.rejoinToken,
+    })),
   };
 }
 
@@ -791,6 +804,13 @@ async function seedAnnouncingShortStyleLive(db: Db): Promise<SeedReport> {
       userId: owner.userId,
       rejoinToken: owner.rejoinToken,
     },
+    guestSessions: [
+      {
+        userId: guest.userId,
+        displayName: guest.displayName,
+        rejoinToken: guest.rejoinToken,
+      },
+    ],
   };
 }
 
@@ -893,12 +913,19 @@ async function main(): Promise<void> {
 
   if (args.json) {
     // Machine-readable output: one JSON line on stdout, everything else to stderr.
+    // Both flat keys (backward compat with existing specs) and nested ownerSession
+    // (used by multi-window specs) are emitted so all callers stay happy.
     process.stdout.write(
       JSON.stringify({
         roomId: report.roomId,
         pin: report.pin,
         ownerUserId: report.ownerSession.userId,
         ownerRejoinToken: report.ownerSession.rejoinToken,
+        ownerSession: {
+          userId: report.ownerSession.userId,
+          rejoinToken: report.ownerSession.rejoinToken,
+        },
+        ...(report.guestSessions ? { guestSessions: report.guestSessions } : {}),
       }) + "\n",
     );
     return;
