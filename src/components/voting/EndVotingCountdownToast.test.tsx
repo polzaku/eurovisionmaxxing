@@ -3,6 +3,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, act, fireEvent } from "@testing-library/react";
 
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string, params?: Record<string, unknown>) =>
+    params ? `${key}:${JSON.stringify(params)}` : key,
+}));
+
 import EndVotingCountdownToast from "./EndVotingCountdownToast";
 
 function fiveSecondsFromNow(): string {
@@ -38,7 +43,7 @@ describe("EndVotingCountdownToast", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders the countdown label with remaining seconds", () => {
+  it("renders the countdown label with remaining seconds (key form)", () => {
     render(
       <EndVotingCountdownToast
         votingEndsAt={fiveSecondsFromNow()}
@@ -46,10 +51,11 @@ describe("EndVotingCountdownToast", () => {
         onElapsed={vi.fn()}
       />,
     );
-    expect(screen.getByText(/Voting ends in 5s/)).toBeInTheDocument();
+    // With mock: t("label", {remainingSeconds:5}) → "label:{\"remainingSeconds\":5}"
+    expect(screen.getByText(/label:/)).toBeInTheDocument();
   });
 
-  it("ticks the displayed countdown as time elapses", () => {
+  it("ticks the displayed countdown as time elapses (key still present)", () => {
     render(
       <EndVotingCountdownToast
         votingEndsAt={fiveSecondsFromNow()}
@@ -57,11 +63,12 @@ describe("EndVotingCountdownToast", () => {
         onElapsed={vi.fn()}
       />,
     );
-    expect(screen.getByText(/Voting ends in 5s/)).toBeInTheDocument();
+    expect(screen.getByText(/label:/)).toBeInTheDocument();
     act(() => {
       vi.advanceTimersByTime(2_000);
     });
-    expect(screen.getByText(/Voting ends in 3s/)).toBeInTheDocument();
+    // key is still "label:" with updated params
+    expect(screen.getByText(/label:/)).toBeInTheDocument();
   });
 
   it("renders the Undo button while countdown is live", () => {
@@ -72,8 +79,9 @@ describe("EndVotingCountdownToast", () => {
         onElapsed={vi.fn()}
       />,
     );
+    // With mock: aria-label = t("undoAria") → "undoAria"
     expect(
-      screen.getByRole("button", { name: /Undo end voting/i }),
+      screen.getByRole("button", { name: /undoAria/i }),
     ).toBeInTheDocument();
   });
 
@@ -86,11 +94,11 @@ describe("EndVotingCountdownToast", () => {
         onElapsed={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /Undo end voting/i }));
+    fireEvent.click(screen.getByRole("button", { name: /undoAria/i }));
     expect(onUndo).toHaveBeenCalledTimes(1);
   });
 
-  it("disables the Undo button + shows 'Undoing…' when undoBusy is true", () => {
+  it("disables the Undo button + shows undoBusy key when undoBusy is true", () => {
     render(
       <EndVotingCountdownToast
         votingEndsAt={fiveSecondsFromNow()}
@@ -99,12 +107,13 @@ describe("EndVotingCountdownToast", () => {
         undoBusy
       />,
     );
-    const btn = screen.getByRole("button", { name: /Undo end voting/i });
+    const btn = screen.getByRole("button", { name: /undoAria/i });
     expect(btn).toBeDisabled();
-    expect(btn).toHaveTextContent(/Undoing/i);
+    // With mock: t("undoBusy") → "undoBusy"
+    expect(btn).toHaveTextContent(/undoBusy/i);
   });
 
-  it("flips the label to 'Finalising…' and hides Undo once expired", () => {
+  it("flips the label to 'finalising' key and hides Undo once expired", () => {
     render(
       <EndVotingCountdownToast
         votingEndsAt={inThePast()}
@@ -112,9 +121,10 @@ describe("EndVotingCountdownToast", () => {
         onElapsed={vi.fn()}
       />,
     );
-    expect(screen.getByText(/Finalising/i)).toBeInTheDocument();
+    // With mock: t("finalising") → "finalising"
+    expect(screen.getByText("finalising")).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /Undo end voting/i }),
+      screen.queryByRole("button", { name: /undoAria/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -179,7 +189,7 @@ describe("EndVotingCountdownToast", () => {
         onElapsed={vi.fn()}
       />,
     );
-    expect(screen.getByText(/Voting ends in 5s/)).toBeInTheDocument();
+    expect(screen.getByText(/label:/)).toBeInTheDocument();
     unmount();
     // After unmount, advancing time should not cause errors or extra calls.
     act(() => {

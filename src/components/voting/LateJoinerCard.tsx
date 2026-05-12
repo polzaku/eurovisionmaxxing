@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 export interface LateJoinerCardProps {
   onDismiss: () => void;
 }
@@ -10,6 +12,7 @@ export interface LateJoinerCardProps {
  * component is purely presentational.
  */
 export default function LateJoinerCard({ onDismiss }: LateJoinerCardProps) {
+  const t = useTranslations("voting.lateJoiner");
   return (
     <div
       role="status"
@@ -17,13 +20,12 @@ export default function LateJoinerCard({ onDismiss }: LateJoinerCardProps) {
       className="rounded-md border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-foreground flex items-start gap-3"
     >
       <p className="flex-1">
-        You joined mid-show. Catch up by scoring the songs you&rsquo;ve seen —
-        skip the rest, or mark them &ldquo;I missed this&rdquo;.
+        {t("body")}
       </p>
       <button
         type="button"
         onClick={onDismiss}
-        aria-label="Dismiss"
+        aria-label={t("dismissAria")}
         className="shrink-0 text-muted-foreground hover:text-foreground -m-1 p-1 leading-none"
       >
         ×

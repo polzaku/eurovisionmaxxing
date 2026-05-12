@@ -1,3 +1,7 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+
 export interface QueueOverflowBannerProps {
   visible: boolean;
 }
@@ -10,6 +14,7 @@ export interface QueueOverflowBannerProps {
 export default function QueueOverflowBanner({
   visible,
 }: QueueOverflowBannerProps) {
+  const t = useTranslations("voting.queue");
   if (!visible) return null;
   return (
     <div
@@ -17,7 +22,7 @@ export default function QueueOverflowBanner({
       aria-live="polite"
       className="sticky top-2 mx-4 z-10 rounded-lg border border-destructive/30 bg-destructive/10 text-destructive text-center px-4 py-2 text-sm font-medium backdrop-blur-sm"
     >
-      Too many offline changes — oldest may be lost. Reconnect to save.
+      {t("overflow")}
     </div>
   );
 }

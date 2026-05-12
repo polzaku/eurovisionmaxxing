@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import Button from "@/components/ui/Button";
 import { votingEndingTimer } from "@/lib/rooms/votingEndingTimer";
 
@@ -18,6 +19,7 @@ export default function EndVotingCountdownToast({
   onElapsed,
   undoBusy = false,
 }: EndVotingCountdownToastProps) {
+  const t = useTranslations("voting.endVoting.countdown");
   const [, setTick] = useState(0);
   const elapsedFiredRef = useRef(false);
 
@@ -50,8 +52,8 @@ export default function EndVotingCountdownToast({
     >
       <span>
         {expired
-          ? "Finalising…"
-          : `Voting ends in ${remainingSeconds}s`}
+          ? t("finalising")
+          : t("label", { remainingSeconds })}
       </span>
       {!expired ? (
         <Button
@@ -59,9 +61,9 @@ export default function EndVotingCountdownToast({
           size="sm"
           onClick={onUndo}
           disabled={undoBusy}
-          aria-label="Undo end voting"
+          aria-label={t("undoAria")}
         >
-          {undoBusy ? "Undoing…" : "Undo"}
+          {undoBusy ? t("undoBusy") : t("undo")}
         </Button>
       ) : null}
     </div>
