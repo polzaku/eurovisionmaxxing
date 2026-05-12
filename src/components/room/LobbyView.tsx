@@ -213,12 +213,11 @@ export default function LobbyView({
         {isAdmin && (
           <section className="text-center space-y-1">
             <p className="text-xs uppercase tracking-widest text-primary">
-              Host lobby
+              {t("lobby.hostEyebrow")}
             </p>
-            <h1 className="text-2xl font-bold">You&rsquo;re the host</h1>
+            <h1 className="text-2xl font-bold">{t("lobby.hostHeading")}</h1>
             <p className="text-sm text-muted-foreground">
-              Share the PIN or QR with your guests, then start voting once
-              everyone&rsquo;s in.
+              {t("lobby.hostSubheading")}
             </p>
           </section>
         )}
@@ -239,7 +238,7 @@ export default function LobbyView({
 
         <section className="text-center space-y-2">
           <p className="text-xs uppercase tracking-widest text-muted-foreground">
-            Room PIN
+            {t("lobby.roomPinLabel")}
           </p>
           <div className="flex items-center justify-center gap-3">
             <span className="text-4xl font-mono font-bold tracking-[0.5em]">
@@ -251,10 +250,10 @@ export default function LobbyView({
                 onCopyPin();
                 markPinCopied();
               }}
-              aria-label="Copy PIN"
+              aria-label={t("lobby.roomPinLabel")}
               className="text-sm text-muted-foreground hover:text-foreground"
             >
-              {pinCopied ? "Copied!" : "Copy"}
+              {pinCopied ? t("lobby.pinCopied") : t("lobby.copyPin")}
             </button>
           </div>
         </section>
@@ -262,13 +261,13 @@ export default function LobbyView({
         {isAdmin && (
           <>
             <section className="flex flex-col items-center gap-2">
-              <QrCode url={shareUrl} size={256} alt="Scan to join this room" />
-              <p className="text-xs text-muted-foreground">Scan to join</p>
+              <QrCode url={shareUrl} size={256} alt={t("lobby.scanToJoin")} />
+              <p className="text-xs text-muted-foreground">{t("lobby.scanToJoin")}</p>
             </section>
 
             <section className="space-y-2">
               <p className="text-xs uppercase tracking-widest text-muted-foreground">
-                Share link
+                {t("lobby.shareLinkLabel")}
               </p>
               <div className="flex items-center gap-2 rounded-lg border-2 border-border bg-card px-3 py-2">
                 <input
@@ -284,10 +283,10 @@ export default function LobbyView({
                     onCopyLink();
                     markLinkCopied();
                   }}
-                  aria-label="Copy share link"
+                  aria-label={t("lobby.shareLinkLabel")}
                   className="text-sm text-muted-foreground hover:text-foreground"
                 >
-                  {linkCopied ? "Copied!" : "Copy"}
+                  {linkCopied ? t("lobby.linkCopied") : t("lobby.copyLink")}
                 </button>
               </div>
             </section>
@@ -301,10 +300,10 @@ export default function LobbyView({
                 className="block w-full rounded-lg border-2 border-border bg-card px-4 py-3 text-center text-sm font-medium hover:border-accent hover:bg-card/80 transition-colors"
               >
                 <span aria-hidden className="mr-2">📺</span>
-                Open present view on TV
+                {t("lobby.openPresentView")}
               </a>
               <p className="text-xs text-muted-foreground text-center">
-                Mirror this tab to your TV, or AirPlay it.
+                {t("lobby.openPresentSubtext")}
               </p>
             </section>
           </>
@@ -324,7 +323,7 @@ export default function LobbyView({
             data-testid="lobby-template-picker"
           >
             <p className="text-xs uppercase tracking-widest text-muted-foreground">
-              Voting template
+              {t("lobby.votingTemplateLabel")}
             </p>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               {PREDEFINED_TEMPLATES.map((tpl) => {
@@ -344,7 +343,7 @@ export default function LobbyView({
                   >
                     <span className="block font-medium">{tpl.name}</span>
                     <span className="block text-xs text-muted-foreground">
-                      {tpl.categories.length} categories
+                      {t("lobby.templateCategoryCount", { count: tpl.categories.length })}
                     </span>
                   </button>
                 );
@@ -352,8 +351,8 @@ export default function LobbyView({
             </div>
             <p className="text-xs text-muted-foreground">
               {selectedTemplateId === null
-                ? "Custom categories — pick a template to swap, or keep the current set."
-                : "Switch any time before voting starts."}
+                ? t("lobby.templateCustomNote")
+                : t("lobby.templateSwitchNote")}
             </p>
           </section>
         ) : null}
@@ -364,12 +363,12 @@ export default function LobbyView({
             data-testid="lobby-announcement-mode-toggle"
           >
             <p className="text-xs uppercase tracking-widest text-muted-foreground">
-              Announcement mode
+              {t("lobby.announcementModeLabel")}
             </p>
             <div className="grid grid-cols-2 gap-2">
               {(["live", "instant"] as const).map((m) => {
                 const selected = m === announcementMode;
-                const label = m === "live" ? "Live" : "Instant";
+                const label = m === "live" ? t("lobby.modeLive") : t("lobby.modeInstant");
                 return (
                   <button
                     key={m}
@@ -389,7 +388,7 @@ export default function LobbyView({
               })}
             </div>
             <p className="text-xs text-muted-foreground">
-              Switch any time before voting starts. Year and event are locked.
+              {t("lobby.modeSwitchNote")}
             </p>
           </section>
         ) : null}
@@ -413,7 +412,7 @@ export default function LobbyView({
 
         <section className="space-y-3">
           <h2 className="text-sm uppercase tracking-wider text-muted-foreground">
-            Who&rsquo;s here ({memberships.length})
+            {t("lobby.whoIsHere", { count: memberships.length })}
           </h2>
           <div className="grid grid-cols-3 gap-4">
             {memberships.map((m) => {
@@ -466,12 +465,11 @@ export default function LobbyView({
                 className="w-full"
               >
                 {startVotingState.kind === "submitting"
-                  ? "Starting…"
-                  : "Start voting"}
+                  ? t("lobby.startVotingBusy")
+                  : t("lobby.startVoting")}
               </Button>
               <p className="text-center text-xs text-muted-foreground">
-                Starts voting for everyone in the room — wait until your guests
-                are here.
+                {t("lobby.startVotingHelper")}
               </p>
               {startVotingState.kind === "error" && (
                 <p role="alert" className="text-sm text-destructive text-center">
@@ -481,7 +479,7 @@ export default function LobbyView({
             </>
           ) : (
             <p className="text-center text-muted-foreground text-sm">
-              Waiting for the host to start voting&hellip;
+              {t("lobby.waitingForHost")}
             </p>
           )}
         </section>

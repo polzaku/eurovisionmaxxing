@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import { useTranslations } from "next-intl";
 
 export interface CategoryPreviewItem {
   name: string;
@@ -25,6 +26,7 @@ interface CategoriesPreviewProps {
 export default function CategoriesPreview({
   categories,
 }: CategoriesPreviewProps) {
+  const t = useTranslations();
   const [open, setOpen] = useState<string | null>(null);
   const calloutId = useId();
 
@@ -38,11 +40,11 @@ export default function CategoriesPreview({
     <section className="space-y-2">
       <div className="flex items-baseline justify-between gap-2">
         <h2 className="text-sm uppercase tracking-wider text-muted-foreground">
-          You&rsquo;ll be rating
+          {t("lobby.youllBeRating")}
         </h2>
         {anyHintAvailable && (
           <p className="text-xs text-muted-foreground">
-            Tap for details
+            {t("lobby.tapForDetails")}
           </p>
         )}
       </div>

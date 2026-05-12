@@ -148,34 +148,35 @@ describe("<LobbyView>", () => {
   it("hides Start-voting CTA for non-admin guests and shows waiting copy", () => {
     renderLobby({ isAdmin: false });
     expect(
-      screen.queryByRole("button", { name: /start voting/i }),
+      screen.queryByRole("button", { name: /lobby\.startVoting/i }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText(/waiting for the host to start voting/i),
+      screen.getByText(/lobby\.waitingForHost/i),
     ).toBeInTheDocument();
   });
 
   it("fires onCopyPin and shows transient 'Copied!' label", async () => {
     const { onCopyPin } = renderLobby({ isAdmin: true });
-    const pinCopyBtn = screen.getByRole("button", { name: /copy pin/i });
+    // aria-label is now lobby.roomPinLabel (the i18n key via mock)
+    const pinCopyBtn = screen.getByRole("button", { name: /lobby\.roomPinLabel/i });
     await userEvent.click(pinCopyBtn);
     expect(onCopyPin).toHaveBeenCalledTimes(1);
-    expect(pinCopyBtn).toHaveTextContent(/copied!/i);
+    expect(pinCopyBtn).toHaveTextContent(/lobby\.pinCopied/i);
   });
 
   it("fires onCopyLink and shows transient 'Copied!' label", async () => {
     const { onCopyLink } = renderLobby({ isAdmin: true });
     const linkCopyBtn = screen.getByRole("button", {
-      name: /copy share link/i,
+      name: /lobby\.shareLinkLabel/i,
     });
     await userEvent.click(linkCopyBtn);
     expect(onCopyLink).toHaveBeenCalledTimes(1);
-    expect(linkCopyBtn).toHaveTextContent(/copied!/i);
+    expect(linkCopyBtn).toHaveTextContent(/lobby\.linkCopied/i);
   });
 
   it("fires onStartVoting when admin taps the CTA", async () => {
     const { onStartVoting } = renderLobby({ isAdmin: true });
-    await userEvent.click(screen.getByRole("button", { name: /start voting/i }));
+    await userEvent.click(screen.getByRole("button", { name: /lobby\.startVoting$/i }));
     expect(onStartVoting).toHaveBeenCalledTimes(1);
   });
 
@@ -184,7 +185,7 @@ describe("<LobbyView>", () => {
       isAdmin: true,
       startVotingState: { kind: "submitting" },
     });
-    const cta = screen.getByRole("button", { name: /starting…/i });
+    const cta = screen.getByRole("button", { name: /lobby\.startVotingBusy/i });
     expect(cta).toBeDisabled();
   });
 
@@ -199,24 +200,24 @@ describe("<LobbyView>", () => {
 
   it("shows a host-only header + start-button helper so admins don't accidentally start voting", () => {
     renderLobby({ isAdmin: true });
-    expect(screen.getByRole("heading", { name: /you.?re the host/i })).toBeInTheDocument();
-    expect(screen.getByText(/host lobby/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /lobby\.hostHeading/i })).toBeInTheDocument();
+    expect(screen.getByText(/lobby\.hostEyebrow/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/share the pin or qr with your guests/i),
+      screen.getByText(/lobby\.hostSubheading/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/starts voting for everyone in the room/i),
+      screen.getByText(/lobby\.startVotingHelper/i),
     ).toBeInTheDocument();
   });
 
   it("hides the host-only header and helper from non-admin guests", () => {
     renderLobby({ isAdmin: false });
     expect(
-      screen.queryByRole("heading", { name: /you.?re the host/i }),
+      screen.queryByRole("heading", { name: /lobby\.hostHeading/i }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText(/host lobby/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/lobby\.hostEyebrow/i)).not.toBeInTheDocument();
     expect(
-      screen.queryByText(/starts voting for everyone in the room/i),
+      screen.queryByText(/lobby\.startVotingHelper/i),
     ).not.toBeInTheDocument();
   });
 
@@ -266,11 +267,11 @@ describe("<LobbyView>", () => {
     expect(
       screen.getByTestId("lobby-announcement-mode-toggle"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Live" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "lobby.modeLive" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
-    expect(screen.getByRole("button", { name: "Instant" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "lobby.modeInstant" })).toHaveAttribute(
       "aria-pressed",
       "false",
     );
@@ -314,7 +315,7 @@ describe("<LobbyView>", () => {
       announcementMode: "instant",
       onChangeAnnouncementMode: onChange,
     });
-    const instantBtn = screen.getByRole("button", { name: "Instant" });
+    const instantBtn = screen.getByRole("button", { name: "lobby.modeInstant" });
     expect(instantBtn).toBeDisabled();
   });
 
@@ -326,7 +327,7 @@ describe("<LobbyView>", () => {
       announcementMode: "live",
       onChangeAnnouncementMode: onChange,
     });
-    await user.click(screen.getByRole("button", { name: "Instant" }));
+    await user.click(screen.getByRole("button", { name: "lobby.modeInstant" }));
     expect(onChange).toHaveBeenCalledWith("instant");
   });
 
@@ -386,7 +387,7 @@ describe("<LobbyView>", () => {
       onChangeCategories: vi.fn().mockResolvedValue(undefined),
     });
     expect(
-      screen.getByText(/Custom categories/i),
+      screen.getByText(/lobby\.templateCustomNote/i),
     ).toBeInTheDocument();
   });
 
