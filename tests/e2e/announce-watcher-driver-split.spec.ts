@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import {
   ROOM_ID,
   OWNER_ID,
+  GUEST_ID,
   ROOM_PAYLOAD,
   ANNOUNCING_RESULTS_DRIVER,
 } from "./fixtures/announce-l1-room";
@@ -143,6 +144,63 @@ test.describe("L1 active driver surface — single window", () => {
       await expect(row).toHaveAttribute("data-density", "driver");
     }
   });
+
+  test("guest watcher renders watcher-density leaderboard rows + no StillToGiveLine", async ({
+    page,
+  }) => {
+    // Same API stubs as the driver tests — the announcement state still has
+    // announcingUserId === OWNER_ID. But we seed the session as GUEST_ID,
+    // so isActiveDriver is false → surface === "watcher".
+    await page.route(`**/api/rooms/${ROOM_ID}*`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(ROOM_PAYLOAD),
+      });
+    });
+    await page.route(`**/api/results/${ROOM_ID}*`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(ANNOUNCING_RESULTS_DRIVER),
+      });
+    });
+
+    await page.addInitScript(
+      ({ userId, displayName, seed }) => {
+        const session = {
+          userId,
+          rejoinToken: "stub-rejoin-token",
+          displayName,
+          avatarSeed: seed,
+          expiresAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
+        };
+        window.localStorage.setItem("emx_session", JSON.stringify(session));
+      },
+      {
+        userId: GUEST_ID,
+        displayName: "Bob",
+        seed: "bob",
+      },
+    );
+
+    await page.goto(`/room/${ROOM_ID}`);
+
+    await expect(page.getByTestId("leaderboard-row").first()).toBeVisible({
+      timeout: 15_000,
+    });
+
+    const rows = await page.getByTestId("leaderboard-row").all();
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      await expect(row).toHaveAttribute("data-density", "watcher");
+    }
+
+    // Watchers never see the StillToGiveLine — it's gated on isActiveDriver
+    // && announcementStyle === "full" && queueLength === 10. Without the
+    // active-driver half, the line stays out of the DOM.
+    await expect(page.getByTestId("still-to-give-line")).toHaveCount(0);
+  });
 });
 
 // ─── Block 2: multi-window watcher-vs-driver matrix (SKIPPED) ────────────────
@@ -190,22 +248,5 @@ test.describe.skip("L1 watcher vs driver matrix — multi-window scenarios", () 
     // announcementStyle === 'full'.
     // Missing infra: multi-context Realtime subscription.
     test.fixme(true, "Requires multi-window broadcast capture infra");
-  });
-
-  test("watcher surface renders leaderboard rows with data-density='watcher'", async ({
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    page,
-  }) => {
-    // Guest session (GUEST_ID !== OWNER_ID/announcingUserId) → isActiveDriver
-    // is false → surface === "watcher" → LeaderboardRow data-density="watcher".
-    // This requires the /api/results route to return a live announcement so
-    // the leaderboard renders; with stubbed APIs this should be single-window
-    // testable but the LeaderboardRow only populates after the on-mount
-    // /api/results fetch returns, so it needs a real Supabase endpoint or the
-    // same page.route() stub used in Block 1 — promote to Block 1 when ready.
-    test.fixme(
-      true,
-      "Promote to Block 1 once guest-session page.route() path is verified",
-    );
   });
 });
