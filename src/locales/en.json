@@ -344,7 +344,11 @@
       "reshuffleErrorInProgress": "Cannot reshuffle after announcing has started.",
       "reshuffleErrorGeneric": "Failed to reshuffle announcer order. Please try again."
     },
-    "fallbackAnnouncerName": "Someone"
+    "fallbackAnnouncerName": "Someone",
+    "stillToGive": {
+      "label": "Still to give:",
+      "aria": "Remaining points to award: {remaining}"
+    }
   },
   "announce": {
     "skipBanner": {
@@ -362,9 +366,9 @@
       "cta": "Reveal 12 points",
       "ctaMicrocopy": "Tap when you say it",
       "revealed": "Revealed ✓",
-      "awaitingTwelve": "Awaiting their 12 points…",
-      "guestToast": "{name} gave 12 to {country} {flag}"
-    }
+      "awaitingTwelve": "Awaiting their 12 points…"
+    },
+    "revealToast": "{name} gave {points} to {flag} {country}"
   },
   "results": {
     "title": "Results",

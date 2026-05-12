@@ -344,7 +344,11 @@
       "reshuffleErrorInProgress": "Reihenfolge kann nach Ansage-Start nicht mehr geändert werden.",
       "reshuffleErrorGeneric": "Ansage-Reihenfolge konnte nicht neu gemischt werden. Versuch es nochmal."
     },
-    "fallbackAnnouncerName": "Jemand"
+    "fallbackAnnouncerName": "Jemand",
+    "stillToGive": {
+      "label": "Noch zu vergeben:",
+      "aria": "Verbleibende Punkte: {remaining}"
+    }
   },
   "announce": {
     "skipBanner": {
@@ -362,9 +366,9 @@
       "cta": "12 Punkte enthüllen",
       "ctaMicrocopy": "Tippen wenn du es sagst",
       "revealed": "Enthüllt ✓",
-      "awaitingTwelve": "Warte auf ihre 12 Punkte…",
-      "guestToast": "{name} gab 12 Punkte an {country} {flag}"
-    }
+      "awaitingTwelve": "Warte auf ihre 12 Punkte…"
+    },
+    "revealToast": "{name} gab {points} Punkte an {flag} {country}"
   },
   "results": {
     "title": "Ergebnisse",

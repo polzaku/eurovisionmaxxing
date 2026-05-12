@@ -344,7 +344,11 @@
       "reshuffleErrorInProgress": "Не можна перетасувати після початку оголошення.",
       "reshuffleErrorGeneric": "Не вдалося перетасувати порядок ведучих. Спробуй ще раз."
     },
-    "fallbackAnnouncerName": "Хтось"
+    "fallbackAnnouncerName": "Хтось",
+    "stillToGive": {
+      "label": "Ще треба дати:",
+      "aria": "Бали, які ще треба роздати: {remaining}"
+    }
   },
   "announce": {
     "skipBanner": {
@@ -362,9 +366,9 @@
       "cta": "Показати 12 балів",
       "ctaMicrocopy": "Натисни, коли оголосиш",
       "revealed": "Оголошено ✓",
-      "awaitingTwelve": "Чекаємо на їхні 12 балів…",
-      "guestToast": "{name} віддав(ла) 12 балів {country} {flag}"
-    }
+      "awaitingTwelve": "Чекаємо на їхні 12 балів…"
+    },
+    "revealToast": "{name} віддав(ла) {points} балів {flag} {country}"
   },
   "results": {
     "title": "Результати",
