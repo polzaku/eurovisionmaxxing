@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import Button from "@/components/ui/Button";
 
 export interface EndVotingModalProps {
@@ -17,6 +18,7 @@ export default function EndVotingModal({
   onConfirm,
   onCancel,
 }: EndVotingModalProps) {
+  const t = useTranslations();
   if (!isOpen) return null;
   return (
     <div
@@ -30,11 +32,10 @@ export default function EndVotingModal({
           id="end-voting-modal-title"
           className="text-lg font-bold text-foreground"
         >
-          End voting?
+          {t("voting.endVoting.modal.title")}
         </h2>
         <p className="text-sm text-muted-foreground">
-          Tapping <span className="font-semibold">End voting</span> starts a 5-second countdown.
-          You can tap <span className="font-semibold">Undo</span> during the countdown to cancel.
+          {t("voting.endVoting.modal.body")}
         </p>
         {errorMessage ? (
           <p
@@ -46,7 +47,7 @@ export default function EndVotingModal({
         ) : null}
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="ghost" size="sm" onClick={onCancel} disabled={busy}>
-            Cancel
+            {t("voting.endVoting.modal.cancel")}
           </Button>
           <Button
             variant="destructive"
@@ -54,7 +55,7 @@ export default function EndVotingModal({
             onClick={onConfirm}
             disabled={busy}
           >
-            {busy ? "Ending…" : "End voting"}
+            {busy ? t("voting.endVoting.modal.busy") : t("voting.endVoting.modal.confirm")}
           </Button>
         </div>
       </div>

@@ -313,7 +313,7 @@ export default function VotingView({
     return (
       <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
         <p role="alert" className="text-sm text-destructive text-center max-w-md">
-          No voting categories configured — ask the host to check the room setup.
+          {t("voting.errors.noCategories")}
         </p>
       </main>
     );
@@ -322,7 +322,7 @@ export default function VotingView({
     return (
       <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
         <p role="alert" className="text-sm text-destructive text-center max-w-md">
-          No contestants for this event.
+          {t("voting.errors.noContestants")}
         </p>
       </main>
     );
@@ -378,9 +378,9 @@ export default function VotingView({
                 variant="destructive"
                 size="sm"
                 onClick={onEndVoting}
-                aria-label="End voting"
+                aria-label={t("voting.endVoting.buttonAria")}
               >
-                End voting
+                {t("voting.endVoting.button")}
               </Button>
             ) : null}
             <button
@@ -409,10 +409,10 @@ export default function VotingView({
                 className="w-24 h-1.5 overflow-hidden rounded-full [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:bg-primary [&::-moz-progress-bar]:bg-primary"
                 max={totalContestants}
                 value={fullyScoredCount}
-                aria-label={`${fullyScoredCount} of ${totalContestants} contestants fully scored`}
+                aria-label={t("voting.progress.ariaLabel", { fullyScoredCount, totalContestants })}
               />
               <span className="text-xs text-muted-foreground">
-                {fullyScoredCount} scored
+                {fullyScoredCount} {t("voting.progress.scoredLabel")}
               </span>
             </div>
           </div>
@@ -473,43 +473,43 @@ export default function VotingView({
             size="sm"
             onClick={() => { hintExpansion.onNavigated(); setIdx((i) => Math.max(0, i - 1)); }}
             disabled={!canPrev}
-            aria-label="Previous contestant"
+            aria-label={t("voting.nav.prevAria")}
             className="flex flex-col items-center gap-0.5 py-2 leading-tight"
           >
             <span aria-hidden="true" className="text-base">←</span>
-            <span className="text-[10px]">Prev</span>
+            <span className="text-[10px]">{t("voting.nav.prevLabel")}</span>
           </Button>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => handleMarkMissed(contestant.id)}
             disabled={isMissed}
-            aria-label="Mark this contestant as missed"
+            aria-label={t("voting.missed.buttonAria")}
             className="flex flex-col items-center gap-0.5 py-2 leading-tight"
           >
             <span aria-hidden="true" className="text-base">👻</span>
-            <span className="text-[10px]">Missed</span>
+            <span className="text-[10px]">{t("voting.nav.missedLabel")}</span>
           </Button>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setIsDrawerOpen(true)}
-            aria-label="Jump to a contestant"
+            aria-label={t("voting.jumpTo.footerButtonAria")}
             className="flex flex-col items-center gap-0.5 py-2 leading-tight"
           >
             <span aria-hidden="true" className="text-base">☰</span>
-            <span className="text-[10px]">Jump to</span>
+            <span className="text-[10px]">{t("voting.jumpTo.footerButton")}</span>
           </Button>
           <Button
             variant="secondary"
             size="sm"
             onClick={() => { hintExpansion.onNavigated(); setIdx((i) => Math.min(totalContestants - 1, i + 1)); }}
             disabled={!canNext}
-            aria-label="Next contestant"
+            aria-label={t("voting.nav.nextAria")}
             className="flex flex-col items-center gap-0.5 py-2 leading-tight"
           >
             <span aria-hidden="true" className="text-base">→</span>
-            <span className="text-[10px]">Next</span>
+            <span className="text-[10px]">{t("voting.nav.nextLabel")}</span>
           </Button>
         </nav>
 
