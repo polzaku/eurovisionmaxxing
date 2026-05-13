@@ -148,26 +148,51 @@ export default function CreateRoomPage() {
     };
   }, [year, event]);
 
+  const isCustomValid = useCallback((rows: string[]): boolean => {
+    if (rows.length < 1 || rows.length > 8) return false;
+    const trimmed = rows.map((r) => r.trim().toLowerCase());
+    if (new Set(trimmed).size !== trimmed.length) return false;
+    return rows.every((r) =>
+      /^[A-Za-z0-9 \-]{2,24}$/.test(r.trim()),
+    );
+  }, []);
+
   const handleSubmit = useCallback(async () => {
     const session = getSession();
     if (!session) {
       router.replace("/onboard?next=/create");
       return;
     }
-    const template = VOTING_TEMPLATES.find((t) => t.id === templateId);
-    if (!template) {
-      setSubmitState({
-        kind: "error",
-        message: mapCreateError("INVALID_CATEGORIES"),
-      });
-      return;
+    let categories;
+    if (templateId === "custom") {
+      if (!isCustomValid(customCategories)) {
+        setSubmitState({
+          kind: "error",
+          message: mapCreateError("INVALID_CATEGORIES"),
+        });
+        return;
+      }
+      categories = customCategories.map((name) => ({
+        name: name.trim(),
+        weight: 1,
+      }));
+    } else {
+      const template = VOTING_TEMPLATES.find((t) => t.id === templateId);
+      if (!template) {
+        setSubmitState({
+          kind: "error",
+          message: mapCreateError("INVALID_CATEGORIES"),
+        });
+        return;
+      }
+      categories = template.categories;
     }
     setSubmitState({ kind: "submitting" });
     const result = await createRoomApi(
       {
         year,
         event,
-        categories: template.categories,
+        categories,
         announcementMode,
         announcementStyle,
         allowNowPerforming,
@@ -189,6 +214,8 @@ export default function CreateRoomPage() {
     year,
     event,
     templateId,
+    customCategories,
+    isCustomValid,
     announcementMode,
     announcementStyle,
     allowNowPerforming,
