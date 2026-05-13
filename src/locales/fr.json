@@ -259,6 +259,54 @@
     "INVALID_TOKEN": "Ta session a expiré. Rejoins à nouveau.",
     "INTERNAL_ERROR": "Quelque chose s'est mal passé de notre côté. Réessaie."
   },
+  "export": {
+    "title": "Eurovision {year} {event} — Room {pin}",
+    "header": {
+      "generatedAt": "Generated {timestamp}"
+    },
+    "leaderboard": {
+      "heading": "Leaderboard",
+      "rank": "#",
+      "country": "Country",
+      "song": "Song · Artist",
+      "points": "Points",
+      "voter": "Voter"
+    },
+    "contestantDrillDown": {
+      "heading": "Who voted for {country}?",
+      "voter": "Voter",
+      "weightedScore": "Weighted {value}",
+      "points": "Points",
+      "missed": "Missed",
+      "edited": "(edited)"
+    },
+    "participantDrillDown": {
+      "heading": "{name}'s full vote",
+      "weightedScore": "Weighted {value}",
+      "missed": "Missed"
+    },
+    "categoryDrillDown": {
+      "heading": "Full {category} ranking",
+      "mean": "Mean {value}",
+      "voters": "{voted}/{total} voted"
+    },
+    "breakdowns": {
+      "heading": "Per-voter breakdowns",
+      "topPick": "{name}'s 12 points went to {country}"
+    },
+    "awards": {
+      "heading": "Awards",
+      "winner": "Winner",
+      "jointWinners": "Joint winners",
+      "empty": "No awards computed."
+    },
+    "hotTakes": {
+      "heading": "Hot takes",
+      "empty": "No hot takes saved this round.",
+      "edited": "(edited)"
+    },
+    "footer": "Generated {timestamp} · {hostname}/results/{roomId}"
+  },
   "announcing": {
     "noAnnouncer": "En attente d'un annonceur…",
     "title": "Annonce en direct",
