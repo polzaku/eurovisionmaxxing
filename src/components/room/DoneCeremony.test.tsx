@@ -167,4 +167,67 @@ describe("DoneCeremony", () => {
       }),
     ).toBeInTheDocument();
   });
+
+  it("defers phase transition when LeaderboardCeremony settles before data arrives", async () => {
+    // Block the fetch until we explicitly resolve it. This recreates the
+    // race the spec describes: LeaderboardCeremony fires onAfterSettle()
+    // synchronously (sessionRevealedFlag mock returns true), but the
+    // /api/results fetch hasn't returned yet, so `data` is still null.
+    let resolveFetch!: (value: unknown) => void;
+    const pendingFetch = new Promise((res) => {
+      resolveFetch = res;
+    });
+    globalThis.fetch = vi.fn(
+      async () =>
+        ({
+          ok: true,
+          json: async () => {
+            await pendingFetch;
+            return FIXTURE;
+          },
+        }) as unknown as Response,
+    ) as unknown as typeof fetch;
+
+    render(
+      <DoneCeremony
+        roomId="r"
+        isAdmin={false}
+        categories={[{ name: "Vocals", weight: 1 }]}
+      />,
+    );
+
+    // After mount, LeaderboardCeremony settles synchronously (replay-skip
+    // path). But data is still pending, so the phase MUST remain on the
+    // leaderboard view — awards-section copy must NOT appear yet.
+    await flushMicrotasks();
+    expect(screen.queryByText("Best Vocals")).not.toBeInTheDocument();
+
+    // Now resolve the fetch. The data + sequence land, the deferred
+    // useEffect fires, and the phase advances to awards.
+    resolveFetch(undefined);
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    expect(await screen.findByText("Best Vocals")).toBeInTheDocument();
+  });
+
+  it("transitions immediately when data arrives before LeaderboardCeremony settles", async () => {
+    // Happy path: fetch resolves fast (mocked synchronously). Existing
+    // 'walks leaderboard → awards → ctas' test already covers this — but
+    // we re-pin it explicitly here to guard against the deferred-
+    // transition useEffect mis-firing when both signals are already
+    // present at the same render tick.
+    mockFetch();
+    render(
+      <DoneCeremony
+        roomId="r"
+        isAdmin={false}
+        categories={[{ name: "Vocals", weight: 1 }]}
+      />,
+    );
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    expect(await screen.findByText("Best Vocals")).toBeInTheDocument();
+  });
 });

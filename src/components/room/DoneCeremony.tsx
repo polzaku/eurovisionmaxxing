@@ -49,6 +49,14 @@ export default function DoneCeremony({
   const [data, setData] = useState<DoneFixture | null>(null);
   const [phase, setPhase] = useState<Phase>("leaderboard");
   const [viewerUserId, setViewerUserId] = useState<string | null>(null);
+  /**
+   * Two-signal coordination: <LeaderboardCeremony>'s onAfterSettle fires
+   * synchronously when its replay-skip flag is set, but our `data` fetch
+   * may not have resolved yet. Flipping `settled` here keeps the
+   * transition deferred until both signals are present (see the effect
+   * below).
+   */
+  const [settled, setSettled] = useState(false);
 
   useEffect(() => {
     setViewerUserId(getSession()?.userId ?? null);
@@ -108,13 +116,25 @@ export default function DoneCeremony({
     });
   }, [data, shareUrl, t]);
 
+  // Phase transition gate. Both halves of the race must complete before
+  // we leave the leaderboard phase:
+  //   1. <LeaderboardCeremony> has finished its cinematic and flipped `settled`.
+  //   2. The /api/results fetch has populated `data` (and therefore `sequence`).
+  // Without this gate, an instant LeaderboardCeremony settle (e.g. the
+  // replay-skip flag is set) races the fetch and fast-forwards to "ctas"
+  // with sequence === [], silently skipping every awards card.
+  useEffect(() => {
+    if (!settled) return;
+    if (phase !== "leaderboard") return;
+    if (!data) return;
+    setPhase(sequence.length === 0 ? "ctas" : "awards");
+  }, [settled, data, sequence, phase]);
+
   if (phase === "leaderboard") {
     return (
       <LeaderboardCeremony
         roomId={roomId}
-        onAfterSettle={() =>
-          setPhase(sequence.length === 0 ? "ctas" : "awards")
-        }
+        onAfterSettle={() => setSettled(true)}
       />
     );
   }
