@@ -10,15 +10,21 @@ import { _resetCache } from "@/lib/export/dicebearInline";
 type DonePayload = Extract<ResultsData, { status: "done" }>;
 
 function makeT(prefix = "en"): BuildResultsHtmlDeps["t"] {
+  // Mirrors next-intl's namespace-scoped translator: getTranslations({
+  // namespace: "export" }) returns a t() that auto-prefixes every key with
+  // "export." when resolving messages. Callers in buildResultsHtml therefore
+  // pass bare keys (t("leaderboard.heading")) and assertions in this file
+  // check the fully-resolved "{prefix}:export.leaderboard.heading".
   return (key, params) => {
+    const fullKey = `export.${key}`;
     if (params && Object.keys(params).length) {
       const rendered = Object.entries(params).reduce(
         (s, [k, v]) => s.replace(`{${k}}`, String(v)),
-        key,
+        fullKey,
       );
       return `${prefix}:${rendered}`;
     }
-    return `${prefix}:${key}`;
+    return `${prefix}:${fullKey}`;
   };
 }
 

@@ -32,9 +32,9 @@ function buildFilename(year: number, event: string, pin: string): string {
 
 function renderHeader(data: DonePayload, t: BuildResultsHtmlDeps["t"], now: Date): string {
   return `<header><h1>${escapeHtml(
-    t("export.title", { year: data.year, event: data.event, pin: data.pin }),
+    t("title", { year: data.year, event: data.event, pin: data.pin }),
   )}</h1><p class="meta">${escapeHtml(
-    t("export.header.generatedAt", { timestamp: now.toISOString() }),
+    t("header.generatedAt", { timestamp: now.toISOString() }),
   )}</p></header>`;
 }
 
@@ -53,13 +53,13 @@ function renderLeaderboard(data: DonePayload, t: BuildResultsHtmlDeps["t"]): str
       const drill = drillByContestant.get(row.contestantId);
       const drillSection = drill
         ? `<tr><td colspan="4"><details><summary>${escapeHtml(
-            t("export.contestantDrillDown.heading", { country: c.country }),
+            t("contestantDrillDown.heading", { country: c.country }),
           )}</summary><table><thead><tr><th>${escapeHtml(
-            t("export.contestantDrillDown.voter"),
+            t("contestantDrillDown.voter"),
           )}</th><th>${escapeHtml(
-            t("export.contestantDrillDown.weightedScore", { value: "" }).replace(/\s*$/, ""),
+            t("contestantDrillDown.weightedScore", { value: "" }).replace(/\s*$/, ""),
           )}</th><th>${escapeHtml(
-            t("export.contestantDrillDown.points"),
+            t("contestantDrillDown.points"),
           )}</th></tr></thead><tbody>${drill.gives
             .map((g) => {
               const detail = data.voteDetails.find(
@@ -89,19 +89,19 @@ function renderLeaderboard(data: DonePayload, t: BuildResultsHtmlDeps["t"]): str
     .join("");
 
   return `<section class="leaderboard"><h2>${escapeHtml(
-    t("export.leaderboard.heading"),
-  )}</h2><table><thead><tr><th>${escapeHtml(t("export.leaderboard.rank"))}</th><th>${escapeHtml(
-    t("export.leaderboard.country"),
-  )}</th><th>${escapeHtml(t("export.leaderboard.song"))}</th><th>${escapeHtml(
-    t("export.leaderboard.points"),
+    t("leaderboard.heading"),
+  )}</h2><table><thead><tr><th>${escapeHtml(t("leaderboard.rank"))}</th><th>${escapeHtml(
+    t("leaderboard.country"),
+  )}</th><th>${escapeHtml(t("leaderboard.song"))}</th><th>${escapeHtml(
+    t("leaderboard.points"),
   )}</th></tr></thead><tbody>${rows}</tbody></table></section>`;
 }
 
 function renderAwards(data: DonePayload, t: BuildResultsHtmlDeps["t"]): string {
   if (data.awards.length === 0) {
     return `<section class="awards"><h2>${escapeHtml(
-      t("export.awards.heading"),
-    )}</h2><p>${escapeHtml(t("export.awards.empty"))}</p></section>`;
+      t("awards.heading"),
+    )}</h2><p>${escapeHtml(t("awards.empty"))}</p></section>`;
   }
   const memberById = new Map(data.members.map((m) => [m.userId, m]));
   const contestantById = new Map(data.contestants.map((c) => [c.id, c]));
@@ -115,7 +115,7 @@ function renderAwards(data: DonePayload, t: BuildResultsHtmlDeps["t"]): string {
       const winnerLabel = winnerMember
         ? partner
           ? `${escapeHtml(
-              t("export.awards.jointWinners"),
+              t("awards.jointWinners"),
             )}: ${escapeHtml(winnerMember.displayName)} &amp; ${escapeHtml(
               partner.displayName,
             )}`
@@ -125,20 +125,20 @@ function renderAwards(data: DonePayload, t: BuildResultsHtmlDeps["t"]): string {
           : "";
       const drill = winnerContestant
         ? `<details><summary>${escapeHtml(
-            t("export.categoryDrillDown.heading", { category: a.awardName }),
+            t("categoryDrillDown.heading", { category: a.awardName }),
           )}</summary><p>${escapeHtml(
-            t("export.categoryDrillDown.mean", { value: a.statValue?.toFixed(1) ?? "" }),
+            t("categoryDrillDown.mean", { value: a.statValue?.toFixed(1) ?? "" }),
           )}</p></details>`
         : "";
       return `<article class="award"><h3>${escapeHtml(
         a.awardName,
       )} — ${winnerLabel}<span class="badge">${escapeHtml(
-        t("export.awards.winner"),
+        t("awards.winner"),
       )}</span></h3>${drill}</article>`;
     })
     .join("");
   return `<section class="awards"><h2>${escapeHtml(
-    t("export.awards.heading"),
+    t("awards.heading"),
   )}</h2>${cards}</section>`;
 }
 
@@ -179,11 +179,11 @@ function renderBreakdowns(
         .join("");
       const drill = drillRows
         ? `<details><summary>${escapeHtml(
-            t("export.participantDrillDown.heading", { name: b.displayName }),
+            t("participantDrillDown.heading", { name: b.displayName }),
           )}</summary><table><tbody>${drillRows}</tbody></table></details>`
         : "";
       return `<article><h3><span class="avatar">${avatar}</span>${escapeHtml(
-        t("export.breakdowns.topPick", {
+        t("breakdowns.topPick", {
           name: b.displayName,
           country: topCountry,
         }),
@@ -191,15 +191,15 @@ function renderBreakdowns(
     })
     .join("");
   return `<section class="breakdowns"><h2>${escapeHtml(
-    t("export.breakdowns.heading"),
+    t("breakdowns.heading"),
   )}</h2>${articles}</section>`;
 }
 
 function renderHotTakes(data: DonePayload, t: BuildResultsHtmlDeps["t"]): string {
   if (data.hotTakes.length === 0) {
     return `<section class="hot-takes"><h2>${escapeHtml(
-      t("export.hotTakes.heading"),
-    )}</h2><p class="empty">${escapeHtml(t("export.hotTakes.empty"))}</p></section>`;
+      t("hotTakes.heading"),
+    )}</h2><p class="empty">${escapeHtml(t("hotTakes.empty"))}</p></section>`;
   }
   const contestantById = new Map(data.contestants.map((c) => [c.id, c]));
   const blocks = data.hotTakes
@@ -207,7 +207,7 @@ function renderHotTakes(data: DonePayload, t: BuildResultsHtmlDeps["t"]): string
       const c = contestantById.get(h.contestantId);
       const country = c ? `${c.flagEmoji} ${escapeHtml(c.country)}` : "";
       const editedTag = h.hotTakeEditedAt
-        ? `<span class="edited">${escapeHtml(t("export.hotTakes.edited"))}</span>`
+        ? `<span class="edited">${escapeHtml(t("hotTakes.edited"))}</span>`
         : "";
       return `<blockquote><span class="author">${escapeHtml(
         h.displayName,
@@ -215,7 +215,7 @@ function renderHotTakes(data: DonePayload, t: BuildResultsHtmlDeps["t"]): string
     })
     .join("");
   return `<section class="hot-takes"><h2>${escapeHtml(
-    t("export.hotTakes.heading"),
+    t("hotTakes.heading"),
   )}</h2>${blocks}</section>`;
 }
 
@@ -226,7 +226,7 @@ function renderFooter(
   appHostname: string,
 ): string {
   return `<footer>${escapeHtml(
-    t("export.footer", {
+    t("footer", {
       timestamp: now.toISOString(),
       hostname: appHostname,
       roomId: data.pin,
@@ -240,7 +240,7 @@ export function buildResultsHtml(
 ): BuildResultsHtmlOutput {
   const now = deps.now();
   const title = escapeHtml(
-    deps.t("export.title", { year: data.year, event: data.event, pin: data.pin }),
+    deps.t("title", { year: data.year, event: data.event, pin: data.pin }),
   );
 
   const body = [
