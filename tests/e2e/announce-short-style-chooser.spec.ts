@@ -98,11 +98,12 @@ test.describe("R4 short live reveal — chooser + overlay (SPEC §10.2.2)", () =
     });
     await page.getByRole("button", { name: /^Next$/ }).click();
 
-    // Step 2: announcement mode picker. Select Live.
-    await expect(page.getByRole("button", { name: /^Live$/ })).toBeVisible({
-      timeout: 10_000,
-    });
-    await page.getByRole("button", { name: /^Live$/ }).click();
+    // Step 2: announcement mode picker. Select Live. The button's
+    // accessible name includes the tagline post-i18n migration, so
+    // anchor to the start with a word boundary instead of exact-match.
+    const liveCard = page.getByRole("button", { name: /^Live\b/ });
+    await expect(liveCard).toBeVisible({ timeout: 10_000 });
+    await liveCard.click();
 
     // The style sub-radio appears below the Live card.
     await expect(
