@@ -14,6 +14,7 @@ afterEach(() => cleanup());
 
 const BASE_PROPS = {
   templateId: "classic" as const,
+  customCategories: [""],
   announcementMode: "instant" as const,
   announcementStyle: "full" as const,
   allowNowPerforming: false,
@@ -136,5 +137,90 @@ describe("VotingConfig — AnnouncementStyleSubRadio visibility", () => {
     expect(shortBtn).toBeDefined();
     fireEvent.click(shortBtn!);
     expect(onChange).toHaveBeenCalledWith({ announcementStyle: "short" });
+  });
+});
+
+describe("VotingConfig — custom template", () => {
+  it("renders the Custom template card in the grid", () => {
+    render(
+      <VotingConfig
+        {...BASE_PROPS}
+        onChange={vi.fn()}
+        onBack={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("templates.custom.name")).toBeInTheDocument();
+  });
+
+  it("does not show the editor when Custom is not selected", () => {
+    render(
+      <VotingConfig
+        {...BASE_PROPS}
+        templateId="classic"
+        onChange={vi.fn()}
+        onBack={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByPlaceholderText(
+        "create.votingConfig.custom.namePlaceholder",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the editor when Custom is selected", () => {
+    render(
+      <VotingConfig
+        {...BASE_PROPS}
+        templateId="custom"
+        customCategories={["Vocals"]}
+        onChange={vi.fn()}
+        onBack={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByPlaceholderText(
+        "create.votingConfig.custom.namePlaceholder",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("fires onChange({ templateId: 'custom' }) when the Custom card is clicked", () => {
+    const onChange = vi.fn();
+    render(
+      <VotingConfig
+        {...BASE_PROPS}
+        templateId="classic"
+        onChange={onChange}
+        onBack={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByText("templates.custom.name"));
+    expect(onChange).toHaveBeenCalledWith({ templateId: "custom" });
+  });
+
+  it("fires onChange({ customCategories: ... }) when an editor row changes", () => {
+    const onChange = vi.fn();
+    render(
+      <VotingConfig
+        {...BASE_PROPS}
+        templateId="custom"
+        customCategories={["Vo"]}
+        onChange={onChange}
+        onBack={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+    fireEvent.change(
+      screen.getByPlaceholderText(
+        "create.votingConfig.custom.namePlaceholder",
+      ),
+      { target: { value: "Vocals" } },
+    );
+    expect(onChange).toHaveBeenCalledWith({ customCategories: ["Vocals"] });
   });
 });

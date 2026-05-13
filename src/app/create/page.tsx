@@ -16,7 +16,7 @@ import VotingConfig from "@/components/create/VotingConfig";
 
 type Step = 1 | 2;
 type Event = "semi1" | "semi2" | "final";
-type TemplateId = "classic" | "spectacle" | "bangerTest";
+type TemplateId = "classic" | "spectacle" | "bangerTest" | "custom";
 type Mode = "live" | "instant";
 
 interface ContestantsState {
@@ -65,6 +65,7 @@ export default function CreateRoomPage() {
 
   // Step 2 state
   const [templateId, setTemplateId] = useState<TemplateId>("classic");
+  const [customCategories, setCustomCategories] = useState<string[]>([""]);
   // Eurovision-authentic defaults: live mode with the short reveal style
   // pre-selected (SPEC §10.2.2). Admins can still pick Full or Instant.
   const [announcementMode, setAnnouncementMode] = useState<Mode>("live");
@@ -228,6 +229,7 @@ export default function CreateRoomPage() {
         {step === 2 && (
           <VotingConfig
             templateId={templateId}
+            customCategories={customCategories}
             announcementMode={announcementMode}
             announcementStyle={announcementStyle}
             allowNowPerforming={allowNowPerforming}
@@ -235,6 +237,8 @@ export default function CreateRoomPage() {
             onChange={(patch) => {
               if (patch.templateId !== undefined)
                 setTemplateId(patch.templateId);
+              if (patch.customCategories !== undefined)
+                setCustomCategories(patch.customCategories);
               if (patch.announcementMode !== undefined)
                 setAnnouncementMode(patch.announcementMode);
               if (patch.announcementStyle !== undefined)
