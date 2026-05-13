@@ -127,6 +127,27 @@ export type ResultsData =
         displayName: string;
         avatarSeed: string;
       }>;
+      /**
+       * Room categories — needed by R5 §12.3 HTML export and §12.6 drill-down
+       * UIs to compute weighted scores per category without a second round-trip.
+       */
+      categories: Array<{ name: string; weight: number; key?: string }>;
+      /**
+       * R5 §12.3 HTML export / §12.6 drill-down — per-user per-contestant
+       * raw scores joined with points_awarded and hot-take. Only rows where
+       * the user cast a vote appear (voteRows is the driver). Zero new DB
+       * round-trips — derived from the votes/results/hot_takes SELECTs
+       * already running in loadDone. Gated to status='done' per §12.6.4.
+       */
+      voteDetails: Array<{
+        userId: string;
+        contestantId: string;
+        scores: Record<string, number>;
+        missed: boolean;
+        pointsAwarded: number;
+        hotTake: string | null;
+        hotTakeEditedAt: string | null;
+      }>;
     };
 
 export interface LoadResultsInput {
@@ -583,6 +604,40 @@ async function loadDone(
     results: [],
   });
 
+  // Build voteDetails: left-join voteRows (per-category scores + missed) with
+  // resultRows (pointsAwarded) and hotTakeRows (hot_take + edited_at), keyed
+  // by (user_id, contestant_id). Used by R5 §12.3 HTML export and future
+  // §12.6 drill-down UIs on /results/[id]. Only contestants the user actually
+  // voted on appear (voteRows is the driver); contestants with no vote are absent.
+  const pointsByPair = new Map<string, number>();
+  for (const r of resultRows) {
+    pointsByPair.set(`${r.user_id}::${r.contestant_id}`, r.points_awarded);
+  }
+  const hotTakeByPair = new Map<
+    string,
+    { hotTake: string; hotTakeEditedAt: string | null }
+  >();
+  for (const h of hotTakeRows) {
+    if (!h.hot_take || h.hot_take.trim() === "") continue;
+    hotTakeByPair.set(`${h.user_id}::${h.contestant_id}`, {
+      hotTake: h.hot_take,
+      hotTakeEditedAt: h.hot_take_edited_at,
+    });
+  }
+  const voteDetails = voteRows.map((v) => {
+    const key = `${v.user_id}::${v.contestant_id}`;
+    const ht = hotTakeByPair.get(key);
+    return {
+      userId: v.user_id,
+      contestantId: v.contestant_id,
+      scores: (v.scores ?? {}) as Record<string, number>,
+      missed: v.missed,
+      pointsAwarded: pointsByPair.get(key) ?? 0,
+      hotTake: ht?.hotTake ?? null,
+      hotTakeEditedAt: ht?.hotTakeEditedAt ?? null,
+    };
+  });
+
   return {
     ok: true,
     data: {
@@ -599,6 +654,8 @@ async function loadDone(
       awards,
       personalNeighbours,
       members,
+      categories,
+      voteDetails,
     },
   };
 }
