@@ -537,7 +537,19 @@
       "announcementLabel": "Оголошення",
       "nowPerformingLabel": "Синхронізувати всіх із поточним виступом",
       "nowPerformingInfo": "Дозволяє натиснути на країну, що виступає зараз, щоб перевести всіх гостей на ту картку під час голосування. Вимкнено за замовчуванням.",
-      "nowPerformingInfoAria": "Про цей перемикач"
+      "nowPerformingInfoAria": "Про цей перемикач",
+      "custom": {
+        "yourCategoriesHeading": "Твої категорії",
+        "rowCountLabel": "{count}/{max} категорій",
+        "namePlaceholder": "Назва категорії",
+        "addCategoryButton": "+ Додати категорію",
+        "removeAria": "Видалити категорію {n}",
+        "errors": {
+          "empty": "Додай назву",
+          "tooShort": "Мінімум 2 символи",
+          "duplicate": "Вже у твоєму списку"
+        }
+      }
     },
     "actions": {
       "next": "Далі",

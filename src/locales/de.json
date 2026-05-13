@@ -537,7 +537,19 @@
       "announcementLabel": "Ansage",
       "nowPerformingLabel": "Alle mit dem aktuellen Auftritt synchronisieren",
       "nowPerformingInfo": "Erm\u00f6glicht es, auf das aktuell auftretende Land zu tippen, um alle G\u00e4ste w\u00e4hrend der Abstimmung zu dieser Karte zu bringen. Standardm\u00e4\u00dfig deaktiviert.",
-      "nowPerformingInfoAria": "\u00dcber diesen Schalter"
+      "nowPerformingInfoAria": "\u00dcber diesen Schalter",
+      "custom": {
+        "yourCategoriesHeading": "Deine Kategorien",
+        "rowCountLabel": "{count}/{max} Kategorien",
+        "namePlaceholder": "Kategoriename",
+        "addCategoryButton": "+ Kategorie hinzuf\u00fcgen",
+        "removeAria": "Kategorie {n} entfernen",
+        "errors": {
+          "empty": "Gib einen Namen ein",
+          "tooShort": "Mindestens 2 Zeichen",
+          "duplicate": "Schon in deiner Liste"
+        }
+      }
     },
     "actions": {
       "next": "Weiter",

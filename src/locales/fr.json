@@ -537,7 +537,19 @@
       "announcementLabel": "Annonce",
       "nowPerformingLabel": "Synchroniser tout le monde avec l\u2019acte en cours",
       "nowPerformingInfo": "Te permet d\u2019appuyer sur le pays qui performe en ce moment pour amener tous les invit\u00e9s \u00e0 cette carte pendant le vote. D\u00e9sactiv\u00e9 par d\u00e9faut.",
-      "nowPerformingInfoAria": "\u00c0 propos de cette bascule"
+      "nowPerformingInfoAria": "\u00c0 propos de cette bascule",
+      "custom": {
+        "yourCategoriesHeading": "Tes cat\u00e9gories",
+        "rowCountLabel": "{count}/{max} cat\u00e9gories",
+        "namePlaceholder": "Nom de la cat\u00e9gorie",
+        "addCategoryButton": "+ Ajouter une cat\u00e9gorie",
+        "removeAria": "Supprimer la cat\u00e9gorie {n}",
+        "errors": {
+          "empty": "Ajoute un nom",
+          "tooShort": "Au moins 2 caract\u00e8res",
+          "duplicate": "D\u00e9j\u00e0 dans ta liste"
+        }
+      }
     },
     "actions": {
       "next": "Suivant",
