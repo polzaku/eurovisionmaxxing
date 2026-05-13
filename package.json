@@ -19,6 +19,8 @@
     "fetch-contestants": "tsx scripts/fetch-contestants.ts"
   },
   "dependencies": {
+    "@dicebear/collection": "^9.4.2",
+    "@dicebear/core": "^9.4.2",
     "@supabase/ssr": "^0.5.0",
     "@supabase/supabase-js": "^2.45.0",
     "bcryptjs": "^2.4.3",

@@ -834,6 +834,79 @@ describe("loadResults — done", () => {
       { contestantId: "2026-cr", totalPoints: 0, rank: 1 },
     ]);
   });
+
+  it("attaches voteDetails to the done payload joining votes.scores with results.points_awarded", async () => {
+    const sb = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          id: VALID_ROOM_ID,
+          status: "done",
+          pin: "AAAAAA",
+          year: 2026,
+          event: "final",
+          owner_user_id: "owner-1",
+          categories: [{ name: "Vocals", weight: 1, key: "vocals" }],
+          announcement_order: null,
+          announcing_user_id: null,
+          current_announce_idx: null,
+          delegate_user_id: null,
+          announce_skipped_user_ids: null,
+        },
+        error: null,
+      },
+      resultsSelect: {
+        data: [
+          { user_id: "u1", contestant_id: "2026-al", points_awarded: 12, announced: true },
+          { user_id: "u1", contestant_id: "2026-be", points_awarded: 0, announced: true },
+        ],
+        error: null,
+      },
+      membershipsSelect: {
+        data: [{ user_id: "u1", users: { display_name: "Alice", avatar_seed: "alice" } }],
+        error: null,
+      },
+      hotTakesSelect: {
+        data: [
+          { user_id: "u1", contestant_id: "2026-al", hot_take: "Yes!", hot_take_edited_at: null },
+        ],
+        error: null,
+      },
+      votesSelect: {
+        data: [
+          { user_id: "u1", contestant_id: "2026-al", scores: { vocals: 10 }, missed: false },
+          { user_id: "u1", contestant_id: "2026-be", scores: { vocals: 4 }, missed: false },
+        ],
+        error: null,
+      },
+    });
+
+    const result = await loadResults({ roomId: VALID_ROOM_ID }, makeDeps(sb));
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.data.status !== "done") throw new Error("expected done");
+
+    expect(result.data.categories).toEqual([{ name: "Vocals", weight: 1, key: "vocals" }]);
+
+    expect(result.data.voteDetails).toEqual([
+      {
+        userId: "u1",
+        contestantId: "2026-al",
+        scores: { vocals: 10 },
+        missed: false,
+        pointsAwarded: 12,
+        hotTake: "Yes!",
+        hotTakeEditedAt: null,
+      },
+      {
+        userId: "u1",
+        contestantId: "2026-be",
+        scores: { vocals: 4 },
+        missed: false,
+        pointsAwarded: 0,
+        hotTake: null,
+        hotTakeEditedAt: null,
+      },
+    ]);
+  });
 });
 
 // ─── unknown status ──────────────────────────────────────────────────────────

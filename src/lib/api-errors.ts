@@ -34,6 +34,7 @@ export type ApiErrorCode =
   | "NOW_PERFORMING_DISABLED"
   | "CANDIDATE_NOT_FOUND"
   | "INVALID_TOKEN"
+  | "RESULTS_NOT_READY"
   | "INTERNAL_ERROR";
 
 // TODO(i18n-phase-b): extract this `error` shape into a shared `ApiErrorPayload` type
