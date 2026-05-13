@@ -160,6 +160,8 @@ export default function AnnouncingView({
 
   const [finishingShow, setFinishingShow] = useState(false);
 
+  const t = useTranslations("announcing");
+
   const roomId = room.id;
   const isOwner = currentUserId === room.ownerUserId;
   // Track presence on the room channel — used by the owner-only roster
@@ -383,7 +385,7 @@ export default function AnnouncingView({
     } finally {
       setReshuffling(false);
     }
-  }, [currentUserId, isOwner, reshuffling, roomId]);
+  }, [currentUserId, isOwner, reshuffling, roomId, t]);
 
   const handleTakeControl = useCallback(
     async (takeControl: boolean) => {
@@ -421,8 +423,6 @@ export default function AnnouncingView({
       setFinishingShow(false);
     }
   }, [roomId, currentUserId, finishingShow]);
-
-  const t = useTranslations("announcing");
 
   const flashContestant = justRevealed
     ? contestantById.current.get(justRevealed.contestantId)
