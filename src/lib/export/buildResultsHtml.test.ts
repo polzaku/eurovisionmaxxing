@@ -31,6 +31,7 @@ function makeT(prefix = "en"): BuildResultsHtmlDeps["t"] {
 function makeDeps(prefix = "en"): BuildResultsHtmlDeps {
   return {
     t: makeT(prefix),
+    locale: prefix,
     now: () => new Date("2026-05-16T22:30:00Z"),
     appHostname: "eurovisionmaxxing.com",
   };
@@ -57,6 +58,26 @@ describe("buildResultsHtml", () => {
     const evil: DonePayload = { ...FIXTURE_DONE_15x26, pin: 'A"B/C\\D' };
     const { filename } = buildResultsHtml(evil, makeDeps());
     expect(filename).not.toMatch(/["/\\]/);
+  });
+
+  it("sanitises the event segment of the filename too", () => {
+    const evil: DonePayload = {
+      ...FIXTURE_DONE_15x26,
+      // EventType is typed but the renderer accepts any string — defensive.
+      event: '../etc/passwd"' as DonePayload["event"],
+    };
+    const { filename } = buildResultsHtml(evil, makeDeps());
+    expect(filename).not.toMatch(/["/\\]/);
+    expect(filename).not.toContain("..");
+  });
+
+  it("emits <html lang> reflecting the resolved locale", () => {
+    expect(buildResultsHtml(FIXTURE_DONE_15x26, makeDeps("es")).html).toMatch(
+      /<html\s+lang="es"/,
+    );
+    expect(buildResultsHtml(FIXTURE_DONE_15x26, makeDeps("uk")).html).toMatch(
+      /<html\s+lang="uk"/,
+    );
   });
 
   it("inlines the stylesheet", () => {

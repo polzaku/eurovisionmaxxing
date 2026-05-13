@@ -9,6 +9,8 @@ type DonePayload = Extract<ResultsData, { status: "done" }>;
 export interface BuildResultsHtmlDeps {
   /** Locale-resolved translator (caller scopes namespace separately if needed). */
   t: (key: string, params?: Record<string, unknown>) => string;
+  /** BCP-47 locale code emitted on `<html lang="...">` for a11y / SEO / search indexing. */
+  locale: string;
   /** Injected clock for deterministic tests. */
   now: () => Date;
   /** Hostname for the footer link, e.g. "eurovisionmaxxing.com". */
@@ -23,11 +25,16 @@ export interface BuildResultsHtmlOutput {
   bytes: number;
 }
 
-const FILENAME_BAD_CHARS = /[^A-Za-z0-9._-]/g;
+// Allow only alphanumerics + underscore + hyphen in filename segments. Dots
+// are deliberately excluded so traversal sequences like `../` cannot survive
+// sanitisation as `..`; the only legitimate `.` in the output filename is
+// the `.html` suffix appended by buildFilename.
+const FILENAME_BAD_CHARS = /[^A-Za-z0-9_-]/g;
 
 function buildFilename(year: number, event: string, pin: string): string {
+  const safeEvent = event.replace(FILENAME_BAD_CHARS, "");
   const safePin = pin.replace(FILENAME_BAD_CHARS, "");
-  return `emx-${year}-${event}-${safePin}.html`;
+  return `emx-${year}-${safeEvent}-${safePin}.html`;
 }
 
 function renderHeader(data: DonePayload, t: BuildResultsHtmlDeps["t"], now: Date): string {
@@ -42,6 +49,12 @@ function renderLeaderboard(data: DonePayload, t: BuildResultsHtmlDeps["t"]): str
   const contestantById = new Map(data.contestants.map((c) => [c.id, c]));
   const drillByContestant = new Map(
     data.contestantBreakdowns.map((cb) => [cb.contestantId, cb]),
+  );
+  // Pre-index voteDetails so the per-(user, contestant) lookup inside the
+  // drill-down loop is O(1). Without this, a 15×26 fixture does ~5,850
+  // Array.find scans against a 390-entry array per render.
+  const voteDetailByPair = new Map(
+    data.voteDetails.map((v) => [`${v.userId}::${v.contestantId}`, v]),
   );
 
   const rows = data.leaderboard
@@ -62,9 +75,7 @@ function renderLeaderboard(data: DonePayload, t: BuildResultsHtmlDeps["t"]): str
             t("contestantDrillDown.points"),
           )}</th></tr></thead><tbody>${drill.gives
             .map((g) => {
-              const detail = data.voteDetails.find(
-                (v) => v.userId === g.userId && v.contestantId === c.id,
-              );
+              const detail = voteDetailByPair.get(`${g.userId}::${c.id}`);
               const weighted = detail
                 ? computeWeightedScore(detail.scores, data.categories)
                 : 0;
@@ -254,7 +265,8 @@ export function buildResultsHtml(
     renderFooter(data, deps.t, now, deps.appHostname),
   ].join("");
 
-  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>${EXPORT_STYLESHEET}</style></head><body>${body}</body></html>`;
+  const langAttr = escapeHtml(deps.locale).replace(/[^a-zA-Z0-9-]/g, "");
+  const html = `<!DOCTYPE html><html lang="${langAttr}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>${EXPORT_STYLESHEET}</style></head><body>${body}</body></html>`;
 
   return {
     html,

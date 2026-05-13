@@ -60,6 +60,7 @@ export async function GET(
     // bridge at the boundary. Parameters<typeof t>[1] keeps it explicit
     // without `any`.
     t: (key, params) => t(key, params as Parameters<typeof t>[1]),
+    locale,
     now: () => new Date(),
     appHostname: APP_HOSTNAME,
   });

@@ -161,7 +161,7 @@ Rendering details:
 
 Wraps `@dicebear/core` (already a dep) to render an `avatarSeed` to inline SVG string. Memoization cache keyed by seed lives in module scope — for a single render pass the cache is process-local and bounded by the room's member count (typ. <20 seeds). Server-side rendering returns plain SVG (no `<script>`, no `xmlns:xlink`, no fonts) — verified by snapshot test.
 
-Style variant: `avataaars` (matches the live app's choice — see existing `<Avatar>` component). Background suppressed (transparent) for clean inlining inside `<h3>` headings.
+Style variant: `funEmoji` (matches the live app's choice — `src/lib/avatars.ts` resolves `https://api.dicebear.com/7.x/fun-emoji/svg?seed={seed}` via `<img>`). Background suppressed (transparent) for clean inlining inside `<h3>` headings.
 
 ### 4. `exportStylesheet.ts`
 
