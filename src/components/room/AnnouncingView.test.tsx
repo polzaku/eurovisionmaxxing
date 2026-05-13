@@ -89,12 +89,16 @@ vi.mock("next-intl", () => ({
       "announcing.upNext.pointsHint": params?.points
         ? `${params.points === "1" ? "1 point" : `${params.points} points`} — tap anywhere to reveal`
         : "tap anywhere to reveal",
+      "announcing.justRevealed.label": "Just revealed",
+      "announcing.justRevealed.pointsLabel": params?.points
+        ? `${params.points} points`
+        : "points",
       // Short-reveal keys (used without namespace by ShortStyleRevealCard which uses useTranslations())
       "announce.shortReveal.cta": "Reveal 12 points",
       "announce.shortReveal.ctaMicrocopy": "Tap when you say it",
       "announce.shortReveal.revealed": "Revealed ✓",
-      "announce.shortReveal.guestToast": params
-        ? `${params.name} gave 12 to ${params.country} ${params.flag}`
+      "announce.revealToast": params
+        ? `${params.name} gave ${params.points} to ${params.flag} ${params.country}`
         : key,
       "announcing.giveBack.label": "Give back control",
     };
@@ -129,9 +133,9 @@ vi.mock("@/components/room/TwelvePointSplash", () => ({
   ),
 }));
 
-// TwelvePointToast — render a minimal stub that preserves the
-// data-testid attribute and shows the formatted text.
-vi.mock("@/components/room/TwelvePointToast", () => ({
+// RevealToast — render a minimal stub that preserves the data-testid
+// attribute and shows the formatted text including the points value.
+vi.mock("@/components/room/RevealToast", () => ({
   default: ({
     events,
   }: {
@@ -140,15 +144,16 @@ vi.mock("@/components/room/TwelvePointToast", () => ({
       announcingUserDisplayName: string;
       country: string;
       flagEmoji: string;
+      points: number;
       at: number;
     }>;
   }) => {
     if (!events || events.length === 0) return null;
     const latest = events[events.length - 1];
     return (
-      <div data-testid="twelve-point-toast">
-        {latest.announcingUserDisplayName} gave 12 to {latest.country}{" "}
-        {latest.flagEmoji}
+      <div data-testid="reveal-toast">
+        {latest.announcingUserDisplayName} gave {latest.points} to{" "}
+        {latest.country} {latest.flagEmoji}
       </div>
     );
   },
@@ -1274,14 +1279,16 @@ describe("AnnouncingView — short style (SPEC §10.2.2)", () => {
     });
     // Toast should appear with the announcer name + country
     await waitFor(() =>
-      expect(screen.getByTestId("twelve-point-toast")).toBeInTheDocument(),
+      expect(screen.getByTestId("reveal-toast")).toBeInTheDocument(),
     );
-    expect(screen.getByTestId("twelve-point-toast")).toHaveTextContent("Bob");
-    expect(screen.getByTestId("twelve-point-toast")).toHaveTextContent("Austria");
+    expect(screen.getByTestId("reveal-toast")).toHaveTextContent("Bob");
+    expect(screen.getByTestId("reveal-toast")).toHaveTextContent("Austria");
   });
 
-  // Case E: guest watching + style='full' (control) — no toast on announce_next
-  it("Case E — guest + style='full' + announce_next does NOT render TwelvePointToast", async () => {
+  // Case E: guest watching + style='full' — toast NOW renders on every
+  // announce_next (SPEC §10.2 surface table for "Other guests' phones").
+  // Pre-L1-split this assertion was inverted; flipped 2026-05-12.
+  it("Case E — guest + style='full' + announce_next renders RevealToast with points", async () => {
     const GUEST_ID = "99999999-9999-4999-8999-999999999999";
     render(
       <AnnouncingView
@@ -1292,20 +1299,183 @@ describe("AnnouncingView — short style (SPEC §10.2.2)", () => {
         announcementStyle="full"
       />,
     );
-    // Wait for mount and handler capture
     await waitFor(() => expect(capturedRoomEventHandler).not.toBeNull());
-    // Fire announce_next from the announcer
     fireRoomEvent({
       type: "announce_next",
       contestantId: "2026-AT",
-      points: 12,
+      points: 5,
       announcingUserId: ANNOUNCER_ID,
     });
-    // Toast should NOT appear under full style
     await waitFor(() =>
-      // Wait for refetch to settle (Austria in leaderboard)
-      expect(screen.getByText("Austria")).toBeInTheDocument(),
+      expect(screen.getByTestId("reveal-toast")).toBeInTheDocument(),
     );
-    expect(screen.queryByTestId("twelve-point-toast")).not.toBeInTheDocument();
+    expect(screen.getByTestId("reveal-toast")).toHaveTextContent(
+      "gave 5 to",
+    );
+    expect(screen.getByTestId("reveal-toast")).toHaveTextContent("Austria");
+  });
+
+  // Case F: active announcer receives their own announce_next echo —
+  // the big flash card renders for them but no toast fires for self.
+  it("Case F — active announcer + announce_next for self renders flash card, NOT toast", async () => {
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={ANNOUNCER_ID}
+        announcement={ANNOUNCEMENT_STATE}
+        announcementStyle="full"
+      />,
+    );
+    await waitFor(() => expect(capturedRoomEventHandler).not.toBeNull());
+    fireRoomEvent({
+      type: "announce_next",
+      contestantId: "2026-AT",
+      points: 5,
+      announcingUserId: ANNOUNCER_ID,
+    });
+    // Flash card detection: the translations mock renders
+    // announcing.justRevealed.pointsLabel as "{points} points" — so
+    // "5 points" appearing on screen confirms the flash card branch fired.
+    await waitFor(() =>
+      expect(screen.getByText("5 points")).toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId("reveal-toast")).not.toBeInTheDocument();
+  });
+
+  // Case G: guest watcher receiving announce_next sees the toast, NOT
+  // the big "Just revealed" flash card. Inverse of Case F.
+  it("Case G — guest watcher + announce_next renders toast, NOT flash card", async () => {
+    const GUEST_ID = "99999999-9999-4999-8999-999999999999";
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={GUEST_ID}
+        announcement={ANNOUNCEMENT_STATE}
+        announcementStyle="full"
+      />,
+    );
+    await waitFor(() => expect(capturedRoomEventHandler).not.toBeNull());
+    fireRoomEvent({
+      type: "announce_next",
+      contestantId: "2026-AT",
+      points: 5,
+      announcingUserId: ANNOUNCER_ID,
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId("reveal-toast")).toBeInTheDocument(),
+    );
+    // Watcher surface suppresses the "5 points" flash-card text entirely.
+    expect(screen.queryByText("5 points")).not.toBeInTheDocument();
+  });
+
+  // Case H: full-style active driver sees the StillToGiveLine.
+  it("Case H — active driver + style='full' renders StillToGiveLine with split", async () => {
+    const stateAtIdx3: typeof ANNOUNCEMENT_STATE = {
+      ...ANNOUNCEMENT_STATE,
+      currentAnnounceIdx: 3,
+      queueLength: 10,
+    };
+    // Override fetch so the on-mount refetch doesn't clobber the
+    // queueLength: 10 seed we need for StillToGiveLine to mount.
+    mockResultsFetch({
+      ...RESULTS_RESPONSE_BODY,
+      announcement: stateAtIdx3,
+    });
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={ANNOUNCER_ID}
+        announcement={stateAtIdx3}
+        announcementStyle="full"
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("still-to-give-line")).toBeInTheDocument(),
+    );
+    // Given values are line-through; remaining are bold. The data-testids
+    // distinguish them; we don't assert on the live class strings here
+    // (StillToGiveLine.test.tsx owns those).
+    expect(screen.getByTestId("stg-given-1")).toBeInTheDocument();
+    expect(screen.getByTestId("stg-given-3")).toBeInTheDocument();
+    expect(screen.getByTestId("stg-remaining-4")).toBeInTheDocument();
+    expect(screen.getByTestId("stg-remaining-12")).toBeInTheDocument();
+  });
+
+  // Case I: short-style active driver does NOT see StillToGiveLine
+  // (degenerate — short style is always 1 reveal per announcer).
+  it("Case I — active driver + style='short' suppresses StillToGiveLine", async () => {
+    const shortState: typeof ANNOUNCEMENT_STATE = {
+      ...ANNOUNCEMENT_STATE,
+      queueLength: 1,
+    };
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={ANNOUNCER_ID}
+        announcement={shortState}
+        announcementStyle="short"
+      />,
+    );
+    await waitFor(() => expect(capturedRoomEventHandler).not.toBeNull());
+    expect(
+      screen.queryByTestId("still-to-give-line"),
+    ).not.toBeInTheDocument();
+  });
+
+  // Case J: leaderboard rows render with data-density='watcher' for
+  // guests and 'driver' for the active announcer. The shared
+  // data-testid='leaderboard-row' + data-density discriminator avoids
+  // testid collisions while keeping the density signal queryable.
+  it("Case J — watcher renders density='watcher' leaderboard rows, driver renders density='driver'", async () => {
+    const GUEST_ID = "99999999-9999-4999-8999-999999999999";
+
+    // Watcher mount
+    const { unmount } = render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={GUEST_ID}
+        announcement={ANNOUNCEMENT_STATE}
+        announcementStyle="full"
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.queryAllByTestId("leaderboard-row").length).toBeGreaterThan(0),
+    );
+    {
+      const rows = screen.getAllByTestId("leaderboard-row");
+      expect(rows.length).toBeGreaterThan(0);
+      for (const row of rows) {
+        expect(row.dataset.density).toBe("watcher");
+      }
+    }
+    unmount();
+
+    // Driver mount — fresh render. cleanup() is wired afterEach but we
+    // unmount explicitly to avoid stale rows leaking into the second
+    // render's queries.
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={ANNOUNCER_ID}
+        announcement={ANNOUNCEMENT_STATE}
+        announcementStyle="full"
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.queryAllByTestId("leaderboard-row").length).toBeGreaterThan(0),
+    );
+    {
+      const rows = screen.getAllByTestId("leaderboard-row");
+      expect(rows.length).toBeGreaterThan(0);
+      for (const row of rows) {
+        expect(row.dataset.density).toBe("driver");
+      }
+    }
   });
 });

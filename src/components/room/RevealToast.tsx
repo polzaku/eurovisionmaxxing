@@ -8,24 +8,26 @@ export interface ToastEvent {
   announcingUserDisplayName: string;
   country: string;
   flagEmoji: string;
+  /** Points awarded in this reveal. 12 for short style; 1–8/10/12 for full style. */
+  points: number;
   at: number;
 }
 
-interface TwelvePointToastProps {
+interface RevealToastProps {
   events: ToastEvent[];
-  /** Default 3000ms per SPEC §10.2.2 surface table. */
+  /** Default 3000ms per SPEC §10.2 surface table (guest-phone toast). */
   dismissAfterMs?: number;
 }
 
 /**
- * SPEC §10.2.2 — transient toast for guest phones (non-announcer, non-
- * owner-watching) when the announcer reveals their 12-point pick.
- * Shows the latest event; auto-dismisses after 3s.
+ * SPEC §10.2 (full + short styles) — transient toast for guest phones
+ * (anyone who isn't the active announcer/delegate) on every announce_next
+ * broadcast. Shows the latest event; auto-dismisses after 3s.
  */
-export default function TwelvePointToast({
+export default function RevealToast({
   events,
   dismissAfterMs = 3000,
-}: TwelvePointToastProps) {
+}: RevealToastProps) {
   const t = useTranslations();
   const [visible, setVisible] = useState<ToastEvent | null>(null);
 
@@ -45,11 +47,12 @@ export default function TwelvePointToast({
     <div
       role="status"
       aria-live="polite"
-      data-testid="twelve-point-toast"
+      data-testid="reveal-toast"
       className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-sm rounded-full bg-primary/95 px-4 py-2 text-sm font-medium text-primary-foreground shadow-lg motion-safe:animate-fade-in"
     >
-      {t("announce.shortReveal.guestToast", {
+      {t("announce.revealToast", {
         name: visible.announcingUserDisplayName,
+        points: visible.points,
         country: visible.country,
         flag: visible.flagEmoji,
       })}

@@ -11,9 +11,10 @@ import AnnouncerRoster, {
   type RosterMember,
 } from "@/components/room/AnnouncerRoster";
 import TwelvePointSplash from "@/components/room/TwelvePointSplash";
-import TwelvePointToast, {
+import RevealToast, {
   type ToastEvent,
-} from "@/components/room/TwelvePointToast";
+} from "@/components/room/RevealToast";
+import StillToGiveLine from "@/components/room/StillToGiveLine";
 import { useRoomRealtime } from "@/hooks/useRoomRealtime";
 import { useRoomPresence } from "@/hooks/useRoomPresence";
 import {
@@ -67,8 +68,8 @@ interface AnnouncingViewProps {
   announcement?: AnnouncementState | null;
   /**
    * SPEC §10.2.2 — when 'short', the active driver sees a compressed
-   * 'Reveal 12 points' CTA and non-drivers see a TwelvePointToast on
-   * each announce_next broadcast. Render branches in subsequent commits.
+   * 'Reveal 12 points' CTA. Non-drivers see a RevealToast on each
+   * announce_next broadcast regardless of style (full or short).
    */
   announcementStyle?: 'full' | 'short';
   /**
@@ -172,6 +173,13 @@ export default function AnnouncingView({
   const isActiveDriver =
     !!announcement && (isDelegate || (isAnnouncer && !adminHasTakenControl));
 
+  /** SPEC §10.2 — driver sees the big flash card + full-density rows;
+   *  watcher sees a top-of-screen toast + compact rows. Derived from
+   *  isActiveDriver so the 5-mode pickMode() result stays the header-copy
+   *  source of truth while this flag toggles the three presentational
+   *  deltas (flash, toast, density). */
+  const surface: "driver" | "watcher" = isActiveDriver ? "driver" : "watcher";
+
   const isBatchReveal = room.batchRevealMode === true;
   // Cascade-exhaust: only when batchRevealMode is explicitly false (the field
   // is present on the room shape) and the current announcement slot is empty.
@@ -225,10 +233,10 @@ export default function AnnouncingView({
         announcingUserId: event.announcingUserId,
         timestamp: Date.now(),
       });
-      if (
-        announcementStyle === "short" &&
-        currentUserId !== event.announcingUserId
-      ) {
+      // SPEC §10.2 — watchers (not the announcer) get a top-of-screen toast
+      // on every announce_next in BOTH styles. The active driver doesn't
+      // toast themselves; they see the big JustRevealedFlash card instead.
+      if (currentUserId !== event.announcingUserId) {
         const contestant = contestantById.current.get(event.contestantId);
         const announcerName =
           announcement?.announcingDisplayName ??
@@ -241,6 +249,7 @@ export default function AnnouncingView({
               announcingUserDisplayName: announcerName,
               country: contestant.country,
               flagEmoji: contestant.flagEmoji,
+              points: event.points,
               at: Date.now(),
             },
           ]);
@@ -481,7 +490,7 @@ export default function AnnouncingView({
   return (
     <main className="flex min-h-screen flex-col items-center px-4 py-8">
       <SkipBannerQueue events={skipEvents} />
-      <TwelvePointToast events={toastEvents} />
+      <RevealToast events={toastEvents} />
       <div className="max-w-xl w-full space-y-6 motion-safe:animate-fade-in">
         <header className="space-y-3 text-center">
           <h1 className="text-xl font-bold tracking-tight emx-wordmark">
@@ -516,7 +525,15 @@ export default function AnnouncingView({
           ) : null}
         </header>
 
-        {justRevealed ? (
+        {isActiveDriver &&
+        announcementStyle === "full" &&
+        announcement?.queueLength === 10 ? (
+          <StillToGiveLine
+            currentAnnounceIdx={announcement.currentAnnounceIdx}
+          />
+        ) : null}
+
+        {isActiveDriver && justRevealed ? (
           <div className="rounded-2xl border-2 border-primary bg-primary/10 px-6 py-5 text-center motion-safe:animate-fade-in">
             <p className="text-xs uppercase tracking-widest text-primary/80">
               {t("justRevealed.label")}
@@ -708,30 +725,14 @@ export default function AnnouncingView({
             </p>
           ) : (
             <ol className="space-y-1.5">
-              {leaderboard.map((entry) => {
-                const c = contestantById.current.get(entry.contestantId);
-                const country = c?.country ?? entry.contestantId;
-                const flag = c?.flagEmoji ?? "🏳️";
-                return (
-                  <li
-                    key={entry.contestantId}
-                    className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-background text-xs font-semibold text-muted-foreground">
-                        {entry.rank}
-                      </span>
-                      <span className="text-xl" aria-hidden>
-                        {flag}
-                      </span>
-                      <span className="text-sm font-medium">{country}</span>
-                    </div>
-                    <span className="font-mono text-sm font-bold tabular-nums">
-                      {entry.totalPoints}
-                    </span>
-                  </li>
-                );
-              })}
+              {leaderboard.map((entry) => (
+                <LeaderboardRow
+                  key={entry.contestantId}
+                  entry={entry}
+                  contestant={contestantById.current.get(entry.contestantId)}
+                  density={surface}
+                />
+              ))}
             </ol>
           )}
         </section>
@@ -919,6 +920,51 @@ function ShortStyleRevealCard({
         </button>
       ) : null}
     </div>
+  );
+}
+
+function LeaderboardRow({
+  entry,
+  contestant,
+  density,
+}: {
+  entry: LeaderboardEntry;
+  contestant: Contestant | undefined;
+  density: "driver" | "watcher";
+}) {
+  const country = contestant?.country ?? entry.contestantId;
+  const flag = contestant?.flagEmoji ?? "🏳️";
+  const rowCls =
+    density === "watcher"
+      ? "flex items-center justify-between rounded-md border border-border bg-card px-2.5 py-1"
+      : "flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2";
+  const rankCls =
+    density === "watcher"
+      ? "inline-flex items-center justify-center w-5 h-5 rounded-full bg-background text-[10px] font-semibold text-muted-foreground"
+      : "inline-flex items-center justify-center w-6 h-6 rounded-full bg-background text-xs font-semibold text-muted-foreground";
+  const countryCls =
+    density === "watcher" ? "text-xs font-medium" : "text-sm font-medium";
+  const pointsCls =
+    density === "watcher"
+      ? "font-mono text-xs font-bold tabular-nums"
+      : "font-mono text-sm font-bold tabular-nums";
+  const flagCls = density === "watcher" ? "text-base" : "text-xl";
+
+  return (
+    <li
+      className={rowCls}
+      data-testid="leaderboard-row"
+      data-density={density}
+    >
+      <div className="flex items-center gap-2">
+        <span className={rankCls}>{entry.rank}</span>
+        <span className={flagCls} aria-hidden>
+          {flag}
+        </span>
+        <span className={countryCls}>{country}</span>
+      </div>
+      <span className={pointsCls}>{entry.totalPoints}</span>
+    </li>
   );
 }
 

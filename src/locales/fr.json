@@ -344,7 +344,11 @@
       "reshuffleErrorInProgress": "Impossible de réordonner une fois l'annonce commencée.",
       "reshuffleErrorGeneric": "Échec du réordonnancement des annonceurs. Réessaie."
     },
-    "fallbackAnnouncerName": "Quelqu'un"
+    "fallbackAnnouncerName": "Quelqu'un",
+    "stillToGive": {
+      "label": "Reste à donner :",
+      "aria": "Points restant à attribuer : {remaining}"
+    }
   },
   "announce": {
     "skipBanner": {
@@ -362,9 +366,9 @@
       "cta": "Révéler les 12 points",
       "ctaMicrocopy": "Appuie quand tu le dis",
       "revealed": "Révélé ✓",
-      "awaitingTwelve": "En attente de leurs 12 points…",
-      "guestToast": "{name} a donné 12 à {country} {flag}"
-    }
+      "awaitingTwelve": "En attente de leurs 12 points…"
+    },
+    "revealToast": "{name} a donné {points} à {flag} {country}"
   },
   "results": {
     "title": "Résultats",
