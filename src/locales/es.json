@@ -537,7 +537,19 @@
       "announcementLabel": "Anuncio",
       "nowPerformingLabel": "Sincronizar a todos con el acto en escena",
       "nowPerformingInfo": "Te permite tocar el pa\u00eds que act\u00faa en ese momento para llevar a todos los invitados a esa tarjeta durante la votaci\u00f3n. Desactivado por defecto.",
-      "nowPerformingInfoAria": "Sobre este interruptor"
+      "nowPerformingInfoAria": "Sobre este interruptor",
+      "custom": {
+        "yourCategoriesHeading": "Tus categorías",
+        "rowCountLabel": "{count}/{max} categorías",
+        "namePlaceholder": "Nombre de la categoría",
+        "addCategoryButton": "+ Añadir categoría",
+        "removeAria": "Eliminar categoría {n}",
+        "errors": {
+          "empty": "Añade un nombre",
+          "tooShort": "Mínimo 2 caracteres",
+          "duplicate": "Ya está en tu lista"
+        }
+      }
     },
     "actions": {
       "next": "Siguiente",

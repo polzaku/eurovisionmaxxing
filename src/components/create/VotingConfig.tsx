@@ -5,11 +5,12 @@ import { useTranslations } from "next-intl";
 import Button from "@/components/ui/Button";
 import { VOTING_TEMPLATES } from "@/lib/templates";
 import TemplateCard from "./TemplateCard";
+import CustomTemplateCard from "./CustomTemplateCard";
 import AnnouncementModeCard from "./AnnouncementModeCard";
 import AnnouncementStyleSubRadio from "./AnnouncementStyleSubRadio";
 import { nextExpandedId } from "./expandedId";
 
-type TemplateId = "classic" | "spectacle" | "bangerTest";
+type TemplateId = "classic" | "spectacle" | "bangerTest" | "custom";
 type Mode = "live" | "instant";
 
 type SubmitState =
@@ -19,12 +20,14 @@ type SubmitState =
 
 interface VotingConfigProps {
   templateId: TemplateId;
+  customCategories: string[];
   announcementMode: Mode;
   announcementStyle: 'full' | 'short';
   allowNowPerforming: boolean;
   submitState: SubmitState;
   onChange: (patch: {
     templateId?: TemplateId;
+    customCategories?: string[];
     announcementMode?: Mode;
     announcementStyle?: 'full' | 'short';
     allowNowPerforming?: boolean;
@@ -35,6 +38,7 @@ interface VotingConfigProps {
 
 export default function VotingConfig({
   templateId,
+  customCategories,
   announcementMode,
   announcementStyle,
   allowNowPerforming,
@@ -49,7 +53,7 @@ export default function VotingConfig({
     useState<TemplateId | null>(null);
   const [expandedMode, setExpandedMode] = useState<Mode | null>(null);
 
-  const templates = VOTING_TEMPLATES.filter((t) => t.id !== "custom");
+  const templates = VOTING_TEMPLATES;
   const submitting = submitState.kind === "submitting";
 
   return (
@@ -64,22 +68,34 @@ export default function VotingConfig({
       <div className="space-y-3">
         <p className="text-sm font-medium">{t("create.votingConfig.templateLabel")}</p>
         <div className="grid grid-cols-1 gap-3">
-          {templates.map((tpl) => (
-            <TemplateCard
-              key={tpl.id}
-              template={tpl}
-              selected={tpl.id === templateId}
-              expanded={expandedTemplateId === (tpl.id as TemplateId)}
-              onSelect={() =>
-                onChange({ templateId: tpl.id as TemplateId })
-              }
-              onToggleInfo={() =>
-                setExpandedTemplateId((curr) =>
-                  nextExpandedId(curr, tpl.id as TemplateId),
-                )
-              }
-            />
-          ))}
+          {templates.map((tpl) =>
+            tpl.id === "custom" ? (
+              <CustomTemplateCard
+                key={tpl.id}
+                selected={templateId === "custom"}
+                customCategories={customCategories}
+                onSelect={() => onChange({ templateId: "custom" })}
+                onChange={(next) =>
+                  onChange({ customCategories: next })
+                }
+              />
+            ) : (
+              <TemplateCard
+                key={tpl.id}
+                template={tpl}
+                selected={tpl.id === templateId}
+                expanded={expandedTemplateId === (tpl.id as TemplateId)}
+                onSelect={() =>
+                  onChange({ templateId: tpl.id as TemplateId })
+                }
+                onToggleInfo={() =>
+                  setExpandedTemplateId((curr) =>
+                    nextExpandedId(curr, tpl.id as TemplateId),
+                  )
+                }
+              />
+            ),
+          )}
         </div>
       </div>
 

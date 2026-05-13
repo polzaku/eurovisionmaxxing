@@ -537,7 +537,19 @@
       "announcementLabel": "Announcement",
       "nowPerformingLabel": "Sync everyone to the performing act",
       "nowPerformingInfo": "Lets you tap the currently-performing country to bring all guests to that card during voting. Off by default.",
-      "nowPerformingInfoAria": "About this toggle"
+      "nowPerformingInfoAria": "About this toggle",
+      "custom": {
+        "yourCategoriesHeading": "Your categories",
+        "rowCountLabel": "{count}/{max} categories",
+        "namePlaceholder": "Category name",
+        "addCategoryButton": "+ Add category",
+        "removeAria": "Remove category {n}",
+        "errors": {
+          "empty": "Add a name",
+          "tooShort": "At least 2 characters",
+          "duplicate": "Already in your list"
+        }
+      }
     },
     "actions": {
       "next": "Next",
