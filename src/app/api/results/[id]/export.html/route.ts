@@ -55,8 +55,11 @@ export async function GET(
   const t = await getTranslations({ locale, namespace: "export" });
 
   const { html, filename, bytes } = buildResultsHtml(result.data, {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    t: (key, params) => t(key, params as any),
+    // next-intl narrows TranslationValues to specific primitives; the
+    // renderer's looser Record<string, unknown> shape needs a typed
+    // bridge at the boundary. Parameters<typeof t>[1] keeps it explicit
+    // without `any`.
+    t: (key, params) => t(key, params as Parameters<typeof t>[1]),
     now: () => new Date(),
     appHostname: APP_HOSTNAME,
   });
