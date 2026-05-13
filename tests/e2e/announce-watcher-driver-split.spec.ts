@@ -21,9 +21,12 @@ interface SeedOutput {
 }
 
 function seedRoom(state: string): SeedOutput {
+  // seed-room CLI takes <state> as a positional argv (NOT --state=...).
+  // Stderr is captured so the Usage block from bail() doesn't leak into
+  // Playwright's reporter output on graceful-skip paths.
   const raw = execSync(
-    `npm run --silent seed:room -- --state=${state} --json`,
-    { encoding: "utf-8", cwd: process.cwd() },
+    `npm run --silent seed:room -- ${state} --json`,
+    { encoding: "utf-8", cwd: process.cwd(), stdio: ["ignore", "pipe", "pipe"] },
   );
   const lines = raw.split("\n").filter(Boolean);
   for (const line of lines) {
@@ -397,7 +400,12 @@ test.describe("L1 watcher vs driver matrix — broadcast-driven scenarios", () =
   test("short-style guest watcher receives RevealToast (regression guard)", async ({
     browser,
   }, testInfo) => {
-    testInfo.setTimeout(60_000);
+    // Short-style cold-compile path can be slow on first hit (the
+    // `<ShortStyleRevealCard>` branch + `<TwelvePointSplash>` render
+    // path differs from the full-style one warmed by earlier tests).
+    // Budget generously to cover two browser-context boots + the
+    // broadcast roundtrip.
+    testInfo.setTimeout(120_000);
 
     let seed: SeedOutput;
     try {
