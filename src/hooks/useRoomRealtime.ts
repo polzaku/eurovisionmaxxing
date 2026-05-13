@@ -19,7 +19,11 @@ export function useRoomRealtime(
   useEffect(() => {
     if (!roomId) return;
 
-    const channel = supabase.current
+    // Copy the ref value into a local so the cleanup closure captures
+    // a stable reference. Mirrors useRoomPresence.
+    const client = supabase.current;
+
+    const channel = client
       .channel(`room:${roomId}`)
       .on("broadcast", { event: "room_event" }, (payload) => {
         callbackRef.current(payload.payload as RoomEvent);
@@ -27,7 +31,7 @@ export function useRoomRealtime(
       .subscribe();
 
     return () => {
-      supabase.current.removeChannel(channel);
+      client.removeChannel(channel);
     };
   }, [roomId]);
 }

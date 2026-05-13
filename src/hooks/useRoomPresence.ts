@@ -30,7 +30,9 @@ export function useRoomPresence(
   useEffect(() => {
     if (!roomId || !userId) return;
 
-    const channel = supabase.current.channel(`presence:${roomId}`, {
+    const client = supabase.current;
+
+    const channel = client.channel(`presence:${roomId}`, {
       config: { presence: { key: userId } },
     });
 
@@ -58,7 +60,7 @@ export function useRoomPresence(
       });
 
     return () => {
-      void supabase.current.removeChannel(channel);
+      void client.removeChannel(channel);
     };
   }, [roomId, userId]);
 

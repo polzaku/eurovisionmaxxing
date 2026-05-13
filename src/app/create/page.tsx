@@ -146,7 +146,7 @@ export default function CreateRoomPage() {
       if (timeoutTimer) clearTimeout(timeoutTimer);
       controller.abort();
     };
-  }, [year, event]);
+  }, [year, event, t]);
 
   const isCustomValid = useCallback((rows: string[]): boolean => {
     if (rows.length < 1 || rows.length > 8) return false;
