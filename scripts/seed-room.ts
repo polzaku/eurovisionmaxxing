@@ -42,6 +42,7 @@ import bcrypt from "bcryptjs";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../src/types/database";
 import type { Contestant } from "../src/types";
+import { fetchContestants } from "../src/lib/contestants";
 import {
   SEED_CATEGORIES,
   buildAnnouncingCascadeAbsent,
@@ -200,49 +201,15 @@ async function insertMembership(
 
 async function fetchSeedContestants(): Promise<Contestant[]> {
   // Year 9999 fixture — synthetic contestant list bundled in
-  // data/contestants/9999/final.json. Same shape the room would resolve
-  // at runtime via the contestants cascade.
-  //
-  // Supports both legacy flat-array shape and the R2 #241 wrapper
-  // `{ broadcastStartUtc?, contestants: [...] }` shape that the
-  // production fixtures migrated to.
-  const raw = (await import("../data/contestants/9999/final.json", {
-    assert: { type: "json" },
-  })) as { default?: unknown };
-  const data = raw.default ?? raw;
-  type Row = {
-    country: string;
-    artist: string;
-    song: string;
-    runningOrder: number;
-  };
-  let arr: Row[];
-  if (Array.isArray(data)) {
-    arr = data as Row[];
-  } else if (
-    data && typeof data === "object" &&
-    Array.isArray((data as { contestants?: unknown }).contestants)
-  ) {
-    arr = (data as { contestants: Row[] }).contestants;
-  } else {
-    bail(
-      "data/contestants/9999/final.json is not a recognised shape (expected flat array or { contestants: [...] }).",
-    );
-  }
-  return arr.map((c) => {
-    const code = c.country.slice(0, 2).toLowerCase();
-    return {
-      id: `9999-${code}`,
-      country: c.country,
-      countryCode: code,
-      flagEmoji: "🏳️",
-      artist: c.artist,
-      song: c.song,
-      runningOrder: c.runningOrder,
-      year: 9999,
-      event: "final" as const,
-    };
-  });
+  // data/contestants/9999/final.json. Delegate to the canonical
+  // fetchContestants() in src/lib/contestants so the contestant.id
+  // derivation (via the COUNTRY_CODES map) matches what the room
+  // API resolves at runtime. Using a naive country.slice(0,2)
+  // here previously produced ID drift (Ukraine → "uk" vs "ua",
+  // Sweden → "sw" vs "se", United Kingdom → "un" vs "gb") which
+  // left seeded votes/results unresolvable when AnnouncingView
+  // looked up contestantById from the room API's contestants list.
+  return fetchContestants(9999, "final");
 }
 
 // ─── State builders ─────────────────────────────────────────────────────────
