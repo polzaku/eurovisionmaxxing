@@ -145,7 +145,7 @@ export default function CreateRoomPage() {
       if (timeoutTimer) clearTimeout(timeoutTimer);
       controller.abort();
     };
-  }, [year, event]);
+  }, [year, event, t]);
 
   const handleSubmit = useCallback(async () => {
     const session = getSession();
