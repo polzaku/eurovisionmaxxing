@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { useRoomRealtime } from "@/hooks/useRoomRealtime";
+import { useRoomStatusPolling } from "@/hooks/useRoomStatusPolling";
 import {
   fetchRoomData,
   joinRoomApi,
@@ -226,9 +227,32 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     void loadRoom();
   }, [loadRoom]);
 
+  useRoomStatusPolling(
+    roomId,
+    phase.kind === "ready" ? phase.room.status : null,
+    loadRoom,
+  );
+
+  // SPEC §10.2 final-reveal dwell (2026-05-14 fix). When the last
+  // announce_next flips room.status to `done`, defer the page-level
+  // swap to <DoneCeremony> for ~4 s so the announcer's view of the
+  // <JustRevealedFlash> isn't yanked from under them. Tracked via a ref
+  // so we can compare the previous status when the status_changed event
+  // arrives.
+  const prevStatusRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (phase.kind === "ready") {
+      prevStatusRef.current = phase.room.status;
+    }
+  }, [phase]);
+
   useRoomRealtime(roomId, (event) => {
     if (event.type === "status_changed") {
-      void loadRoom();
+      if (event.status === "done" && prevStatusRef.current === "announcing") {
+        window.setTimeout(() => void loadRoom(), 4000);
+      } else {
+        void loadRoom();
+      }
       return;
     }
     if (event.type === "voting_ending") {
@@ -829,7 +853,18 @@ export default function RoomPage({ params }: { params: { id: string } }) {
   }
 
   if (phase.room.status === "scoring") {
-    return <ScoringScreen />;
+    return (
+      <ScoringScreen
+        roomId={phase.room.id}
+        isAdmin={isAdmin}
+        announcementMode={
+          phase.room.announcementMode === "live" ||
+          phase.room.announcementMode === "instant"
+            ? phase.room.announcementMode
+            : undefined
+        }
+      />
+    );
   }
 
   return <StatusStub status={phase.room.status} />;

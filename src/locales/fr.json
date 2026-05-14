@@ -336,6 +336,9 @@
       "title": "{announcerName} annonce",
       "message": "S'il est absent ou bloqué, tu peux prendre le contrôle de ses révélations (tu peux le rendre à tout moment) ou le passer entièrement. Les points passés apparaissent quand même sur le classement."
     },
+    "tvMode": {
+      "openLink": "📺 Ouvrir le mode TV"
+    },
     "takeControl": {
       "button": "Annoncer pour {announcerName}",
       "busy": "Prise de contrôle…"
@@ -498,7 +501,16 @@
   },
   "scoring": {
     "title": "Calcul des résultats…",
-    "subtitle": "Patiente — on fait les comptes."
+    "subtitle": "Patiente — on fait les comptes.",
+    "tvMode": {
+      "title": "Diffuse le show sur une TV",
+      "bullet1": "Ouvre cette page sur ta télé (AirPlay, Chromecast ou simplement un grand écran).",
+      "bullet2": "Les 12 points de chaque porte-parole apparaissent là — la salle regarde ensemble.",
+      "openButton": "Ouvrir le mode TV",
+      "openButtonAria": "Ouvrir le mode TV dans un nouvel onglet",
+      "copyButton": "Copier le lien TV",
+      "copyConfirm": "Lien copié !"
+    }
   },
   "room": {
     "catchingUp": "Mise à jour…",
@@ -697,13 +709,21 @@
   },
   "awards": {
     "jointCaption": "ex æquo",
+    "jointSeparator": " & ",
     "neighbourhoodCaption": "votes les plus similaires",
     "explainerToggle": "Qu'est-ce que ça veut dire ?",
+    "bestCategory": "Meilleur(e) {categoryName}",
+    "youAnd": "Toi & {name}",
     "ceremony": {
       "title": "Et les récompenses vont à…",
       "nextAward": "Récompense suivante",
       "nextAwardAria": "Récompense suivante ({current} sur {total})",
       "advanceHint": "Appuie n'importe où pour révéler la prochaine récompense"
+    },
+    "overall_winner": {
+      "name": "Et le gagnant est…",
+      "caption": "champion du salon ce soir",
+      "stat": "{points, plural, one {# point} other {# points}}"
     },
     "your_neighbour": {
       "name": "Ton plus proche voisin",

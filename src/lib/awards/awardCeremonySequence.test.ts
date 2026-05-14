@@ -224,4 +224,90 @@ describe("awardCeremonySequence", () => {
     });
     expect(result).toEqual([]);
   });
+
+  describe("overall-winner card (fix 2026-05-14)", () => {
+    it("prepends an overall-winner card when leaderboard has rank-1 contestant", () => {
+      const awards: RoomAward[] = [
+        mkAward("best_vocals", { winnerContestantId: "2026-SE" }),
+        mkAward("biggest_stan", { winnerUserId: "u1" }),
+      ];
+      const members = [
+        { userId: "u1", displayName: "Alice", avatarSeed: "alice" },
+      ];
+      const result = awardCeremonySequence(
+        awards,
+        [mkContestant("2026-SE", "Sweden"), mkContestant("2026-UK", "Ukraine")],
+        members,
+        CATEGORIES,
+        {
+          leaderboard: [
+            { contestantId: "2026-UK", totalPoints: 200, rank: 1 },
+            { contestantId: "2026-SE", totalPoints: 150, rank: 2 },
+          ],
+        },
+      );
+      expect(result[0].award.awardKey).toBe("overall_winner");
+      if (result[0].kind === "contestant" || result[0].kind === "overall-winner") {
+        expect(result[0].contestant?.country).toBe("Ukraine");
+      } else {
+        throw new Error("Expected contestant-style card for overall-winner");
+      }
+      // Existing ordering for the rest holds.
+      expect(result.slice(1).map((c) => c.award.awardKey)).toEqual([
+        "best_vocals",
+        "biggest_stan",
+      ]);
+    });
+
+    it("omits the overall-winner card when leaderboard is empty or unset", () => {
+      const awards = [mkAward("best_vocals", { winnerContestantId: "2026-SE" })];
+      const noLb = awardCeremonySequence(
+        awards,
+        [mkContestant("2026-SE", "Sweden")],
+        [],
+        CATEGORIES,
+      );
+      expect(noLb[0].award.awardKey).toBe("best_vocals");
+
+      const emptyLb = awardCeremonySequence(
+        awards,
+        [mkContestant("2026-SE", "Sweden")],
+        [],
+        CATEGORIES,
+        { leaderboard: [] },
+      );
+      expect(emptyLb[0].award.awardKey).toBe("best_vocals");
+    });
+
+    it("omits the card if the rank-1 contestant cannot be resolved against the contestants pool", () => {
+      const awards = [mkAward("best_vocals", { winnerContestantId: "2026-SE" })];
+      const result = awardCeremonySequence(
+        awards,
+        [mkContestant("2026-SE", "Sweden")],
+        [],
+        CATEGORIES,
+        {
+          leaderboard: [
+            { contestantId: "2026-XX", totalPoints: 200, rank: 1 },
+          ],
+        },
+      );
+      expect(result[0].award.awardKey).toBe("best_vocals");
+    });
+
+    it("carries the rank-1 total points onto the card for stat rendering", () => {
+      const result = awardCeremonySequence(
+        [],
+        [mkContestant("2026-SE", "Sweden")],
+        [],
+        [],
+        {
+          leaderboard: [{ contestantId: "2026-SE", totalPoints: 142, rank: 1 }],
+        },
+      );
+      expect(result).toHaveLength(1);
+      expect(result[0].award.awardKey).toBe("overall_winner");
+      expect(result[0].award.statValue).toBe(142);
+    });
+  });
 });

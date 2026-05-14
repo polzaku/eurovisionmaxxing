@@ -373,16 +373,6 @@ export default function VotingView({
             </p>
           </div>
           <div className="flex flex-col items-end gap-1 flex-shrink-0">
-            {onEndVoting ? (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={onEndVoting}
-                aria-label={t("voting.endVoting.buttonAria")}
-              >
-                {t("voting.endVoting.button")}
-              </Button>
-            ) : null}
             <button
               type="button"
               onClick={() => setScaleSheetOpen(true)}
@@ -512,6 +502,20 @@ export default function VotingView({
             <span className="text-[10px]">{t("voting.nav.nextLabel")}</span>
           </Button>
         </nav>
+
+        {onEndVoting ? (
+          <div className="pt-2">
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={onEndVoting}
+              aria-label={t("voting.endVoting.buttonAria")}
+              className="w-full"
+            >
+              {t("voting.endVoting.button")}
+            </Button>
+          </div>
+        ) : null}
 
         <JumpToDrawer
           isOpen={isDrawerOpen}

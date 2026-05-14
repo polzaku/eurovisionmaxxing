@@ -510,6 +510,30 @@ describe("<AnnouncingView> — owner-watching skip CTA", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders the TV-mode link pointing at /room/{id}/present in the owner-watching panel", async () => {
+    await renderAsOwner();
+    const tvLink = screen.getByTestId("announcing-tv-mode-link");
+    expect(tvLink).toBeInTheDocument();
+    expect(tvLink).toHaveAttribute("href", `/room/${ROOM_ID}/present`);
+    expect(tvLink).toHaveAttribute("target", "_blank");
+  });
+
+  it("does NOT render the TV-mode link for non-owner viewers", async () => {
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={ANNOUNCER_ID}
+      />,
+    );
+    // Both the up-next card and the leaderboard row contain "Austria",
+    // so use getAllByText to confirm the announcement state has loaded.
+    await waitFor(() =>
+      expect(screen.getAllByText("Austria").length).toBeGreaterThan(0),
+    );
+    expect(screen.queryByTestId("announcing-tv-mode-link")).toBeNull();
+  });
+
   it("hides the skip CTA while the announcement state is still loading", () => {
     // Don't await — we want to observe the pre-fetch state.
     globalThis.fetch = vi.fn(
@@ -1477,5 +1501,106 @@ describe("AnnouncingView — short style (SPEC §10.2.2)", () => {
         expect(row.dataset.density).toBe("driver");
       }
     }
+  });
+});
+
+// ─── Final-reveal dwell (2026-05-14 fix) ─────────────────────────────────────
+// When the announcer reveals the LAST point of the show, the server returns
+// `finished: true`. Without the dwell, AnnouncingView flips to <DoneCard>
+// immediately and the announcer never gets to see their 12-point flash. The
+// fix queues a setTimeout(FINAL_REVEAL_DWELL_MS) before the swap so the
+// JustRevealedFlash card stays visible. Real timers — the dwell window is
+// short enough not to be a problem for the test suite.
+
+import {
+  FINAL_REVEAL_DWELL_MS,
+  __setFinalRevealDwellMsForTests,
+} from "./AnnouncingView";
+
+describe("<AnnouncingView> — final reveal dwell", () => {
+  beforeEach(() => {
+    postAnnounceNextMock.mockReset();
+    postAnnounceHandoffMock.mockReset();
+    postAnnounceSkipMock.mockReset();
+    mockResultsFetch();
+    // Shorten the dwell so the test doesn't sit on the real 4 s.
+    __setFinalRevealDwellMsForTests(80);
+  });
+
+  afterEach(() => {
+    __setFinalRevealDwellMsForTests(FINAL_REVEAL_DWELL_MS);
+    vi.restoreAllMocks();
+  });
+
+  it("keeps the JustRevealedFlash on screen and does NOT mount DoneCard immediately when reveal returns finished:true", async () => {
+    postAnnounceNextMock.mockResolvedValue({
+      ok: true,
+      data: { finished: true },
+    });
+
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={ANNOUNCER_ID}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("active-driver-tap-zone")).toBeInTheDocument(),
+    );
+
+    // Simulate the announce_next broadcast that fires alongside the reveal —
+    // populates JustRevealedFlash. The handler is captured via the
+    // useRoomRealtime mock at the top of the file.
+    fireRoomEvent({
+      type: "announce_next",
+      contestantId: "2026-AT",
+      points: 12,
+      announcingUserId: ANNOUNCER_ID,
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /reveal next point/i }),
+    );
+
+    // POST completes; flash still up, DoneCard NOT mounted yet.
+    await waitFor(() => {
+      expect(postAnnounceNextMock).toHaveBeenCalledTimes(1);
+    });
+    expect(screen.queryByTestId("done-card")).toBeNull();
+    expect(screen.getByTestId("just-revealed-flash")).toBeInTheDocument();
+
+    // After the (test-shortened) dwell elapses, DoneCard takes over.
+    await waitFor(
+      () => expect(screen.getByTestId("done-card")).toBeInTheDocument(),
+      { timeout: 1000 },
+    );
+  });
+
+  it("still transitions to DoneCard immediately when skip (not reveal) returns finished:true", async () => {
+    // Skip-path dwell is NOT needed — the host isn't revealing their own
+    // point. Keep the original immediate flip so the test in the
+    // owner-watching block still holds. We assert that here as a guard.
+    postAnnounceSkipMock.mockResolvedValue({
+      ok: true,
+      data: { finished: true },
+    });
+
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={OWNER_ID}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getAllByText(/bob is announcing/i).length).toBeGreaterThan(0),
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /skip bob/i }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("done-card")).toBeInTheDocument(),
+    );
   });
 });
