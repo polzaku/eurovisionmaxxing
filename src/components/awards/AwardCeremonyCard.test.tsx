@@ -10,7 +10,7 @@ vi.mock("next-intl", () => ({
 import AwardCeremonyCard from "./AwardCeremonyCard";
 
 describe("AwardCeremonyCard", () => {
-  it("renders contestant award with country name + stat", () => {
+  it("renders category award with localized 'Best {categoryName}' prefix + stat", () => {
     render(
       <AwardCeremonyCard
         card={{
@@ -39,12 +39,15 @@ describe("AwardCeremonyCard", () => {
         }}
       />,
     );
-    expect(screen.getByText("Best Vocals")).toBeInTheDocument();
+    // The mock returns the key verbatim; the component composes
+    // `t("awards.bestCategory", { categoryName: "Vocals" })`.
+    expect(screen.getByText("awards.bestCategory")).toBeInTheDocument();
     expect(screen.getByText("Sweden")).toBeInTheDocument();
+    // Category stat falls back to the server-supplied label.
     expect(screen.getByText("9.4 avg")).toBeInTheDocument();
   });
 
-  it("renders solo personality winner with name + plain-English explainer", () => {
+  it("renders solo personality winner via localized name + explainer keys", () => {
     render(
       <AwardCeremonyCard
         card={{
@@ -56,7 +59,7 @@ describe("AwardCeremonyCard", () => {
             winnerUserId: "u1",
             winnerUserIdB: null,
             winnerContestantId: null,
-            statValue: null,
+            statValue: 8.9,
             statLabel: "8.9 avg",
           },
           winner: { userId: "u1", displayName: "Alice", avatarSeed: "alice" },
@@ -64,14 +67,22 @@ describe("AwardCeremonyCard", () => {
         }}
       />,
     );
-    expect(screen.getByText("Biggest stan")).toBeInTheDocument();
-    expect(screen.getByText("Alice")).toBeInTheDocument();
+    // Name + stat + explainer all route through t(); the mock returns
+    // the keys verbatim, proving the server's English `awardName` is no
+    // longer being rendered.
     expect(
-      screen.getByText(/Highest average score given/),
+      screen.getByText("awards.personality.biggest_stan.name"),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText("awards.personality.biggest_stan.stat"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("awards.explainers.biggest_stan"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Alice")).toBeInTheDocument();
   });
 
-  it("renders pair award with both names + neighbourhood caption", () => {
+  it("renders pair award with localized joint separator", () => {
     render(
       <AwardCeremonyCard
         card={{
@@ -83,7 +94,7 @@ describe("AwardCeremonyCard", () => {
             winnerUserId: "u1",
             winnerUserIdB: "u2",
             winnerContestantId: null,
-            statValue: null,
+            statValue: 0.91,
             statLabel: "Spearman 0.91",
           },
           winner: { userId: "u1", displayName: "Alice", avatarSeed: "alice" },
@@ -91,10 +102,11 @@ describe("AwardCeremonyCard", () => {
         }}
       />,
     );
-    expect(screen.getByText(/Alice/)).toBeInTheDocument();
-    expect(screen.getByText(/Bob/)).toBeInTheDocument();
-    // Locale mock returns the key verbatim, so the neighbourhood caption
-    // shows up as the literal locale path.
+    // The joint separator is itself a t() key now, so the rendered text
+    // is "Alice{key}Bob" with the mock returning the key.
+    expect(
+      screen.getByText(/Alice.*awards\.jointSeparator.*Bob/),
+    ).toBeInTheDocument();
     expect(screen.getByText(/awards\.neighbourhoodCaption/)).toBeInTheDocument();
   });
 
@@ -159,12 +171,16 @@ function mkPersonalNeighbourCard(
 }
 
 describe("AwardCeremonyCard — personal-neighbour", () => {
-  it("renders the award name + neighbour name + 'You & {name}' line", () => {
+  it("renders the award name + neighbour name + 'You & {name}' line via locale keys", () => {
     render(<AwardCeremonyCard card={mkPersonalNeighbourCard()} />);
-    expect(screen.getByText("Your closest neighbour")).toBeInTheDocument();
-    expect(screen.getByText(/Alice/)).toBeInTheDocument();
+    // Personal-neighbour pulls its name from awards.your_neighbour.name.
+    expect(
+      screen.getByText("awards.your_neighbour.name"),
+    ).toBeInTheDocument();
     expect(screen.getByText(/awards\.your_neighbour\.caption/)).toBeInTheDocument();
-    expect(screen.getByText(/You\s*&\s*Alice/)).toBeInTheDocument();
+    // "You & {name}" is now a locale-keyed template; the mock returns the
+    // key verbatim regardless of params.
+    expect(screen.getByText("awards.youAnd")).toBeInTheDocument();
   });
 
   it("shows the reciprocity badge when isReciprocal=true", () => {
@@ -189,17 +205,20 @@ describe("AwardCeremonyCard — personal-neighbour", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders the Pearson stat line via the synthetic award.statLabel", () => {
+  it("renders the Pearson stat line via the localized template", () => {
     render(
       <AwardCeremonyCard card={mkPersonalNeighbourCard({ pearson: 0.84 })} />,
     );
-    expect(screen.getByText("Pearson 0.84")).toBeInTheDocument();
+    // Localized stat key for your_neighbour reuses the personality.your_neighbour.stat path.
+    expect(
+      screen.getByText("awards.personality.your_neighbour.stat"),
+    ).toBeInTheDocument();
   });
 
-  it("renders the explainer paragraph", () => {
+  it("renders the explainer paragraph via the locale key", () => {
     render(<AwardCeremonyCard card={mkPersonalNeighbourCard()} />);
     expect(
-      screen.getByText(/your votes lined up most closely/),
+      screen.getByText("awards.explainers.your_neighbour"),
     ).toBeInTheDocument();
   });
 });

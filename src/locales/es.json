@@ -709,8 +709,11 @@
   },
   "awards": {
     "jointCaption": "ganadores conjuntos",
+    "jointSeparator": " y ",
     "neighbourhoodCaption": "votaron más parecido",
     "explainerToggle": "¿Qué significa esto?",
+    "bestCategory": "Mejor {categoryName}",
+    "youAnd": "Tú y {name}",
     "ceremony": {
       "title": "Y los premios van para…",
       "nextAward": "Siguiente premio",

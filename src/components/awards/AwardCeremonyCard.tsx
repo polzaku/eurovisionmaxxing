@@ -3,7 +3,11 @@
 import { useTranslations } from "next-intl";
 import Avatar from "@/components/ui/Avatar";
 import type { CeremonyCard } from "@/lib/awards/awardCeremonySequence";
-import { explainerForAward } from "@/lib/awards/awardExplainers";
+import {
+  localizedAwardName,
+  localizedAwardStat,
+  localizedAwardExplainer,
+} from "@/lib/awards/localizedAwardCopy";
 
 interface AwardCeremonyCardProps {
   card: CeremonyCard;
@@ -13,10 +17,25 @@ interface AwardCeremonyCardProps {
  * Single-card cinematic presentation for the SPEC §11.3 reveal sequence.
  * Larger and louder than the static card on `/results/[id]` — bigger flag /
  * avatar, explainer always inline (no `<details>` collapse), centered layout.
+ *
+ * Names, stats and explainers route through `t()` so non-English locales
+ * render translated copy rather than the English `room_awards.awardName`
+ * stored by the server.
  */
 export default function AwardCeremonyCard({ card }: AwardCeremonyCardProps) {
   const t = useTranslations();
-  const explainer = explainerForAward(card.award.awardKey);
+  const awardName = localizedAwardName(
+    t,
+    card.award.awardKey,
+    card.award.awardName,
+  );
+  const stat = localizedAwardStat(
+    t,
+    card.award.awardKey,
+    card.award.statValue,
+    card.award.statLabel,
+  );
+  const explainer = localizedAwardExplainer(t, card.award.awardKey);
 
   if (card.kind === "overall-winner") {
     return (
@@ -42,7 +61,7 @@ export default function AwardCeremonyCard({ card }: AwardCeremonyCardProps) {
     return (
       <div className="flex flex-col items-center text-center gap-4 motion-safe:animate-fade-in">
         <p className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-          {card.award.awardName}
+          {awardName}
         </p>
         <span className="text-7xl" aria-hidden>
           {card.contestant?.flagEmoji ?? "🏆"}
@@ -50,8 +69,8 @@ export default function AwardCeremonyCard({ card }: AwardCeremonyCardProps) {
         <p className="text-3xl font-bold">
           {card.contestant?.country ?? card.award.winnerContestantId ?? ""}
         </p>
-        {card.award.statLabel ? (
-          <p className="text-sm text-muted-foreground">{card.award.statLabel}</p>
+        {stat ? (
+          <p className="text-sm text-muted-foreground">{stat}</p>
         ) : null}
       </div>
     );
@@ -61,7 +80,7 @@ export default function AwardCeremonyCard({ card }: AwardCeremonyCardProps) {
     return (
       <div className="flex flex-col items-center text-center gap-4 motion-safe:animate-fade-in">
         <p className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-          {card.award.awardName}
+          {awardName}
         </p>
         <div className="flex -space-x-3">
           <Avatar
@@ -76,7 +95,7 @@ export default function AwardCeremonyCard({ card }: AwardCeremonyCardProps) {
           />
         </div>
         <p className="text-2xl font-bold">
-          You &amp; {card.neighbourUser.displayName}
+          {t("awards.youAnd", { name: card.neighbourUser.displayName })}
         </p>
         <p className="text-sm text-muted-foreground italic">
           {t("awards.your_neighbour.caption")}
@@ -91,10 +110,8 @@ export default function AwardCeremonyCard({ card }: AwardCeremonyCardProps) {
             {explainer}
           </p>
         ) : null}
-        {card.award.statLabel ? (
-          <p className="text-xs text-muted-foreground tabular-nums">
-            {card.award.statLabel}
-          </p>
+        {stat ? (
+          <p className="text-xs text-muted-foreground tabular-nums">{stat}</p>
         ) : null}
       </div>
     );
@@ -110,7 +127,7 @@ export default function AwardCeremonyCard({ card }: AwardCeremonyCardProps) {
   return (
     <div className="flex flex-col items-center text-center gap-4 motion-safe:animate-fade-in">
       <p className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-        {card.award.awardName}
+        {awardName}
       </p>
       <div className="flex -space-x-3">
         {card.winner ? (
@@ -130,7 +147,9 @@ export default function AwardCeremonyCard({ card }: AwardCeremonyCardProps) {
       </div>
       <p className="text-2xl font-bold">
         {card.winner?.displayName ?? "—"}
-        {card.partner ? ` & ${card.partner.displayName}` : ""}
+        {card.partner
+          ? `${t("awards.jointSeparator")}${card.partner.displayName}`
+          : ""}
       </p>
       {captionKey ? (
         <p className="text-sm text-muted-foreground italic">{t(captionKey)}</p>
@@ -140,10 +159,8 @@ export default function AwardCeremonyCard({ card }: AwardCeremonyCardProps) {
           {explainer}
         </p>
       ) : null}
-      {card.award.statLabel ? (
-        <p className="text-xs text-muted-foreground tabular-nums">
-          {card.award.statLabel}
-        </p>
+      {stat ? (
+        <p className="text-xs text-muted-foreground tabular-nums">{stat}</p>
       ) : null}
     </div>
   );

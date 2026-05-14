@@ -133,10 +133,17 @@ describe("DoneCeremony", () => {
     ).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("awards-tap-zone"));
 
-    expect(await screen.findByText("Best Vocals")).toBeInTheDocument();
+    // Category awards now route through `awards.bestCategory` ICU template
+    // (Fix 4); the locale mock appends params so we match the key path.
+    expect(
+      await screen.findByText(/awards\.bestCategory/),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId("awards-tap-zone"));
-    expect(screen.getByText("The enabler")).toBeInTheDocument();
+    // The enabler now routes through awards.personality.the_enabler.name.
+    expect(
+      screen.getByText(/awards\.personality\.the_enabler\.name/),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId("awards-tap-zone"));
 

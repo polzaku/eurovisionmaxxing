@@ -709,8 +709,11 @@
   },
   "awards": {
     "jointCaption": "ex æquo",
+    "jointSeparator": " & ",
     "neighbourhoodCaption": "votes les plus similaires",
     "explainerToggle": "Qu'est-ce que ça veut dire ?",
+    "bestCategory": "Meilleur(e) {categoryName}",
+    "youAnd": "Toi & {name}",
     "ceremony": {
       "title": "Et les récompenses vont à…",
       "nextAward": "Récompense suivante",

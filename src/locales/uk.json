@@ -709,8 +709,11 @@
   },
   "awards": {
     "jointCaption": "переможці разом",
+    "jointSeparator": " і ",
     "neighbourhoodCaption": "проголосували найбільш схоже",
     "explainerToggle": "Що це означає?",
+    "bestCategory": "Найкращий: {categoryName}",
+    "youAnd": "Ти і {name}",
     "ceremony": {
       "title": "І нагороди отримують…",
       "nextAward": "Наступна нагорода",

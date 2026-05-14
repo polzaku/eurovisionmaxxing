@@ -57,22 +57,30 @@ const SEQ: CeremonyCard[] = [
 describe("AwardsCeremony", () => {
   it("starts on the first card", () => {
     render(<AwardsCeremony sequence={SEQ} onAllRevealed={() => {}} />);
-    expect(screen.getByText("Best Vocals")).toBeInTheDocument();
-    expect(screen.queryByText("The enabler")).toBeNull();
+    // Category awards now route through awards.bestCategory; the locale
+    // mock appends params, so we match the key path.
+    expect(screen.getByText(/awards\.bestCategory/)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/awards\.personality\.the_enabler\.name/),
+    ).toBeNull();
   });
 
   it("advances to the next card via the corner Next button", async () => {
     const user = userEvent.setup();
     render(<AwardsCeremony sequence={SEQ} onAllRevealed={() => {}} />);
     await user.click(screen.getByTestId("awards-next-button"));
-    expect(screen.getByText("The enabler")).toBeInTheDocument();
+    expect(
+      screen.getByText(/awards\.personality\.the_enabler\.name/),
+    ).toBeInTheDocument();
   });
 
   it("advances via the tap-anywhere zone", async () => {
     const user = userEvent.setup();
     render(<AwardsCeremony sequence={SEQ} onAllRevealed={() => {}} />);
     await user.click(screen.getByTestId("awards-tap-zone"));
-    expect(screen.getByText("The enabler")).toBeInTheDocument();
+    expect(
+      screen.getByText(/awards\.personality\.the_enabler\.name/),
+    ).toBeInTheDocument();
   });
 
   it("fires onAllRevealed exactly once after advancing past the last card", async () => {
@@ -106,6 +114,8 @@ describe("AwardsCeremony", () => {
     const user = userEvent.setup();
     render(<AwardsCeremony sequence={SEQ} onAllRevealed={() => {}} />);
     await user.keyboard(" ");
-    expect(screen.getByText("The enabler")).toBeInTheDocument();
+    expect(
+      screen.getByText(/awards\.personality\.the_enabler\.name/),
+    ).toBeInTheDocument();
   });
 });

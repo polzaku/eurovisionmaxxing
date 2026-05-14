@@ -709,8 +709,11 @@
   },
   "awards": {
     "jointCaption": "joint winners",
+    "jointSeparator": " & ",
     "neighbourhoodCaption": "voted most alike",
     "explainerToggle": "What does this mean?",
+    "bestCategory": "Best {categoryName}",
+    "youAnd": "You & {name}",
     "ceremony": {
       "title": "And the awards go to…",
       "nextAward": "Next award",
