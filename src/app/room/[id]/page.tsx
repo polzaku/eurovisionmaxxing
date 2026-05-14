@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { useRoomRealtime } from "@/hooks/useRoomRealtime";
+import { useRoomStatusPolling } from "@/hooks/useRoomStatusPolling";
 import {
   fetchRoomData,
   joinRoomApi,
@@ -225,6 +226,12 @@ export default function RoomPage({ params }: { params: { id: string } }) {
   useEffect(() => {
     void loadRoom();
   }, [loadRoom]);
+
+  useRoomStatusPolling(
+    roomId,
+    phase.kind === "ready" ? phase.room.status : null,
+    loadRoom,
+  );
 
   useRoomRealtime(roomId, (event) => {
     if (event.type === "status_changed") {
