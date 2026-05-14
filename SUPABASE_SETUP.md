@@ -83,6 +83,99 @@ Open [http://loca lhost:3000](http://localhost:3000) — you should see the land
 
 For existing projects, run the per-migration SQL listed in the changelog below in the Supabase SQL Editor. Each statement is idempotent (uses `IF NOT EXISTS` or equivalent), so re-running is safe.
 
+### Verifying applied migrations
+
+Paste this read-only query into Supabase **SQL Editor → New query** and run. Every row should return `OK`. Any `MISSING` row points at an un-applied changelog entry — find the matching block below and run it.
+
+```sql
+SELECT 'rooms.delegate_user_id'              AS check_name,
+       CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns
+         WHERE table_name='rooms' AND column_name='delegate_user_id')
+         THEN 'OK' ELSE 'MISSING' END
+UNION ALL SELECT 'rooms.announce_skipped_user_ids',
+       CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns
+         WHERE table_name='rooms' AND column_name='announce_skipped_user_ids')
+         THEN 'OK' ELSE 'MISSING' END
+UNION ALL SELECT 'rooms.batch_reveal_mode',
+       CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns
+         WHERE table_name='rooms' AND column_name='batch_reveal_mode')
+         THEN 'OK' ELSE 'MISSING' END
+UNION ALL SELECT 'rooms.announcement_style',
+       CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns
+         WHERE table_name='rooms' AND column_name='announcement_style')
+         THEN 'OK' ELSE 'MISSING' END
+UNION ALL SELECT 'rooms.voting_ends_at',
+       CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns
+         WHERE table_name='rooms' AND column_name='voting_ends_at')
+         THEN 'OK' ELSE 'MISSING' END
+UNION ALL SELECT 'rooms.voting_ended_at',
+       CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns
+         WHERE table_name='rooms' AND column_name='voting_ended_at')
+         THEN 'OK' ELSE 'MISSING' END
+UNION ALL SELECT 'rooms.status CHECK includes voting_ending',
+       CASE WHEN EXISTS (
+         SELECT 1 FROM information_schema.check_constraints
+         WHERE constraint_name='rooms_status_check'
+           AND check_clause LIKE '%voting_ending%')
+         THEN 'OK' ELSE 'MISSING' END
+UNION ALL SELECT 'room_memberships.scores_locked_at',
+       CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns
+         WHERE table_name='room_memberships' AND column_name='scores_locked_at')
+         THEN 'OK' ELSE 'MISSING' END
+UNION ALL SELECT 'room_memberships.last_seen_at',
+       CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns
+         WHERE table_name='room_memberships' AND column_name='last_seen_at')
+         THEN 'OK' ELSE 'MISSING' END
+UNION ALL SELECT 'room_memberships.ready_at',
+       CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns
+         WHERE table_name='room_memberships' AND column_name='ready_at')
+         THEN 'OK' ELSE 'MISSING' END
+UNION ALL SELECT 'votes.hot_take_edited_at',
+       CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns
+         WHERE table_name='votes' AND column_name='hot_take_edited_at')
+         THEN 'OK' ELSE 'MISSING' END
+UNION ALL SELECT 'votes.hot_take_deleted_by_user_id',
+       CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns
+         WHERE table_name='votes' AND column_name='hot_take_deleted_by_user_id')
+         THEN 'OK' ELSE 'MISSING' END
+UNION ALL SELECT 'votes.hot_take_deleted_at',
+       CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns
+         WHERE table_name='votes' AND column_name='hot_take_deleted_at')
+         THEN 'OK' ELSE 'MISSING' END
+UNION ALL SELECT 'room_awards.winner_user_id_b',
+       CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns
+         WHERE table_name='room_awards' AND column_name='winner_user_id_b')
+         THEN 'OK' ELSE 'MISSING' END
+UNION ALL SELECT 'RLS policy: Results viewable',
+       CASE WHEN EXISTS (SELECT 1 FROM pg_policies
+         WHERE tablename='results'
+           AND policyname='Results viewable when room is announcing or done')
+         THEN 'OK' ELSE 'MISSING' END
+UNION ALL SELECT 'RLS policy: Awards viewable',
+       CASE WHEN EXISTS (SELECT 1 FROM pg_policies
+         WHERE tablename='room_awards'
+           AND policyname='Awards viewable when room is done')
+         THEN 'OK' ELSE 'MISSING' END
+UNION ALL SELECT 'realtime publication has rooms',
+       CASE WHEN EXISTS (SELECT 1 FROM pg_publication_tables
+         WHERE pubname='supabase_realtime' AND tablename='rooms')
+         THEN 'OK' ELSE 'MISSING' END
+UNION ALL SELECT 'realtime publication has room_memberships',
+       CASE WHEN EXISTS (SELECT 1 FROM pg_publication_tables
+         WHERE pubname='supabase_realtime' AND tablename='room_memberships')
+         THEN 'OK' ELSE 'MISSING' END
+UNION ALL SELECT 'realtime publication has votes',
+       CASE WHEN EXISTS (SELECT 1 FROM pg_publication_tables
+         WHERE pubname='supabase_realtime' AND tablename='votes')
+         THEN 'OK' ELSE 'MISSING' END
+UNION ALL SELECT 'realtime publication has results',
+       CASE WHEN EXISTS (SELECT 1 FROM pg_publication_tables
+         WHERE pubname='supabase_realtime' AND tablename='results')
+         THEN 'OK' ELSE 'MISSING' END;
+```
+
+Note on `room_awards`: it is intentionally **not** in `supabase_realtime`. Awards are delivered to clients via the `room:{roomId}` broadcast channel (the discriminated `room_event` payload — see CLAUDE.md §3.3 and SPEC §15), not via Postgres Changes on the table. The query above reflects what `supabase/schema.sql` actually declares.
+
 ### Changelog
 
 - **2026-05-10 — Phase R4 "Finish the show":** added `rooms.batch_reveal_mode BOOLEAN NOT NULL DEFAULT FALSE`. Set true when an admin enters batch-reveal mode after cascade exhausts. Re-apply via SQL Editor:
