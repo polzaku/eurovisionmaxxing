@@ -50,9 +50,15 @@ test.describe("awards ceremony flow", () => {
 
     await page.goto(`/room/${ROOM_ID}`);
 
-    // We should land in the awards phase quickly because the leaderboard
-    // replay-skip flag is set.
-    await expect(page.getByText("Best Vocals")).toBeVisible({ timeout: 15_000 });
+    // SPEC §11.3 (2026-05-14 fix): the cinematic reveal now opens with
+    // the "And the winner is…" card, ahead of the category awards.
+    await expect(page.getByText("And the winner is…")).toBeVisible({
+      timeout: 15_000,
+    });
+    await page.getByTestId("awards-next-button").click();
+
+    // First category award.
+    await expect(page.getByText("Best Vocals")).toBeVisible();
 
     // Advance via the corner Next button.
     await page.getByTestId("awards-next-button").click();
