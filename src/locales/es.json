@@ -91,21 +91,66 @@
     }
   },
   "categories": {
-    "vocals":            { "name": "Voz",                 "hint": "Ejecución técnica y control — no solo si te gusta el estilo" },
-    "music":             { "name": "Música",               "hint": "Composición, arreglos y calidad de producción" },
-    "outfit":            { "name": "Outfit",               "hint": "El look. ¿Funciona? ¿Está comprometido?" },
-    "stagePerformance":  { "name": "Actuación en escena",  "hint": "Movimiento, energía y uso del escenario" },
-    "vibes":             { "name": "Vibras",               "hint": "Lo inefable. ¿Cómo te hizo sentir?" },
-    "drama":             { "name": "Drama",                "hint": "¿Cuánto te hizo jadear, llevarte la mano al pecho o inclinarte hacia adelante?" },
-    "costumeCommitment": { "name": "Entrega al vestuario", "hint": "No solo bonito — ¿hasta dónde llegaron? ¿Sin frenos?" },
-    "stagingChaos":      { "name": "Caos escénico",        "hint": "¿Fue locura controlada o simplemente confusión? Premia lo primero." },
-    "gayPanicLevel":     { "name": "Nivel de pánico gay",  "hint": "Lo camp. Lo queer. La iconografía." },
-    "quotability":       { "name": "Citabilidad",          "hint": "¿Seguirás hablando de esto en noviembre?" },
-    "catchiness":        { "name": "Pegada",               "hint": "¿Podrías tararearla 10 minutos después?" },
-    "danceability":      { "name": "Bailabilidad",         "hint": "¿Tu cuerpo se movió solo?" },
-    "production":        { "name": "Producción",           "hint": "Diseño de sonido, mezcla y calidad de estudio" },
-    "lyrics":            { "name": "Letra",                "hint": "¿Qué dicen en realidad? ¿Aguanta el escrutinio?" },
-    "originality":       { "name": "Originalidad",         "hint": "¿Ha escuchado Eurovisión algo así antes?" }
+    "vocals": {
+      "name": "Voz",
+      "hint": "Ejecución técnica y control — no solo si te gusta el estilo"
+    },
+    "music": {
+      "name": "Música",
+      "hint": "Composición, arreglos y calidad de producción"
+    },
+    "outfit": {
+      "name": "Outfit",
+      "hint": "El look. ¿Funciona? ¿Está comprometido?"
+    },
+    "stagePerformance": {
+      "name": "Actuación en escena",
+      "hint": "Movimiento, energía y uso del escenario"
+    },
+    "vibes": {
+      "name": "Vibras",
+      "hint": "Lo inefable. ¿Cómo te hizo sentir?"
+    },
+    "drama": {
+      "name": "Drama",
+      "hint": "¿Cuánto te hizo jadear, llevarte la mano al pecho o inclinarte hacia adelante?"
+    },
+    "costumeCommitment": {
+      "name": "Entrega al vestuario",
+      "hint": "No solo bonito — ¿hasta dónde llegaron? ¿Sin frenos?"
+    },
+    "stagingChaos": {
+      "name": "Caos escénico",
+      "hint": "¿Fue locura controlada o simplemente confusión? Premia lo primero."
+    },
+    "gayPanicLevel": {
+      "name": "Nivel de pánico gay",
+      "hint": "Lo camp. Lo queer. La iconografía."
+    },
+    "quotability": {
+      "name": "Citabilidad",
+      "hint": "¿Seguirás hablando de esto en noviembre?"
+    },
+    "catchiness": {
+      "name": "Pegada",
+      "hint": "¿Podrías tararearla 10 minutos después?"
+    },
+    "danceability": {
+      "name": "Bailabilidad",
+      "hint": "¿Tu cuerpo se movió solo?"
+    },
+    "production": {
+      "name": "Producción",
+      "hint": "Diseño de sonido, mezcla y calidad de estudio"
+    },
+    "lyrics": {
+      "name": "Letra",
+      "hint": "¿Qué dicen en realidad? ¿Aguanta el escrutinio?"
+    },
+    "originality": {
+      "name": "Originalidad",
+      "hint": "¿Ha escuchado Eurovisión algo así antes?"
+    }
   },
   "voting": {
     "scoredChip": {
@@ -138,12 +183,12 @@
       "unscored": "Sin puntuar"
     },
     "scale": {
-      "openAria": "Mostrar anclajes de escala",
-      "closeAria": "Cerrar anclajes de escala",
-      "title": "Escala",
       "1": "Devastador",
       "5": "Aceptable",
-      "10": "Icónico"
+      "10": "Icónico",
+      "openAria": "Mostrar anclajes de escala",
+      "closeAria": "Cerrar anclajes de escala",
+      "title": "Escala"
     },
     "hint": {
       "toggleAria": {
@@ -458,7 +503,45 @@
       "deleteError": "No se pudo eliminar. ¿Intentarlo de nuevo?"
     },
     "breakdown": {
-      "gave": "dio {points} a {country}"
+      "gave": "dio {points} a {country}",
+      "picks": "{count, plural, one {# pick} other {# picks}}"
+    },
+    "drillDown": {
+      "common": {
+        "closeAria": "Close drill-down",
+        "missed": "Missed",
+        "edited": "(edited)",
+        "weightedScore": "Weighted {value}",
+        "mean": "Mean",
+        "median": "Median",
+        "highest": "Highest",
+        "lowest": "Lowest"
+      },
+      "contestant": {
+        "openLink": "Full breakdown →",
+        "title": "{country} — {points} pts",
+        "empty": "No room member rated this contestant."
+      },
+      "participant": {
+        "openAria": "Open {name}'s full vote",
+        "title": "{name}'s vote",
+        "totalAwarded": "{points} pts given",
+        "hotTakeCount": "{count, plural, one {# hot take} other {# hot takes}}",
+        "harshness": "Harshness {value}",
+        "alignment": "Alignment {value}",
+        "empty": "This user did not vote on any contestant."
+      },
+      "category": {
+        "openLink": "Full ranking →",
+        "title": "Best {category} — full ranking",
+        "meanLabel": "Mean {value}",
+        "voterCount": "{voted}/{total} voted",
+        "sparklineAria": "Min {min}, median {median}, max {max} out of 10",
+        "highestSingle": "Highest: {value} from {name}",
+        "lowestSingle": "Lowest: {value} from {name}",
+        "meanOfMeans": "Room mean: {value}",
+        "empty": "No room member rated this category."
+      }
     },
     "copySummary": {
       "idle": "Copiar resumen de texto",
@@ -562,16 +645,16 @@
     "stepIndicator": "Paso {step} de 2",
     "eventSelection": {
       "heading": "Elige un evento",
-      "subheading": "\u00bfQu\u00e9 evento de Eurovisi\u00f3n vas a ver?",
-      "yearLabel": "A\u00f1o",
+      "subheading": "¿Qué evento de Eurovisión vas a ver?",
+      "yearLabel": "Año",
       "eventLabel": "Evento",
       "testFixtureSuffix": "(datos de prueba)",
-      "loading": "Cargando concursantes\u2026",
-      "slow": "La carga est\u00e1 tardando m\u00e1s de lo normal\u2026",
-      "countryCount": "{count, plural, one {# pa\u00eds cargado} other {# pa\u00edses cargados}}",
+      "loading": "Cargando concursantes…",
+      "slow": "La carga está tardando más de lo normal…",
+      "countryCount": "{count, plural, one {# país cargado} other {# países cargados}}",
       "error": "No pudimos cargar los datos de concursantes para este evento.",
-      "timeout": "La carga tarda demasiado. Vuelve a intentarlo o elige otro a\u00f1o\u2009/\u2009evento.",
-      "allocationDrawCaveat": "Nota: el orden de carrera de las semifinales solo se publica tras el sorteo de asignaci\u00f3n (normalmente ~2 semanas antes de cada semi). Si el sorteo a\u00fan no ha tenido lugar, prueba la Gran Final, elige un a\u00f1o anterior para una sala de pr\u00e1ctica o espera al sorteo."
+      "timeout": "La carga tarda demasiado. Vuelve a intentarlo o elige otro año / evento.",
+      "allocationDrawCaveat": "Nota: el orden de carrera de las semifinales solo se publica tras el sorteo de asignación (normalmente ~2 semanas antes de cada semi). Si el sorteo aún no ha tenido lugar, prueba la Gran Final, elige un año anterior para una sala de práctica o espera al sorteo."
     },
     "eventLabels": {
       "semi1": "Semifinal 1",
@@ -579,12 +662,12 @@
       "final": "Gran Final"
     },
     "votingConfig": {
-      "heading": "Configuraci\u00f3n de voto",
-      "subheading": "Elige una plantilla y c\u00f3mo quieres revelar los resultados.",
+      "heading": "Configuración de voto",
+      "subheading": "Elige una plantilla y cómo quieres revelar los resultados.",
       "templateLabel": "Plantilla",
       "announcementLabel": "Anuncio",
       "nowPerformingLabel": "Sincronizar a todos con el acto en escena",
-      "nowPerformingInfo": "Te permite tocar el pa\u00eds que act\u00faa en ese momento para llevar a todos los invitados a esa tarjeta durante la votaci\u00f3n. Desactivado por defecto.",
+      "nowPerformingInfo": "Te permite tocar el país que actúa en ese momento para llevar a todos los invitados a esa tarjeta durante la votación. Desactivado por defecto.",
       "nowPerformingInfoAria": "Sobre este interruptor",
       "custom": {
         "yourCategoriesHeading": "Tus categorías",
@@ -603,39 +686,39 @@
       "next": "Siguiente",
       "back": "Volver",
       "createRoom": "Crear sala",
-      "creating": "Creando\u2026"
+      "creating": "Creando…"
     }
   },
   "lobby": {
-    "hostEyebrow": "Sala del anfitri\u00f3n",
-    "hostHeading": "T\u00fa eres el anfitri\u00f3n",
-    "hostSubheading": "Comparte el PIN o el QR con tus invitados y empieza a votar cuando todos est\u00e9n.",
+    "hostEyebrow": "Sala del anfitrión",
+    "hostHeading": "Tú eres el anfitrión",
+    "hostSubheading": "Comparte el PIN o el QR con tus invitados y empieza a votar cuando todos estén.",
     "roomPinLabel": "PIN de la sala",
     "copyPin": "Copiar",
-    "pinCopied": "\u00a1Copiado!",
+    "pinCopied": "¡Copiado!",
     "scanToJoin": "Escanear para unirse",
     "shareLinkLabel": "Enlace para compartir",
     "copyLink": "Copiar",
-    "linkCopied": "\u00a1Copiado!",
-    "openPresentView": "Abrir vista de presentaci\u00f3n en la tele",
-    "openPresentSubtext": "Espeja esta pesta\u00f1a en tu tele o usa AirPlay.",
-    "whoIsHere": "Qui\u00e9n est\u00e1 aqu\u00ed ({count})",
-    "presenceOnline": "En l\u00ednea",
+    "linkCopied": "¡Copiado!",
+    "openPresentView": "Abrir vista de presentación en la tele",
+    "openPresentSubtext": "Espeja esta pestaña en tu tele o usa AirPlay.",
+    "whoIsHere": "Quién está aquí ({count})",
+    "presenceOnline": "En línea",
     "presenceOffline": "Desconectado",
     "startVoting": "Empezar a votar",
-    "startVotingBusy": "Iniciando\u2026",
-    "startVotingHelper": "Inicia la votaci\u00f3n para todos en la sala \u2014 espera a que lleguen tus invitados.",
-    "waitingForHost": "Esperando a que el anfitri\u00f3n inicie la votaci\u00f3n\u2026",
-    "votingTemplateLabel": "Plantilla de votaci\u00f3n",
-    "templateCategoryCount": "{count, plural, one {# categor\u00eda} other {# categor\u00edas}}",
-    "templateCustomNote": "Categor\u00edas personalizadas \u2014 elige una plantilla para cambiar o mant\u00e9n el conjunto actual.",
-    "templateSwitchNote": "Cambia cuando quieras antes de que empiece la votaci\u00f3n.",
+    "startVotingBusy": "Iniciando…",
+    "startVotingHelper": "Inicia la votación para todos en la sala — espera a que lleguen tus invitados.",
+    "waitingForHost": "Esperando a que el anfitrión inicie la votación…",
+    "votingTemplateLabel": "Plantilla de votación",
+    "templateCategoryCount": "{count, plural, one {# categoría} other {# categorías}}",
+    "templateCustomNote": "Categorías personalizadas — elige una plantilla para cambiar o mantén el conjunto actual.",
+    "templateSwitchNote": "Cambia cuando quieras antes de que empiece la votación.",
     "announcementModeLabel": "Modo de anuncio",
-    "modeSwitchNote": "Cambia cuando quieras antes de que empiece la votaci\u00f3n. A\u00f1o y evento est\u00e1n bloqueados.",
+    "modeSwitchNote": "Cambia cuando quieras antes de que empiece la votación. Año y evento están bloqueados.",
     "modeLive": "En directo",
-    "modeInstant": "Instant\u00e1neo",
+    "modeInstant": "Instantáneo",
     "youllBeRating": "Vas a puntuar",
-    "tapForDetails": "Toca para m\u00e1s detalles",
+    "tapForDetails": "Toca para más detalles",
     "countdown": {
       "label": "El show empieza en",
       "fallback": "Listo cuando quieras."
@@ -730,15 +813,42 @@
       "your_neighbour": "De toda la sala, tus votos coincidieron más con los de esta persona."
     },
     "personality": {
-      "biggest_stan": { "name": "El mayor fan", "stat": "media {value}/10" },
-      "harshest_critic": { "name": "El más crítico", "stat": "media {value}/10" },
-      "most_contrarian": { "name": "El más contrario", "stat": "dist. Spearman {value}" },
-      "hive_mind_master": { "name": "Mente colmena", "stat": "dist. Spearman {value}" },
-      "neighbourhood_voters": { "name": "Votantes afines", "stat": "Pearson {value}" },
-      "your_neighbour": { "name": "Tu vecino más cercano", "stat": "Pearson {value}" },
-      "the_dark_horse": { "name": "El caballo ganador", "stat": "varianza {value}" },
-      "fashion_stan": { "name": "Fan del estilismo", "stat": "{value}/10 en estilismo" },
-      "the_enabler": { "name": "El cómplice", "stat": "12 puntos al ganador" }
+      "biggest_stan": {
+        "name": "El mayor fan",
+        "stat": "media {value}/10"
+      },
+      "harshest_critic": {
+        "name": "El más crítico",
+        "stat": "media {value}/10"
+      },
+      "most_contrarian": {
+        "name": "El más contrario",
+        "stat": "dist. Spearman {value}"
+      },
+      "hive_mind_master": {
+        "name": "Mente colmena",
+        "stat": "dist. Spearman {value}"
+      },
+      "neighbourhood_voters": {
+        "name": "Votantes afines",
+        "stat": "Pearson {value}"
+      },
+      "your_neighbour": {
+        "name": "Tu vecino más cercano",
+        "stat": "Pearson {value}"
+      },
+      "the_dark_horse": {
+        "name": "El caballo ganador",
+        "stat": "varianza {value}"
+      },
+      "fashion_stan": {
+        "name": "Fan del estilismo",
+        "stat": "{value}/10 en estilismo"
+      },
+      "the_enabler": {
+        "name": "El cómplice",
+        "stat": "12 puntos al ganador"
+      }
     }
   }
 }

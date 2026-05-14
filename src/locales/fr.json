@@ -91,21 +91,66 @@
     }
   },
   "categories": {
-    "vocals":            { "name": "Voix",                 "hint": "Technique et maîtrise vocale — pas seulement si tu aimes le style" },
-    "music":             { "name": "Musique",              "hint": "Composition, arrangement et qualité de production" },
-    "outfit":            { "name": "Tenue",                "hint": "Le look. Est-ce que ça envoie ? Est-ce que ça assume ?" },
-    "stagePerformance":  { "name": "Performance scénique", "hint": "Mouvement, énergie, utilisation de la scène" },
-    "vibes":             { "name": "Ambiance",             "hint": "L'ineffable. Comment ça t'a fait sentir ?" },
-    "drama":             { "name": "Drama",                "hint": "À quel point ça t'a fait sursauter, t'étouffer ou te pencher en avant ?" },
-    "costumeCommitment": { "name": "Engagement costume",   "hint": "Pas juste joli — à quel point ils ont tout donné ? Full send ?" },
-    "stagingChaos":      { "name": "Chaos scénique",       "hint": "Folie maîtrisée ou simple confusion ? Récompense la première." },
-    "gayPanicLevel":     { "name": "Niveau gay panic",     "hint": "Le camp. Le queer. L'iconographie." },
-    "quotability":       { "name": "Mémorabilité",         "hint": "Tu en parleras encore en novembre ?" },
-    "catchiness":        { "name": "Accroche",             "hint": "Tu pouvais le fredonner 10 minutes après ?" },
-    "danceability":      { "name": "Dansabilité",          "hint": "Ton corps a bougé involontairement ?" },
-    "production":        { "name": "Production",           "hint": "Sound design, mixage, qualité studio" },
-    "lyrics":            { "name": "Paroles",              "hint": "Qu'est-ce qu'ils disent vraiment ? Est-ce que ça tient la route ?" },
-    "originality":       { "name": "Originalité",          "hint": "L'Eurovision a déjà entendu ça ?" }
+    "vocals": {
+      "name": "Voix",
+      "hint": "Technique et maîtrise vocale — pas seulement si tu aimes le style"
+    },
+    "music": {
+      "name": "Musique",
+      "hint": "Composition, arrangement et qualité de production"
+    },
+    "outfit": {
+      "name": "Tenue",
+      "hint": "Le look. Est-ce que ça envoie ? Est-ce que ça assume ?"
+    },
+    "stagePerformance": {
+      "name": "Performance scénique",
+      "hint": "Mouvement, énergie, utilisation de la scène"
+    },
+    "vibes": {
+      "name": "Ambiance",
+      "hint": "L'ineffable. Comment ça t'a fait sentir ?"
+    },
+    "drama": {
+      "name": "Drama",
+      "hint": "À quel point ça t'a fait sursauter, t'étouffer ou te pencher en avant ?"
+    },
+    "costumeCommitment": {
+      "name": "Engagement costume",
+      "hint": "Pas juste joli — à quel point ils ont tout donné ? Full send ?"
+    },
+    "stagingChaos": {
+      "name": "Chaos scénique",
+      "hint": "Folie maîtrisée ou simple confusion ? Récompense la première."
+    },
+    "gayPanicLevel": {
+      "name": "Niveau gay panic",
+      "hint": "Le camp. Le queer. L'iconographie."
+    },
+    "quotability": {
+      "name": "Mémorabilité",
+      "hint": "Tu en parleras encore en novembre ?"
+    },
+    "catchiness": {
+      "name": "Accroche",
+      "hint": "Tu pouvais le fredonner 10 minutes après ?"
+    },
+    "danceability": {
+      "name": "Dansabilité",
+      "hint": "Ton corps a bougé involontairement ?"
+    },
+    "production": {
+      "name": "Production",
+      "hint": "Sound design, mixage, qualité studio"
+    },
+    "lyrics": {
+      "name": "Paroles",
+      "hint": "Qu'est-ce qu'ils disent vraiment ? Est-ce que ça tient la route ?"
+    },
+    "originality": {
+      "name": "Originalité",
+      "hint": "L'Eurovision a déjà entendu ça ?"
+    }
   },
   "voting": {
     "scoredChip": {
@@ -138,12 +183,12 @@
       "unscored": "Pas noté"
     },
     "scale": {
-      "openAria": "Afficher les repères de l'échelle",
-      "closeAria": "Fermer les repères de l'échelle",
-      "title": "Échelle",
       "1": "Dévastateur",
       "5": "Correct",
-      "10": "Iconique"
+      "10": "Iconique",
+      "openAria": "Afficher les repères de l'échelle",
+      "closeAria": "Fermer les repères de l'échelle",
+      "title": "Échelle"
     },
     "hint": {
       "toggleAria": {
@@ -458,7 +503,45 @@
       "deleteError": "Impossible de supprimer. Réessaie ?"
     },
     "breakdown": {
-      "gave": "a donné {points} à {country}"
+      "gave": "a donné {points} à {country}",
+      "picks": "{count, plural, one {# pick} other {# picks}}"
+    },
+    "drillDown": {
+      "common": {
+        "closeAria": "Close drill-down",
+        "missed": "Missed",
+        "edited": "(edited)",
+        "weightedScore": "Weighted {value}",
+        "mean": "Mean",
+        "median": "Median",
+        "highest": "Highest",
+        "lowest": "Lowest"
+      },
+      "contestant": {
+        "openLink": "Full breakdown →",
+        "title": "{country} — {points} pts",
+        "empty": "No room member rated this contestant."
+      },
+      "participant": {
+        "openAria": "Open {name}'s full vote",
+        "title": "{name}'s vote",
+        "totalAwarded": "{points} pts given",
+        "hotTakeCount": "{count, plural, one {# hot take} other {# hot takes}}",
+        "harshness": "Harshness {value}",
+        "alignment": "Alignment {value}",
+        "empty": "This user did not vote on any contestant."
+      },
+      "category": {
+        "openLink": "Full ranking →",
+        "title": "Best {category} — full ranking",
+        "meanLabel": "Mean {value}",
+        "voterCount": "{voted}/{total} voted",
+        "sparklineAria": "Min {min}, median {median}, max {max} out of 10",
+        "highestSingle": "Highest: {value} from {name}",
+        "lowestSingle": "Lowest: {value} from {name}",
+        "meanOfMeans": "Room mean: {value}",
+        "empty": "No room member rated this category."
+      }
     },
     "copySummary": {
       "idle": "Copier le résumé",
@@ -558,84 +641,84 @@
     }
   },
   "create": {
-    "title": "Cr\u00e9er un salon",
-    "stepIndicator": "\u00c9tape {step} sur 2",
+    "title": "Créer un salon",
+    "stepIndicator": "Étape {step} sur 2",
     "eventSelection": {
-      "heading": "Choisis un \u00e9v\u00e9nement",
-      "subheading": "Quel \u00e9v\u00e9nement Eurovision vas-tu regarder\u00a0?",
-      "yearLabel": "Ann\u00e9e",
-      "eventLabel": "\u00c9v\u00e9nement",
-      "testFixtureSuffix": "(donn\u00e9es de test)",
-      "loading": "Chargement des candidats\u2026",
-      "slow": "Le chargement prend plus de temps que d\u2019habitude\u2026",
-      "countryCount": "{count, plural, one {# pays charg\u00e9} other {# pays charg\u00e9s}}",
-      "error": "Impossible de charger les donn\u00e9es des candidats pour cet \u00e9v\u00e9nement.",
-      "timeout": "Le chargement prend trop de temps. R\u00e9essaie ou choisis une autre ann\u00e9e\u2009/\u2009un autre \u00e9v\u00e9nement.",
-      "allocationDrawCaveat": "Astuce\u00a0: les ordres de passage des demi-finales ne sont publi\u00e9s qu\u2019apr\u00e8s le tirage au sort d\u2019allocation (en g\u00e9n\u00e9ral ~2 semaines avant chaque demi). Si le tirage n\u2019a pas encore eu lieu, essaie la Grande Finale, choisis une ann\u00e9e pass\u00e9e pour un salon d\u2019entra\u00eenement ou attends le tirage."
+      "heading": "Choisis un événement",
+      "subheading": "Quel événement Eurovision vas-tu regarder ?",
+      "yearLabel": "Année",
+      "eventLabel": "Événement",
+      "testFixtureSuffix": "(données de test)",
+      "loading": "Chargement des candidats…",
+      "slow": "Le chargement prend plus de temps que d’habitude…",
+      "countryCount": "{count, plural, one {# pays chargé} other {# pays chargés}}",
+      "error": "Impossible de charger les données des candidats pour cet événement.",
+      "timeout": "Le chargement prend trop de temps. Réessaie ou choisis une autre année / un autre événement.",
+      "allocationDrawCaveat": "Astuce : les ordres de passage des demi-finales ne sont publiés qu’après le tirage au sort d’allocation (en général ~2 semaines avant chaque demi). Si le tirage n’a pas encore eu lieu, essaie la Grande Finale, choisis une année passée pour un salon d’entraînement ou attends le tirage."
     },
     "eventLabels": {
-      "semi1": "Premi\u00e8re demi-finale",
-      "semi2": "Deuxi\u00e8me demi-finale",
+      "semi1": "Première demi-finale",
+      "semi2": "Deuxième demi-finale",
       "final": "Grande Finale"
     },
     "votingConfig": {
       "heading": "Configuration du vote",
-      "subheading": "Choisis un mod\u00e8le et comment tu veux r\u00e9v\u00e9ler les r\u00e9sultats.",
-      "templateLabel": "Mod\u00e8le",
+      "subheading": "Choisis un modèle et comment tu veux révéler les résultats.",
+      "templateLabel": "Modèle",
       "announcementLabel": "Annonce",
-      "nowPerformingLabel": "Synchroniser tout le monde avec l\u2019acte en cours",
-      "nowPerformingInfo": "Te permet d\u2019appuyer sur le pays qui performe en ce moment pour amener tous les invit\u00e9s \u00e0 cette carte pendant le vote. D\u00e9sactiv\u00e9 par d\u00e9faut.",
-      "nowPerformingInfoAria": "\u00c0 propos de cette bascule",
+      "nowPerformingLabel": "Synchroniser tout le monde avec l’acte en cours",
+      "nowPerformingInfo": "Te permet d’appuyer sur le pays qui performe en ce moment pour amener tous les invités à cette carte pendant le vote. Désactivé par défaut.",
+      "nowPerformingInfoAria": "À propos de cette bascule",
       "custom": {
-        "yourCategoriesHeading": "Tes cat\u00e9gories",
-        "rowCountLabel": "{count}/{max} cat\u00e9gories",
-        "namePlaceholder": "Nom de la cat\u00e9gorie",
-        "addCategoryButton": "+ Ajouter une cat\u00e9gorie",
-        "removeAria": "Supprimer la cat\u00e9gorie {n}",
+        "yourCategoriesHeading": "Tes catégories",
+        "rowCountLabel": "{count}/{max} catégories",
+        "namePlaceholder": "Nom de la catégorie",
+        "addCategoryButton": "+ Ajouter une catégorie",
+        "removeAria": "Supprimer la catégorie {n}",
         "errors": {
           "empty": "Ajoute un nom",
-          "tooShort": "Au moins 2 caract\u00e8res",
-          "duplicate": "D\u00e9j\u00e0 dans ta liste"
+          "tooShort": "Au moins 2 caractères",
+          "duplicate": "Déjà dans ta liste"
         }
       }
     },
     "actions": {
       "next": "Suivant",
       "back": "Retour",
-      "createRoom": "Cr\u00e9er le salon",
-      "creating": "Cr\u00e9ation\u2026"
+      "createRoom": "Créer le salon",
+      "creating": "Création…"
     }
   },
   "lobby": {
-    "hostEyebrow": "Salon de l\u2019h\u00f4te",
-    "hostHeading": "Tu es l\u2019h\u00f4te",
-    "hostSubheading": "Partage le PIN ou le QR avec tes invit\u00e9s, puis lance le vote quand tout le monde est l\u00e0.",
+    "hostEyebrow": "Salon de l’hôte",
+    "hostHeading": "Tu es l’hôte",
+    "hostSubheading": "Partage le PIN ou le QR avec tes invités, puis lance le vote quand tout le monde est là.",
     "roomPinLabel": "PIN du salon",
     "copyPin": "Copier",
-    "pinCopied": "Copi\u00e9\u00a0!",
+    "pinCopied": "Copié !",
     "scanToJoin": "Scanner pour rejoindre",
     "shareLinkLabel": "Lien de partage",
     "copyLink": "Copier",
-    "linkCopied": "Copi\u00e9\u00a0!",
-    "openPresentView": "Ouvrir la vue pr\u00e9sentation sur la TV",
+    "linkCopied": "Copié !",
+    "openPresentView": "Ouvrir la vue présentation sur la TV",
     "openPresentSubtext": "Reflète cet onglet sur ta TV ou utilise AirPlay.",
-    "whoIsHere": "Qui est l\u00e0 ({count})",
+    "whoIsHere": "Qui est là ({count})",
     "presenceOnline": "En ligne",
     "presenceOffline": "Hors ligne",
     "startVoting": "Lancer le vote",
-    "startVotingBusy": "Lancement\u2026",
-    "startVotingHelper": "Lance le vote pour tout le monde dans le salon \u2014 attends que tes invit\u00e9s soient l\u00e0.",
-    "waitingForHost": "En attente que l\u2019h\u00f4te lance le vote\u2026",
-    "votingTemplateLabel": "Mod\u00e8le de vote",
-    "templateCategoryCount": "{count, plural, one {# cat\u00e9gorie} other {# cat\u00e9gories}}",
-    "templateCustomNote": "Cat\u00e9gories personnalis\u00e9es \u2014 choisis un mod\u00e8le pour changer ou garde le jeu actuel.",
-    "templateSwitchNote": "Change quand tu veux avant le d\u00e9but du vote.",
-    "announcementModeLabel": "Mode d\u2019annonce",
-    "modeSwitchNote": "Change quand tu veux avant le d\u00e9but du vote. Ann\u00e9e et \u00e9v\u00e9nement sont fix\u00e9s.",
+    "startVotingBusy": "Lancement…",
+    "startVotingHelper": "Lance le vote pour tout le monde dans le salon — attends que tes invités soient là.",
+    "waitingForHost": "En attente que l’hôte lance le vote…",
+    "votingTemplateLabel": "Modèle de vote",
+    "templateCategoryCount": "{count, plural, one {# catégorie} other {# catégories}}",
+    "templateCustomNote": "Catégories personnalisées — choisis un modèle pour changer ou garde le jeu actuel.",
+    "templateSwitchNote": "Change quand tu veux avant le début du vote.",
+    "announcementModeLabel": "Mode d’annonce",
+    "modeSwitchNote": "Change quand tu veux avant le début du vote. Année et événement sont fixés.",
     "modeLive": "En direct",
-    "modeInstant": "Instantan\u00e9",
+    "modeInstant": "Instantané",
     "youllBeRating": "Tu vas noter",
-    "tapForDetails": "Appuie pour les d\u00e9tails",
+    "tapForDetails": "Appuie pour les détails",
     "countdown": {
       "label": "Show dans",
       "fallback": "Prêt quand tu veux."
@@ -730,15 +813,42 @@
       "your_neighbour": "Parmi tous les participants, tes votes correspondent le plus à ceux de cette personne."
     },
     "personality": {
-      "biggest_stan": { "name": "Grand(e) fan", "stat": "moy {value}/10" },
-      "harshest_critic": { "name": "Critique sévère", "stat": "moy {value}/10" },
-      "most_contrarian": { "name": "Le plus anticonformiste", "stat": "dist Spearman {value}" },
-      "hive_mind_master": { "name": "Maître de l'esprit de ruche", "stat": "dist Spearman {value}" },
-      "neighbourhood_voters": { "name": "Votes du voisinage", "stat": "Pearson {value}" },
-      "your_neighbour": { "name": "Ton plus proche voisin", "stat": "Pearson {value}" },
-      "the_dark_horse": { "name": "Le cheval noir", "stat": "variance {value}" },
-      "fashion_stan": { "name": "Fan de mode", "stat": "{value}/10 en mode" },
-      "the_enabler": { "name": "Le complice", "stat": "12 points au gagnant" }
+      "biggest_stan": {
+        "name": "Grand(e) fan",
+        "stat": "moy {value}/10"
+      },
+      "harshest_critic": {
+        "name": "Critique sévère",
+        "stat": "moy {value}/10"
+      },
+      "most_contrarian": {
+        "name": "Le plus anticonformiste",
+        "stat": "dist Spearman {value}"
+      },
+      "hive_mind_master": {
+        "name": "Maître de l'esprit de ruche",
+        "stat": "dist Spearman {value}"
+      },
+      "neighbourhood_voters": {
+        "name": "Votes du voisinage",
+        "stat": "Pearson {value}"
+      },
+      "your_neighbour": {
+        "name": "Ton plus proche voisin",
+        "stat": "Pearson {value}"
+      },
+      "the_dark_horse": {
+        "name": "Le cheval noir",
+        "stat": "variance {value}"
+      },
+      "fashion_stan": {
+        "name": "Fan de mode",
+        "stat": "{value}/10 en mode"
+      },
+      "the_enabler": {
+        "name": "Le complice",
+        "stat": "12 points au gagnant"
+      }
     }
   }
 }

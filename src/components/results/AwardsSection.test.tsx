@@ -287,4 +287,108 @@ describe("<AwardsSection> — YourNeighbourCard slot", () => {
     );
     expect(screen.queryByTestId("your-neighbour-slot")).not.toBeInTheDocument();
   });
+
+  describe("Full ranking link (SPEC §12.6.3 trigger)", () => {
+    const SWEDEN = {
+      id: "2026-se",
+      country: "Sweden",
+      countryCode: "se",
+      flagEmoji: "🇸🇪",
+      artist: "A",
+      song: "S",
+      runningOrder: 1,
+      event: "final" as const,
+      year: 2026,
+    };
+    const BASE_LABELS = {
+      sectionHeading: "Awards",
+      categoryHeading: "Best in category",
+      personalityHeading: "And the room said…",
+      jointCaption: "joint",
+      neighbourhoodCaption: "voted alike",
+    };
+    const MEMBERS = [{ userId: "u1", displayName: "Alice", avatarSeed: "alice" }];
+
+    it("renders the Full ranking button on category-award cards when onOpenCategoryRanking is supplied", async () => {
+      const user = userEvent.setup();
+      const onOpen = vi.fn();
+      render(
+        <AwardsSection
+          awards={[
+            {
+              roomId: "r",
+              awardKey: "best_vocals",
+              awardName: "Best Vocals",
+              winnerUserId: null,
+              winnerUserIdB: null,
+              winnerContestantId: "2026-se",
+              statValue: 8.5,
+              statLabel: "mean",
+            },
+          ]}
+          contestants={[SWEDEN]}
+          members={MEMBERS}
+          labels={BASE_LABELS}
+          onOpenCategoryRanking={onOpen}
+          openCategoryRankingLabel="Full ranking →"
+        />,
+      );
+      const button = screen.getByRole("button", { name: "Full ranking →" });
+      expect(button).toBeInTheDocument();
+      await user.click(button);
+      expect(onOpen).toHaveBeenCalledWith("vocals");
+    });
+
+    it("does not render the link on personality awards", () => {
+      render(
+        <AwardsSection
+          awards={[
+            {
+              roomId: "r",
+              awardKey: "harshest_critic",
+              awardName: "Harshest Critic",
+              winnerUserId: "u1",
+              winnerUserIdB: null,
+              winnerContestantId: null,
+              statValue: 4.2,
+              statLabel: "mean",
+            },
+          ]}
+          contestants={[]}
+          members={MEMBERS}
+          labels={BASE_LABELS}
+          onOpenCategoryRanking={vi.fn()}
+          openCategoryRankingLabel="Full ranking →"
+        />,
+      );
+      expect(
+        screen.queryByRole("button", { name: /Full ranking/i }),
+      ).toBeNull();
+    });
+
+    it("does not render the link when onOpenCategoryRanking is undefined", () => {
+      render(
+        <AwardsSection
+          awards={[
+            {
+              roomId: "r",
+              awardKey: "best_vocals",
+              awardName: "Best Vocals",
+              winnerUserId: null,
+              winnerUserIdB: null,
+              winnerContestantId: "2026-se",
+              statValue: 8.5,
+              statLabel: "mean",
+            },
+          ]}
+          contestants={[SWEDEN]}
+          members={MEMBERS}
+          labels={BASE_LABELS}
+        />,
+      );
+      expect(
+        screen.queryByRole("button", { name: /Full ranking/i }),
+      ).toBeNull();
+    });
+  });
 });
