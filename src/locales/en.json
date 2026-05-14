@@ -458,7 +458,45 @@
       "deleteError": "Couldn't delete. Try again?"
     },
     "breakdown": {
-      "gave": "gave {points} to {country}"
+      "gave": "gave {points} to {country}",
+      "picks": "{count, plural, one {# pick} other {# picks}}"
+    },
+    "drillDown": {
+      "common": {
+        "closeAria": "Close drill-down",
+        "missed": "Missed",
+        "edited": "(edited)",
+        "weightedScore": "Weighted {value}",
+        "mean": "Mean",
+        "median": "Median",
+        "highest": "Highest",
+        "lowest": "Lowest"
+      },
+      "contestant": {
+        "openLink": "Full breakdown →",
+        "title": "{country} — {points} pts",
+        "empty": "No room member rated this contestant."
+      },
+      "participant": {
+        "openAria": "Open {name}'s full vote",
+        "title": "{name}'s vote",
+        "totalAwarded": "{points} pts given",
+        "hotTakeCount": "{count, plural, one {# hot take} other {# hot takes}}",
+        "harshness": "Harshness {value}",
+        "alignment": "Alignment {value}",
+        "empty": "This user did not vote on any contestant."
+      },
+      "category": {
+        "openLink": "Full ranking →",
+        "title": "Best {category} — full ranking",
+        "meanLabel": "Mean {value}",
+        "voterCount": "{voted}/{total} voted",
+        "sparklineAria": "Min {min}, median {median}, max {max} out of 10",
+        "highestSingle": "Highest: {value} from {name}",
+        "lowestSingle": "Lowest: {value} from {name}",
+        "meanOfMeans": "Room mean: {value}",
+        "empty": "No room member rated this category."
+      }
     },
     "copySummary": {
       "idle": "Copy text summary",

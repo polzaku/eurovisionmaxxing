@@ -91,21 +91,66 @@
     }
   },
   "categories": {
-    "vocals":            { "name": "Вокал",              "hint": "Технічне виконання та контроль — незалежно від того, чи подобається тобі стиль" },
-    "music":             { "name": "Музика",             "hint": "Композиція, аранжування та якість виробництва" },
-    "outfit":            { "name": "Образ",              "hint": "Зовнішній вигляд. Він вражає? Він відданий своїй ідеї?" },
-    "stagePerformance":  { "name": "Сценічне шоу",       "hint": "Рухи, енергія, використання сцени" },
-    "vibes":             { "name": "Атмосфера",          "hint": "Невловиме. Які почуття це викликало?" },
-    "drama":             { "name": "Драма",              "hint": "Наскільки це змусило тебе ахнути, затамувати подих або нахилитися вперед?" },
-    "costumeCommitment": { "name": "Відданість костюму", "hint": "Не просто гарно — наскільки вони вклалися? На всю котушку?" },
-    "stagingChaos":      { "name": "Хаос на сцені",      "hint": "Це контрольоване безумство чи просто плутанина? Нагороджуй перше." },
-    "gayPanicLevel":     { "name": "Рівень гей-паніки",  "hint": "Кемп, квірність, іконографія." },
-    "quotability":       { "name": "Цитованість",        "hint": "Ти будеш згадувати це ще в листопаді?" },
-    "catchiness":        { "name": "Зачіпливість",       "hint": "Ти б наспівав це через 10 хвилин?" },
-    "danceability":      { "name": "Танцюваність",       "hint": "Твоє тіло рухалося само собою?" },
-    "production":        { "name": "Продакшн",           "hint": "Звуковий дизайн, зведення, студійна якість" },
-    "lyrics":            { "name": "Текст",              "hint": "Про що вони взагалі? Це тримається купи?" },
-    "originality":       { "name": "Оригінальність",    "hint": "Євробачення вже таке чуло?" }
+    "vocals": {
+      "name": "Вокал",
+      "hint": "Технічне виконання та контроль — незалежно від того, чи подобається тобі стиль"
+    },
+    "music": {
+      "name": "Музика",
+      "hint": "Композиція, аранжування та якість виробництва"
+    },
+    "outfit": {
+      "name": "Образ",
+      "hint": "Зовнішній вигляд. Він вражає? Він відданий своїй ідеї?"
+    },
+    "stagePerformance": {
+      "name": "Сценічне шоу",
+      "hint": "Рухи, енергія, використання сцени"
+    },
+    "vibes": {
+      "name": "Атмосфера",
+      "hint": "Невловиме. Які почуття це викликало?"
+    },
+    "drama": {
+      "name": "Драма",
+      "hint": "Наскільки це змусило тебе ахнути, затамувати подих або нахилитися вперед?"
+    },
+    "costumeCommitment": {
+      "name": "Відданість костюму",
+      "hint": "Не просто гарно — наскільки вони вклалися? На всю котушку?"
+    },
+    "stagingChaos": {
+      "name": "Хаос на сцені",
+      "hint": "Це контрольоване безумство чи просто плутанина? Нагороджуй перше."
+    },
+    "gayPanicLevel": {
+      "name": "Рівень гей-паніки",
+      "hint": "Кемп, квірність, іконографія."
+    },
+    "quotability": {
+      "name": "Цитованість",
+      "hint": "Ти будеш згадувати це ще в листопаді?"
+    },
+    "catchiness": {
+      "name": "Зачіпливість",
+      "hint": "Ти б наспівав це через 10 хвилин?"
+    },
+    "danceability": {
+      "name": "Танцюваність",
+      "hint": "Твоє тіло рухалося само собою?"
+    },
+    "production": {
+      "name": "Продакшн",
+      "hint": "Звуковий дизайн, зведення, студійна якість"
+    },
+    "lyrics": {
+      "name": "Текст",
+      "hint": "Про що вони взагалі? Це тримається купи?"
+    },
+    "originality": {
+      "name": "Оригінальність",
+      "hint": "Євробачення вже таке чуло?"
+    }
   },
   "voting": {
     "scoredChip": {
@@ -138,12 +183,12 @@
       "unscored": "Не оцінено"
     },
     "scale": {
-      "openAria": "Показати орієнтири шкали",
-      "closeAria": "Закрити орієнтири шкали",
-      "title": "Шкала",
       "1": "Жахливо",
       "5": "Нормально",
-      "10": "Легендарно"
+      "10": "Легендарно",
+      "openAria": "Показати орієнтири шкали",
+      "closeAria": "Закрити орієнтири шкали",
+      "title": "Шкала"
     },
     "hint": {
       "toggleAria": {
@@ -458,7 +503,45 @@
       "deleteError": "Не вдалося видалити. Спробуй ще?"
     },
     "breakdown": {
-      "gave": "поставив(ла) {points} балів {country}"
+      "gave": "поставив(ла) {points} балів {country}",
+      "picks": "{count, plural, one {# pick} other {# picks}}"
+    },
+    "drillDown": {
+      "common": {
+        "closeAria": "Close drill-down",
+        "missed": "Missed",
+        "edited": "(edited)",
+        "weightedScore": "Weighted {value}",
+        "mean": "Mean",
+        "median": "Median",
+        "highest": "Highest",
+        "lowest": "Lowest"
+      },
+      "contestant": {
+        "openLink": "Full breakdown →",
+        "title": "{country} — {points} pts",
+        "empty": "No room member rated this contestant."
+      },
+      "participant": {
+        "openAria": "Open {name}'s full vote",
+        "title": "{name}'s vote",
+        "totalAwarded": "{points} pts given",
+        "hotTakeCount": "{count, plural, one {# hot take} other {# hot takes}}",
+        "harshness": "Harshness {value}",
+        "alignment": "Alignment {value}",
+        "empty": "This user did not vote on any contestant."
+      },
+      "category": {
+        "openLink": "Full ranking →",
+        "title": "Best {category} — full ranking",
+        "meanLabel": "Mean {value}",
+        "voterCount": "{voted}/{total} voted",
+        "sparklineAria": "Min {min}, median {median}, max {max} out of 10",
+        "highestSingle": "Highest: {value} from {name}",
+        "lowestSingle": "Lowest: {value} from {name}",
+        "meanOfMeans": "Room mean: {value}",
+        "empty": "No room member rated this category."
+      }
     },
     "copySummary": {
       "idle": "Скопіювати текстовий підсумок",
@@ -566,11 +649,11 @@
       "yearLabel": "Рік",
       "eventLabel": "Подія",
       "testFixtureSuffix": "(тестові дані)",
-      "loading": "Завантажуємо учасників\u2026",
-      "slow": "Завантаження займає більше часу, ніж зазвичай\u2026",
+      "loading": "Завантажуємо учасників…",
+      "slow": "Завантаження займає більше часу, ніж зазвичай…",
       "countryCount": "{count, plural, =1 {# країна завантажена} =2 {# країни завантажено} =3 {# країни завантажено} =4 {# країни завантажено} other {# країн завантажено}}",
       "error": "Не вдалося завантажити дані учасників для цієї події.",
-      "timeout": "Завантаження займає надто багато часу. Спробуй ще раз або обери інший рік\u2009/\u2009подію.",
+      "timeout": "Завантаження займає надто багато часу. Спробуй ще раз або обери інший рік / подію.",
       "allocationDrawCaveat": "Порада: розклад виступів у півфіналах публікується лише після жеребкування (зазвичай ~2 тижні до кожного півфіналу). Якщо жеребкування ще не відбулося, спробуй Гранд-фінал, обери минулий рік для тренувальної кімнати або зачекай на жеребкування."
     },
     "eventLabels": {
@@ -603,12 +686,12 @@
       "next": "Далі",
       "back": "Назад",
       "createRoom": "Створити кімнату",
-      "creating": "Створюємо\u2026"
+      "creating": "Створюємо…"
     }
   },
   "lobby": {
     "hostEyebrow": "Кімната хоста",
-    "hostHeading": "Ти \u2014 хост",
+    "hostHeading": "Ти — хост",
     "hostSubheading": "Поділися PIN-кодом або QR-кодом із гостями, а потім починай голосування, коли всі зайдуть.",
     "roomPinLabel": "PIN кімнати",
     "copyPin": "Копіювати",
@@ -623,12 +706,12 @@
     "presenceOnline": "У мережі",
     "presenceOffline": "Не в мережі",
     "startVoting": "Почати голосування",
-    "startVotingBusy": "Починаємо\u2026",
-    "startVotingHelper": "Запускає голосування для всіх у кімнаті \u2014 зачекай, поки зберуться гості.",
-    "waitingForHost": "Чекаємо, поки хост розпочне голосування\u2026",
+    "startVotingBusy": "Починаємо…",
+    "startVotingHelper": "Запускає голосування для всіх у кімнаті — зачекай, поки зберуться гості.",
+    "waitingForHost": "Чекаємо, поки хост розпочне голосування…",
     "votingTemplateLabel": "Шаблон голосування",
     "templateCategoryCount": "{count, plural, =1 {# категорія} =2 {# категорії} =3 {# категорії} =4 {# категорії} other {# категорій}}",
-    "templateCustomNote": "Власні категорії \u2014 обери шаблон для заміни або залиш поточний набір.",
+    "templateCustomNote": "Власні категорії — обери шаблон для заміни або залиш поточний набір.",
     "templateSwitchNote": "Міняй будь-коли до початку голосування.",
     "announcementModeLabel": "Режим оголошення",
     "modeSwitchNote": "Міняй будь-коли до початку голосування. Рік і подія зафіксовані.",
@@ -730,15 +813,42 @@
       "your_neighbour": "Серед усіх у кімнаті твої голоси найбільше збіглися з голосами цієї людини."
     },
     "personality": {
-      "biggest_stan": { "name": "Найбільший фан", "stat": "сер. {value}/10" },
-      "harshest_critic": { "name": "Найсуворіший критик", "stat": "сер. {value}/10" },
-      "most_contrarian": { "name": "Найбільший нонконформіст", "stat": "відстань Спірмена {value}" },
-      "hive_mind_master": { "name": "Майстер єдиного розуму", "stat": "відстань Спірмена {value}" },
-      "neighbourhood_voters": { "name": "Сусіди по смаку", "stat": "Пірсон {value}" },
-      "your_neighbour": { "name": "Твій найближчий сусід", "stat": "Пірсон {value}" },
-      "the_dark_horse": { "name": "Темна конячка", "stat": "дисперсія {value}" },
-      "fashion_stan": { "name": "Фанат моди", "stat": "{value}/10 за образ" },
-      "the_enabler": { "name": "Помічник переможця", "stat": "12 балів переможцю" }
+      "biggest_stan": {
+        "name": "Найбільший фан",
+        "stat": "сер. {value}/10"
+      },
+      "harshest_critic": {
+        "name": "Найсуворіший критик",
+        "stat": "сер. {value}/10"
+      },
+      "most_contrarian": {
+        "name": "Найбільший нонконформіст",
+        "stat": "відстань Спірмена {value}"
+      },
+      "hive_mind_master": {
+        "name": "Майстер єдиного розуму",
+        "stat": "відстань Спірмена {value}"
+      },
+      "neighbourhood_voters": {
+        "name": "Сусіди по смаку",
+        "stat": "Пірсон {value}"
+      },
+      "your_neighbour": {
+        "name": "Твій найближчий сусід",
+        "stat": "Пірсон {value}"
+      },
+      "the_dark_horse": {
+        "name": "Темна конячка",
+        "stat": "дисперсія {value}"
+      },
+      "fashion_stan": {
+        "name": "Фанат моди",
+        "stat": "{value}/10 за образ"
+      },
+      "the_enabler": {
+        "name": "Помічник переможця",
+        "stat": "12 балів переможцю"
+      }
     }
   }
 }
