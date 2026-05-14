@@ -16,8 +16,13 @@ interface EventSelectionProps {
   year: number;
   event: Event;
   contestants: ContestantsState;
-  minYear: number;
-  maxYear: number;
+  /**
+   * Years offered in the picker, sorted newest-first. The first element is
+   * treated as the "current year" for the SPEC §5.3 allocation-draw caveat
+   * (semis are only flagged for the latest year). Constrained to years we
+   * ship hardcoded contestant fallbacks for — see `data/contestants/`.
+   */
+  availableYears: readonly number[];
   /**
    * Extra year options shown above the standard real-year list. Used in dev
    * to expose the small test-fixture year (9999) for fast smoke testing.
@@ -39,8 +44,7 @@ export default function EventSelection({
   year,
   event,
   contestants,
-  minYear,
-  maxYear,
+  availableYears,
   extraYears,
   onChange,
   onNext,
@@ -54,7 +58,7 @@ export default function EventSelection({
   };
   const years: number[] = [];
   for (const ey of extraYears ?? []) years.push(ey);
-  for (let y = maxYear; y >= minYear; y--) years.push(y);
+  for (const y of availableYears) years.push(y);
 
   const canProceed = contestants.kind === "ready";
 
@@ -62,9 +66,9 @@ export default function EventSelection({
   // allocation draw (~2 weeks before each semi). Before then the upstream
   // API typically returns empty / mis-ordered data and the wizard cascades
   // to ContestDataError. Surface this WHY to admins so they don't think the
-  // app is broken — only relevant for current-year semis.
+  // app is broken — only relevant for the latest-year semis.
   const isCurrentYearSemi =
-    year === maxYear && (event === "semi1" || event === "semi2");
+    year === availableYears[0] && (event === "semi1" || event === "semi2");
   const showAllocationDrawCaveat =
     isCurrentYearSemi &&
     (contestants.kind === "error" || contestants.kind === "timeout");

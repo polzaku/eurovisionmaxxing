@@ -13,8 +13,7 @@ import EventSelection from "./EventSelection";
 const BASE_PROPS = {
   year: 2026,
   event: "final" as const,
-  minYear: 2000,
-  maxYear: 2026,
+  availableYears: [2026, 2025] as const,
   onChange: vi.fn(),
   onNext: vi.fn(),
 };
@@ -171,6 +170,41 @@ describe("EventSelection", () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
+  it("renders exactly the availableYears in the year dropdown (newest first)", () => {
+    render(
+      <EventSelection
+        {...BASE_PROPS}
+        availableYears={[2026, 2025]}
+        contestants={{ kind: "ready", count: 26, preview: [] }}
+        onChange={vi.fn()}
+        onNext={vi.fn()}
+      />,
+    );
+    const select = screen.getByLabelText(
+      /create\.eventSelection\.yearLabel/i,
+    ) as HTMLSelectElement;
+    const optionValues = Array.from(select.options).map((o) => o.value);
+    expect(optionValues).toEqual(["2026", "2025"]);
+  });
+
+  it("prepends extraYears (dev-only test fixtures) above the real years", () => {
+    render(
+      <EventSelection
+        {...BASE_PROPS}
+        availableYears={[2026, 2025]}
+        extraYears={[9999]}
+        contestants={{ kind: "ready", count: 26, preview: [] }}
+        onChange={vi.fn()}
+        onNext={vi.fn()}
+      />,
+    );
+    const select = screen.getByLabelText(
+      /create\.eventSelection\.yearLabel/i,
+    ) as HTMLSelectElement;
+    const optionValues = Array.from(select.options).map((o) => o.value);
+    expect(optionValues).toEqual(["9999", "2026", "2025"]);
+  });
+
   it("calls onChange with the new year when the year selector changes", () => {
     const onChange = vi.fn();
     render(
@@ -299,7 +333,7 @@ describe("EventSelection", () => {
         <EventSelection
           {...BASE_PROPS}
           year={2026}
-          maxYear={2026}
+          availableYears={[2026, 2025]}
           event="semi1"
           contestants={{ kind: "error" }}
           onChange={vi.fn()}
@@ -316,7 +350,7 @@ describe("EventSelection", () => {
         <EventSelection
           {...BASE_PROPS}
           year={2026}
-          maxYear={2026}
+          availableYears={[2026, 2025]}
           event="semi2"
           contestants={{ kind: "error" }}
           onChange={vi.fn()}
@@ -331,7 +365,7 @@ describe("EventSelection", () => {
         <EventSelection
           {...BASE_PROPS}
           year={2026}
-          maxYear={2026}
+          availableYears={[2026, 2025]}
           event="semi1"
           contestants={{ kind: "timeout", errorMessage: "x" }}
           onChange={vi.fn()}
@@ -346,7 +380,7 @@ describe("EventSelection", () => {
         <EventSelection
           {...BASE_PROPS}
           year={2026}
-          maxYear={2026}
+          availableYears={[2026, 2025]}
           event="final"
           contestants={{ kind: "error" }}
           onChange={vi.fn()}
@@ -363,7 +397,7 @@ describe("EventSelection", () => {
         <EventSelection
           {...BASE_PROPS}
           year={2024}
-          maxYear={2026}
+          availableYears={[2026, 2025]}
           event="semi1"
           contestants={{ kind: "error" }}
           onChange={vi.fn()}
@@ -380,7 +414,7 @@ describe("EventSelection", () => {
         <EventSelection
           {...BASE_PROPS}
           year={2026}
-          maxYear={2026}
+          availableYears={[2026, 2025]}
           event="semi1"
           contestants={{ kind: "loading" }}
           onChange={vi.fn()}
