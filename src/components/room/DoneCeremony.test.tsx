@@ -126,6 +126,13 @@ describe("DoneCeremony", () => {
     await flushMicrotasks();
     await flushMicrotasks();
 
+    // SPEC §11.3 (2026-05-14 fix): overall-winner card now opens the
+    // sequence. Advance past it before the category awards.
+    expect(
+      await screen.findByText(/awards\.overall_winner\.name/),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("awards-tap-zone"));
+
     expect(await screen.findByText("Best Vocals")).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId("awards-tap-zone"));
@@ -143,7 +150,8 @@ describe("DoneCeremony", () => {
   });
 
   it("falls through to CTAs even with no awards", async () => {
-    mockFetch({ ...FIXTURE, awards: [] });
+    // Empty leaderboard + empty awards → no cards at all → straight to CTAs.
+    mockFetch({ ...FIXTURE, awards: [], leaderboard: [] });
     render(<DoneCeremony roomId="r" isAdmin={false} categories={[]} />);
     await flushMicrotasks();
     await flushMicrotasks();
@@ -156,7 +164,7 @@ describe("DoneCeremony", () => {
   });
 
   it("admin sees Create another room CTA", async () => {
-    mockFetch({ ...FIXTURE, awards: [] });
+    mockFetch({ ...FIXTURE, awards: [], leaderboard: [] });
     render(<DoneCeremony roomId="r" isAdmin={true} categories={[]} />);
     await flushMicrotasks();
     await flushMicrotasks();
@@ -203,12 +211,15 @@ describe("DoneCeremony", () => {
     expect(screen.queryByText("Best Vocals")).not.toBeInTheDocument();
 
     // Now resolve the fetch. The data + sequence land, the deferred
-    // useEffect fires, and the phase advances to awards.
+    // useEffect fires, and the phase advances to awards (opening with the
+    // overall-winner card per the 2026-05-14 fix).
     resolveFetch(undefined);
     await flushMicrotasks();
     await flushMicrotasks();
 
-    expect(await screen.findByText("Best Vocals")).toBeInTheDocument();
+    expect(
+      await screen.findByText(/awards\.overall_winner\.name/),
+    ).toBeInTheDocument();
   });
 
   it("transitions immediately when data arrives before LeaderboardCeremony settles", async () => {
@@ -228,6 +239,8 @@ describe("DoneCeremony", () => {
     await flushMicrotasks();
     await flushMicrotasks();
 
-    expect(await screen.findByText("Best Vocals")).toBeInTheDocument();
+    expect(
+      await screen.findByText(/awards\.overall_winner\.name/),
+    ).toBeInTheDocument();
   });
 });

@@ -717,6 +717,11 @@
       "nextAwardAria": "Siguiente premio ({current} de {total})",
       "advanceHint": "Toca en cualquier sitio para revelar el siguiente premio"
     },
+    "overall_winner": {
+      "name": "Y la ganadora es…",
+      "caption": "campeona de la sala esta noche",
+      "stat": "{points, plural, one {# punto} other {# puntos}}"
+    },
     "your_neighbour": {
       "name": "Tu vecino más cercano",
       "caption": "votó más parecido a ti",

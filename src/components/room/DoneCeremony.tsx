@@ -90,6 +90,7 @@ export default function DoneCeremony({
       {
         personalNeighbours: data.personalNeighbours ?? [],
         viewerUserId,
+        leaderboard: data.leaderboard,
       },
     );
   }, [data, categories, viewerUserId]);

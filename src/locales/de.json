@@ -717,6 +717,11 @@
       "nextAwardAria": "Nächste Auszeichnung ({current} von {total})",
       "advanceHint": "Überall tippen, um die nächste Auszeichnung zu enthüllen"
     },
+    "overall_winner": {
+      "name": "Und die Gewinnerin ist…",
+      "caption": "die Champion des Raums heute Abend",
+      "stat": "{points, plural, one {# Punkt} other {# Punkte}}"
+    },
     "your_neighbour": {
       "name": "Dein engster Nachbar",
       "caption": "hat am ähnlichsten wie du gewählt",

@@ -43,6 +43,12 @@ export type CeremonyCard =
       contestant: Contestant | null;
     }
   | {
+      kind: "overall-winner";
+      award: RoomAward;
+      contestant: Contestant;
+      totalPoints: number;
+    }
+  | {
       kind: "user";
       award: RoomAward;
       winner: MemberView | null;
@@ -56,6 +62,28 @@ export type CeremonyCard =
       pearson: number;
       isReciprocal: boolean;
     };
+
+export interface LeaderboardLite {
+  contestantId: string;
+  totalPoints: number;
+  rank: number;
+}
+
+function syntheticOverallWinnerAward(
+  contestant: Contestant,
+  totalPoints: number,
+): RoomAward {
+  return {
+    roomId: "",
+    awardKey: "overall_winner",
+    awardName: "And the winner is…",
+    winnerUserId: null,
+    winnerUserIdB: null,
+    winnerContestantId: contestant.id,
+    statValue: totalPoints,
+    statLabel: null,
+  };
+}
 
 const PERSONALITY_RANK = new Map<string, number>(
   PERSONALITY_AWARD_KEYS.map((k, i) => [k, i]),
@@ -72,6 +100,12 @@ const PERSONAL_NEIGHBOUR_RANK = NEIGHBOURHOOD_RANK + 0.5;
 export interface PersonalNeighbourOptions {
   personalNeighbours?: PersonalNeighbour[];
   viewerUserId?: string | null;
+  /**
+   * SPEC §11.3 (2026-05-14 fix) — when supplied with a non-empty
+   * leaderboard, prepend an "And the winner is…" card anchored to the
+   * rank-1 contestant. Omitted / empty / unresolved → no card.
+   */
+  leaderboard?: LeaderboardLite[];
 }
 
 /**
@@ -173,6 +207,27 @@ export function awardCeremonySequence(
     const bi = rankFor(b.award.awardKey);
     return ai - bi;
   });
+
+  // Prepend the overall-winner card after the sort so it always opens
+  // the sequence, ahead of any category awards.
+  const { leaderboard } = options;
+  if (leaderboard && leaderboard.length > 0) {
+    const winnerRow = leaderboard.find((r) => r.rank === 1) ?? leaderboard[0];
+    if (winnerRow) {
+      const winnerContestant = contestantById.get(winnerRow.contestantId);
+      if (winnerContestant) {
+        cards.unshift({
+          kind: "overall-winner",
+          award: syntheticOverallWinnerAward(
+            winnerContestant,
+            winnerRow.totalPoints,
+          ),
+          contestant: winnerContestant,
+          totalPoints: winnerRow.totalPoints,
+        });
+      }
+    }
+  }
 
   return cards;
 }

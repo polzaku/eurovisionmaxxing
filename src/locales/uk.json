@@ -717,6 +717,11 @@
       "nextAwardAria": "Наступна нагорода ({current} з {total})",
       "advanceHint": "Натисни будь-де, щоб розкрити наступну нагороду"
     },
+    "overall_winner": {
+      "name": "І переможець…",
+      "caption": "чемпіон кімнати цього вечора",
+      "stat": "{points, plural, one {# бал} few {# бали} many {# балів} other {# балів}}"
+    },
     "your_neighbour": {
       "name": "Твій найближчий сусід",
       "caption": "проголосував(ла) найбільш схоже з тобою",

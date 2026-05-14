@@ -717,6 +717,11 @@
       "nextAwardAria": "Next award ({current} of {total})",
       "advanceHint": "Tap anywhere to reveal the next award"
     },
+    "overall_winner": {
+      "name": "And the winner is…",
+      "caption": "tonight's room champion",
+      "stat": "{points, plural, one {# point} other {# points}}"
+    },
     "your_neighbour": {
       "name": "Your closest neighbour",
       "caption": "voted most like you",

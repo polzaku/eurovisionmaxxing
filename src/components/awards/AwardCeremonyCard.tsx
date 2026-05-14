@@ -18,6 +18,26 @@ export default function AwardCeremonyCard({ card }: AwardCeremonyCardProps) {
   const t = useTranslations();
   const explainer = explainerForAward(card.award.awardKey);
 
+  if (card.kind === "overall-winner") {
+    return (
+      <div className="flex flex-col items-center text-center gap-4 motion-safe:animate-fade-in">
+        <p className="text-sm font-semibold uppercase tracking-widest text-primary">
+          {t("awards.overall_winner.name")}
+        </p>
+        <span className="text-8xl" aria-hidden>
+          {card.contestant.flagEmoji}
+        </span>
+        <p className="text-4xl font-extrabold">{card.contestant.country}</p>
+        <p className="text-sm text-muted-foreground italic">
+          {t("awards.overall_winner.caption")}
+        </p>
+        <p className="text-sm font-semibold text-primary tabular-nums">
+          {t("awards.overall_winner.stat", { points: card.totalPoints })}
+        </p>
+      </div>
+    );
+  }
+
   if (card.kind === "contestant") {
     return (
       <div className="flex flex-col items-center text-center gap-4 motion-safe:animate-fade-in">

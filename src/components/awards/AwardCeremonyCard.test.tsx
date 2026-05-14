@@ -203,3 +203,43 @@ describe("AwardCeremonyCard — personal-neighbour", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("AwardCeremonyCard — overall-winner", () => {
+  it("renders the localized title, contestant flag, country and points stat", () => {
+    const card: CeremonyCard = {
+      kind: "overall-winner",
+      award: {
+        roomId: "",
+        awardKey: "overall_winner",
+        awardName: "And the winner is…",
+        winnerUserId: null,
+        winnerUserIdB: null,
+        winnerContestantId: "2026-UK",
+        statValue: 142,
+        statLabel: null,
+      },
+      contestant: {
+        id: "2026-UK",
+        year: 2026,
+        event: "final",
+        countryCode: "UA",
+        country: "Ukraine",
+        artist: "A",
+        song: "S",
+        flagEmoji: "🇺🇦",
+        runningOrder: 1,
+      },
+      totalPoints: 142,
+    };
+    render(<AwardCeremonyCard card={card} />);
+    // Localized title via t() → mock returns the key verbatim.
+    expect(screen.getByText(/awards\.overall_winner\.name/)).toBeInTheDocument();
+    expect(screen.getByText("Ukraine")).toBeInTheDocument();
+    expect(screen.getByText("🇺🇦")).toBeInTheDocument();
+    // Stat: locale key resolves via t(); mock ignores params and returns
+    // the bare key — so the rendered text is the key itself.
+    expect(
+      screen.getByText("awards.overall_winner.stat"),
+    ).toBeInTheDocument();
+  });
+});
