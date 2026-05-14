@@ -510,6 +510,30 @@ describe("<AnnouncingView> — owner-watching skip CTA", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders the TV-mode link pointing at /room/{id}/present in the owner-watching panel", async () => {
+    await renderAsOwner();
+    const tvLink = screen.getByTestId("announcing-tv-mode-link");
+    expect(tvLink).toBeInTheDocument();
+    expect(tvLink).toHaveAttribute("href", `/room/${ROOM_ID}/present`);
+    expect(tvLink).toHaveAttribute("target", "_blank");
+  });
+
+  it("does NOT render the TV-mode link for non-owner viewers", async () => {
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={ANNOUNCER_ID}
+      />,
+    );
+    // Both the up-next card and the leaderboard row contain "Austria",
+    // so use getAllByText to confirm the announcement state has loaded.
+    await waitFor(() =>
+      expect(screen.getAllByText("Austria").length).toBeGreaterThan(0),
+    );
+    expect(screen.queryByTestId("announcing-tv-mode-link")).toBeNull();
+  });
+
   it("hides the skip CTA while the announcement state is still loading", () => {
     // Don't await — we want to observe the pre-fetch state.
     globalThis.fetch = vi.fn(

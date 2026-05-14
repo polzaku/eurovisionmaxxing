@@ -336,6 +336,9 @@
       "title": "{announcerName} sagt an",
       "message": "Wenn sie weg oder feststecken, kannst du die Kontrolle über ihre Enthüllungen übernehmen (du kannst jederzeit zurückgeben) oder sie komplett überspringen. Übersprungene Punkte erscheinen weiterhin in der Rangliste."
     },
+    "tvMode": {
+      "openLink": "📺 TV-Modus öffnen"
+    },
     "takeControl": {
       "button": "Für {announcerName} ansagen",
       "busy": "Kontrolle wird übernommen…"
@@ -498,7 +501,16 @@
   },
   "scoring": {
     "title": "Ergebnisse werden ermittelt…",
-    "subtitle": "Moment — wir rechnen gerade alles zusammen."
+    "subtitle": "Moment — wir rechnen gerade alles zusammen.",
+    "tvMode": {
+      "title": "Übertrag die Show auf einen TV",
+      "bullet1": "Öffne diese Seite auf deinem Fernseher (AirPlay, Chromecast oder einfach ein großer Bildschirm).",
+      "bullet2": "Die 12 Punkte jedes Sprechers erscheinen dort — der Raum schaut gemeinsam zu.",
+      "openButton": "TV-Modus öffnen",
+      "openButtonAria": "TV-Modus in neuem Tab öffnen",
+      "copyButton": "TV-Link kopieren",
+      "copyConfirm": "Link kopiert!"
+    }
   },
   "room": {
     "catchingUp": "Wird synchronisiert…",

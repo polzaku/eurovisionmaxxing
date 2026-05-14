@@ -336,6 +336,9 @@
       "title": "{announcerName} está anunciando",
       "message": "Si no está o está bloqueado, puedes tomar el control de sus revelaciones (puedes devolver el control en cualquier momento) o saltarte su turno por completo. Los puntos saltados siguen apareciendo en la clasificación."
     },
+    "tvMode": {
+      "openLink": "📺 Abrir modo TV"
+    },
     "takeControl": {
       "button": "Anunciar por {announcerName}",
       "busy": "Tomando el control…"
@@ -498,7 +501,16 @@
   },
   "scoring": {
     "title": "Calculando resultados…",
-    "subtitle": "Aguanta — estamos haciendo los cálculos."
+    "subtitle": "Aguanta — estamos haciendo los cálculos.",
+    "tvMode": {
+      "title": "Lanza el show en la tele",
+      "bullet1": "Abre esto en tu tele (AirPlay, Chromecast o una pantalla grande).",
+      "bullet2": "Los 12 puntos de cada portavoz aparecerán ahí — la sala lo mira junta.",
+      "openButton": "Abrir modo TV",
+      "openButtonAria": "Abrir modo TV en una pestaña nueva",
+      "copyButton": "Copiar enlace TV",
+      "copyConfirm": "¡Enlace copiado!"
+    }
   },
   "room": {
     "catchingUp": "Poniéndote al día…",

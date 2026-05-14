@@ -336,6 +336,9 @@
       "title": "{announcerName} is announcing",
       "message": "If they're away or stuck, you can take over their reveals (you can hand back any time) or skip past them entirely. Skipped points still appear on the leaderboard."
     },
+    "tvMode": {
+      "openLink": "📺 Open TV mode"
+    },
     "takeControl": {
       "button": "Announce for {announcerName}",
       "busy": "Taking over…"
@@ -498,7 +501,16 @@
   },
   "scoring": {
     "title": "Tallying results…",
-    "subtitle": "Hold tight — we're crunching the numbers."
+    "subtitle": "Hold tight — we're crunching the numbers.",
+    "tvMode": {
+      "title": "Cast the show on a TV",
+      "bullet1": "Open this on your TV (AirPlay, Chromecast, or just a big screen).",
+      "bullet2": "Each announcer's 12 points pop up there — the room watches together.",
+      "openButton": "Open TV mode",
+      "openButtonAria": "Open TV mode in a new tab",
+      "copyButton": "Copy TV link",
+      "copyConfirm": "Link copied!"
+    }
   },
   "room": {
     "catchingUp": "Catching up…",

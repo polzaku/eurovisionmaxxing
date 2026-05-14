@@ -659,6 +659,15 @@ export default function AnnouncingView({
             <p className="text-xs text-muted-foreground">
               {t("ownerWatching.message")}
             </p>
+            <a
+              href={`/room/${roomId}/present`}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="announcing-tv-mode-link"
+              className="inline-flex items-center justify-center rounded-lg border border-primary/40 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:border-primary"
+            >
+              {t("tvMode.openLink")}
+            </a>
             <button
               type="button"
               onClick={() => handleTakeControl(true)}
