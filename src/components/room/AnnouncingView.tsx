@@ -103,6 +103,21 @@ interface JustRevealedFlash {
 const FLASH_TIMEOUT_MS = 4500;
 
 /**
+ * SPEC §10.2 final-reveal dwell (fix 2026-05-14): when the LAST point of
+ * the show is revealed, the server returns `finished: true` and we want
+ * the announcer to actually see their <JustRevealedFlash> card before
+ * <DoneCard> takes over. Hold for ~4 s so the moment lands.
+ *
+ * The mutable variable is overridable from tests via
+ * `__setFinalRevealDwellMsForTests` to keep the suite fast.
+ */
+export const FINAL_REVEAL_DWELL_MS = 4000;
+let finalRevealDwellMs = FINAL_REVEAL_DWELL_MS;
+export function __setFinalRevealDwellMsForTests(value: number) {
+  finalRevealDwellMs = value;
+}
+
+/**
  * Minimal announce surface for /room/[id] when status === 'announcing'.
  *
  * Five render modes, depending on (currentUserId, announcement.announcingUserId,
@@ -312,6 +327,17 @@ export default function AnnouncingView({
     return () => clearTimeout(timer);
   }, [justRevealed]);
 
+  const finishedDwellTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  useEffect(() => {
+    return () => {
+      if (finishedDwellTimerRef.current) {
+        clearTimeout(finishedDwellTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleReveal = useCallback(async () => {
     if (!isActiveDriver) return;
     setAdvanceState({ kind: "submitting" });
@@ -320,7 +346,14 @@ export default function AnnouncingView({
     });
     if (result.ok) {
       setAdvanceState({ kind: "idle" });
-      if (result.data?.finished) setFinishedLocal(true);
+      if (result.data?.finished) {
+        // SPEC §10.2 — defer the swap to DoneCard so the announcer sees
+        // their final reveal land in the flash card + leaderboard before
+        // the show transitions out from under them. See 2026-05-14 fix.
+        finishedDwellTimerRef.current = setTimeout(() => {
+          setFinishedLocal(true);
+        }, finalRevealDwellMs);
+      }
       void refetch();
       return;
     }
@@ -534,7 +567,10 @@ export default function AnnouncingView({
         ) : null}
 
         {isActiveDriver && justRevealed ? (
-          <div className="rounded-2xl border-2 border-primary bg-primary/10 px-6 py-5 text-center motion-safe:animate-fade-in">
+          <div
+            data-testid="just-revealed-flash"
+            className="rounded-2xl border-2 border-primary bg-primary/10 px-6 py-5 text-center motion-safe:animate-fade-in"
+          >
             <p className="text-xs uppercase tracking-widest text-primary/80">
               {t("justRevealed.label")}
             </p>

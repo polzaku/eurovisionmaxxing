@@ -233,9 +233,26 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     loadRoom,
   );
 
+  // SPEC §10.2 final-reveal dwell (2026-05-14 fix). When the last
+  // announce_next flips room.status to `done`, defer the page-level
+  // swap to <DoneCeremony> for ~4 s so the announcer's view of the
+  // <JustRevealedFlash> isn't yanked from under them. Tracked via a ref
+  // so we can compare the previous status when the status_changed event
+  // arrives.
+  const prevStatusRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (phase.kind === "ready") {
+      prevStatusRef.current = phase.room.status;
+    }
+  }, [phase]);
+
   useRoomRealtime(roomId, (event) => {
     if (event.type === "status_changed") {
-      void loadRoom();
+      if (event.status === "done" && prevStatusRef.current === "announcing") {
+        window.setTimeout(() => void loadRoom(), 4000);
+      } else {
+        void loadRoom();
+      }
       return;
     }
     if (event.type === "voting_ending") {
