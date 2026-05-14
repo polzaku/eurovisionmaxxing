@@ -1,3 +1,5 @@
+"use client";
+
 import type { Contestant } from "@/types";
 import type { LeaderboardEntry } from "@/lib/results/formatRoomSummary";
 import type { ContestantBreakdown } from "@/lib/results/buildContestantBreakdowns";
@@ -31,6 +33,10 @@ interface LeaderboardWithDrillDownProps {
    */
   contestantBreakdowns: ContestantBreakdown[];
   labels: LeaderboardWithDrillDownLabels;
+  /** SPEC §12.6.1 — invoked when the user taps "Full breakdown" inside an open row. */
+  onOpenFullBreakdown?: (contestantId: string) => void;
+  /** Label for the open-full-breakdown button. Required iff onOpenFullBreakdown is supplied. */
+  openFullBreakdownLabel?: string;
 }
 
 /**
@@ -47,6 +53,8 @@ export default function LeaderboardWithDrillDown({
   contestants,
   contestantBreakdowns,
   labels,
+  onOpenFullBreakdown,
+  openFullBreakdownLabel,
 }: LeaderboardWithDrillDownProps) {
   const contestantLookup = new Map<string, Contestant>(
     contestants.map((c) => [c.id, c]),
@@ -114,6 +122,15 @@ export default function LeaderboardWithDrillDown({
                       {labels.drillDownEmpty}
                     </p>
                   )}
+                  {onOpenFullBreakdown && openFullBreakdownLabel ? (
+                    <button
+                      type="button"
+                      onClick={() => onOpenFullBreakdown(e.contestantId)}
+                      className="mt-3 text-sm font-medium text-primary underline underline-offset-2 hover:text-primary/80"
+                    >
+                      {openFullBreakdownLabel}
+                    </button>
+                  ) : null}
                 </div>
               </details>
             </li>

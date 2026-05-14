@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 
 import LeaderboardWithDrillDown, {
@@ -220,11 +220,82 @@ describe("LeaderboardWithDrillDown", () => {
       />,
     );
     expect(screen.getByText("2026-zz")).toBeInTheDocument();
-    // Aria label uses the same fallback so screen readers stay informative.
     expect(
       document.querySelector(
         'summary[aria-label="Show points breakdown for 2026-zz"]',
       ),
     ).not.toBeNull();
+  });
+
+  describe("Full breakdown link (SPEC §12.6.1 trigger)", () => {
+    it("renders the link inside an open <details> only when onOpenFullBreakdown is supplied", async () => {
+      const { default: userEvent } = await import("@testing-library/user-event");
+      const user = userEvent.setup();
+      const onOpen = vi.fn();
+      render(
+        <LeaderboardWithDrillDown
+          leaderboard={LEADERBOARD}
+          contestants={[SWEDEN]}
+          contestantBreakdowns={CONTESTANT_BREAKDOWNS}
+          labels={LABELS}
+          onOpenFullBreakdown={onOpen}
+          openFullBreakdownLabel="Full breakdown →"
+        />,
+      );
+      const summary = document.querySelector(
+        'summary[aria-label="Show points breakdown for Sweden"]',
+      ) as HTMLElement;
+      await user.click(summary);
+      const details = summary.parentElement as HTMLDetailsElement;
+      expect(
+        within(details).getByRole("button", { name: "Full breakdown →" }),
+      ).toBeInTheDocument();
+    });
+
+    it("clicking the link calls onOpenFullBreakdown with the contestantId", async () => {
+      const { default: userEvent } = await import("@testing-library/user-event");
+      const user = userEvent.setup();
+      const onOpen = vi.fn();
+      render(
+        <LeaderboardWithDrillDown
+          leaderboard={LEADERBOARD}
+          contestants={[SWEDEN]}
+          contestantBreakdowns={CONTESTANT_BREAKDOWNS}
+          labels={LABELS}
+          onOpenFullBreakdown={onOpen}
+          openFullBreakdownLabel="Full breakdown →"
+        />,
+      );
+      const summary = document.querySelector(
+        'summary[aria-label="Show points breakdown for Sweden"]',
+      ) as HTMLElement;
+      await user.click(summary);
+      const details = summary.parentElement as HTMLDetailsElement;
+      await user.click(
+        within(details).getByRole("button", { name: "Full breakdown →" }),
+      );
+      expect(onOpen).toHaveBeenCalledWith("2026-se");
+    });
+
+    it("suppresses the link when onOpenFullBreakdown is not supplied", async () => {
+      const { default: userEvent } = await import("@testing-library/user-event");
+      const user = userEvent.setup();
+      render(
+        <LeaderboardWithDrillDown
+          leaderboard={LEADERBOARD}
+          contestants={[SWEDEN]}
+          contestantBreakdowns={CONTESTANT_BREAKDOWNS}
+          labels={LABELS}
+        />,
+      );
+      const summary = document.querySelector(
+        'summary[aria-label="Show points breakdown for Sweden"]',
+      ) as HTMLElement;
+      await user.click(summary);
+      const details = summary.parentElement as HTMLDetailsElement;
+      expect(
+        within(details).queryByRole("button", { name: /Full breakdown/i }),
+      ).toBeNull();
+    });
   });
 });

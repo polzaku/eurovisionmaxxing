@@ -1,3 +1,5 @@
+"use client";
+
 import { Fragment } from "react";
 import Avatar from "@/components/ui/Avatar";
 import type { Contestant, RoomAward } from "@/types";
@@ -24,6 +26,14 @@ interface AwardsSectionProps {
     jointCaption: string;
     neighbourhoodCaption: string;
   };
+  /**
+   * SPEC §12.6.3 — invoked when the user taps the "Full ranking" link on a
+   * category-award card. The link only appears on cards whose awardKey
+   * starts with `best_` (the category-award discriminator).
+   */
+  onOpenCategoryRanking?: (categoryKey: string) => void;
+  /** Label for the "Full ranking" button. Required iff onOpenCategoryRanking is supplied. */
+  openCategoryRankingLabel?: string;
 }
 
 /**
@@ -44,6 +54,8 @@ export default function AwardsSection({
   members,
   personalNeighbours,
   labels,
+  onOpenCategoryRanking,
+  openCategoryRankingLabel,
 }: AwardsSectionProps) {
   if (awards.length === 0) return null;
 
@@ -70,6 +82,19 @@ export default function AwardsSection({
                   contestant={
                     a.winnerContestantId
                       ? contestantById.get(a.winnerContestantId)
+                      : undefined
+                  }
+                  fullRankingLabel={
+                    onOpenCategoryRanking && openCategoryRankingLabel
+                      ? openCategoryRankingLabel
+                      : undefined
+                  }
+                  onOpenFullRanking={
+                    onOpenCategoryRanking
+                      ? () =>
+                          onOpenCategoryRanking(
+                            a.awardKey.replace(/^best_/, ""),
+                          )
                       : undefined
                   }
                 />
@@ -143,9 +168,13 @@ export default function AwardsSection({
 function ContestantAwardCard({
   award,
   contestant,
+  fullRankingLabel,
+  onOpenFullRanking,
 }: {
   award: RoomAward;
   contestant: Contestant | undefined;
+  fullRankingLabel?: string;
+  onOpenFullRanking?: () => void;
 }) {
   return (
     <div className="rounded-xl border-2 border-border bg-card px-4 py-3 space-y-2">
@@ -162,6 +191,15 @@ function ContestantAwardCard({
         </div>
       </div>
       <AwardExplainer awardKey={award.awardKey} />
+      {onOpenFullRanking && fullRankingLabel ? (
+        <button
+          type="button"
+          onClick={onOpenFullRanking}
+          className="text-sm font-medium text-primary underline underline-offset-2 hover:text-primary/80"
+        >
+          {fullRankingLabel}
+        </button>
+      ) : null}
     </div>
   );
 }
