@@ -41,12 +41,22 @@ type SubmitState =
   | { kind: "submitting" }
   | { kind: "error"; message: string };
 
-const MIN_YEAR = 2000;
+/**
+ * Years for which the wizard offers a room-creation flow. Sorted newest-first
+ * (the wizard renders them in this order; the latest year is the default).
+ *
+ * Constrained to the years we actually ship hardcoded contestant fallbacks for
+ * under `data/contestants/{year}/`. The upstream EurovisionAPI is currently
+ * dead, so the fallback IS the source of truth — offering older years here
+ * just produces silent room-creation failures. To add a year: drop its three
+ * JSON files into `data/contestants/{year}/`, then add the year to this list
+ * (newest first).
+ */
+const AVAILABLE_YEARS: readonly number[] = [2026, 2025];
 
 export default function CreateRoomPage() {
   const router = useRouter();
   const t = useTranslations();
-  const maxYear = new Date().getUTCFullYear();
 
   // Session guard — existing pattern across /join and /room/[id].
   useEffect(() => {
@@ -57,7 +67,7 @@ export default function CreateRoomPage() {
   const [step, setStep] = useState<Step>(1);
 
   // Step 1 state
-  const [year, setYear] = useState<number>(maxYear);
+  const [year, setYear] = useState<number>(AVAILABLE_YEARS[0]);
   const [event, setEvent] = useState<Event>("final");
   const [contestants, setContestants] = useState<ContestantsState>({
     kind: "idle",
@@ -239,8 +249,7 @@ export default function CreateRoomPage() {
             year={year}
             event={event}
             contestants={contestants}
-            minYear={MIN_YEAR}
-            maxYear={maxYear}
+            availableYears={AVAILABLE_YEARS}
             extraYears={
               process.env.NODE_ENV !== "production" ? [9999] : undefined
             }
