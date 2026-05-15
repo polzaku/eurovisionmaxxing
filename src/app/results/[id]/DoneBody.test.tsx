@@ -58,7 +58,7 @@ vi.mock("@/app/results/[id]/CopySummaryButton", () => ({
   default: () => <div data-testid="mock-copy-summary" />,
 }));
 
-import { DoneBody } from "./page";
+import { DoneBody } from "./DoneBody";
 
 const ROOM_ID = "11111111-2222-4333-8444-555555555555";
 
