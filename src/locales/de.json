@@ -551,6 +551,7 @@
       "position": "Ansagende/r {position} von {total}",
       "upNext": "Als nächstes",
       "upNextDetail": "{points} Pkt → {country}",
+      "upNextDetailMystery": "douze points coming up ✨",
       "queueExhausted": "Enthüllungen abgeschlossen — wird übergeben…"
     },
     "done": {

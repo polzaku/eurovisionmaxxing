@@ -551,6 +551,7 @@
       "position": "Announcer {position} of {total}",
       "upNext": "Up next",
       "upNextDetail": "{points} pts → {country}",
+      "upNextDetailMystery": "douze points coming up ✨",
       "queueExhausted": "Reveals complete — handing off…"
     },
     "done": {
