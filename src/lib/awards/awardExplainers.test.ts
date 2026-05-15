@@ -27,6 +27,23 @@ describe("PERSONALITY_AWARD_EXPLAINERS", () => {
       expect(PERSONALITY_AWARD_EXPLAINERS[key].length).toBeLessThanOrEqual(200);
     },
   );
+
+  // SPEC #12 — explainers render to every viewer, not just the winner.
+  // First-person ("you / your") reads as if the viewer themselves won
+  // the award and was confusing during live tests. `the_dark_horse` is
+  // about a contestant (already neutral) so it's excluded.
+  const THIRD_PERSON_KEYS = PERSONALITY_AWARD_KEYS.filter(
+    (k) => k !== "the_dark_horse",
+  );
+  it.each(THIRD_PERSON_KEYS)(
+    "explainer for '%s' uses 3rd-person copy (no 'you' / 'your')",
+    (key) => {
+      expect(
+        PERSONALITY_AWARD_EXPLAINERS[key],
+        `${key} still uses 1st person`,
+      ).not.toMatch(/\byou\b|\byour\b/i);
+    },
+  );
 });
 
 describe("explainerForAward", () => {
