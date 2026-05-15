@@ -57,12 +57,23 @@ export function localizedAwardStat(
   fallback: string | null | undefined,
 ): string | null {
   if (PERSONALITY_KEY_SET.has(awardKey) && statValue != null) {
-    return t(`awards.personality.${awardKey}.stat`, { value: statValue });
+    return t(`awards.personality.${awardKey}.stat`, {
+      value: roundToOneDecimal(statValue),
+    });
   }
   if (awardKey === "your_neighbour" && statValue != null) {
-    return t("awards.personality.your_neighbour.stat", { value: statValue });
+    return t("awards.personality.your_neighbour.stat", {
+      value: roundToOneDecimal(statValue),
+    });
   }
   return fallback ?? null;
+}
+
+// SPEC #12 — personality cards previously rendered the raw float ("avg
+// 8.9123456 / 10"). Rounding centrally here keeps every locale's stat
+// template clean without touching ICU number-formatting per-locale.
+function roundToOneDecimal(value: number): number {
+  return Math.round(value * 10) / 10;
 }
 
 /**

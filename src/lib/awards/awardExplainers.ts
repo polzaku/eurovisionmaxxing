@@ -14,20 +14,20 @@ import { PERSONALITY_AWARD_KEYS, type PersonalityAwardKey } from "./awardKeys";
  */
 export const PERSONALITY_AWARD_EXPLAINERS: Record<PersonalityAwardKey, string> = {
   harshest_critic:
-    "Lowest average score given across all the contestants you voted on.",
+    "Lowest average score given across all the contestants they voted on.",
   biggest_stan:
-    "Highest average score given across all the contestants you voted on.",
+    "Highest average score given across all the contestants they voted on.",
   hive_mind_master:
-    "Your ranking lined up most closely with how the room voted overall.",
+    "Their ranking lined up most closely with how the room voted overall.",
   most_contrarian:
-    "Your ranking was the furthest from the room's overall ranking.",
+    "Their ranking was the furthest from the room's overall ranking.",
   neighbourhood_voters:
-    "You and one other person voted most alike — your scores moved up and down together more than anyone else's.",
+    "These two voted most alike — their scores moved up and down together more than anyone else's.",
   the_dark_horse:
     "The contestant the room disagreed most about — some loved them, some hated them.",
   fashion_stan:
-    "You gave the single highest score in the outfit / costume category.",
-  the_enabler: "You gave your 12 points to the room's overall winner.",
+    "They gave the single highest score in the outfit / costume category.",
+  the_enabler: "They gave their 12 points to the room's overall winner.",
 };
 
 /**
