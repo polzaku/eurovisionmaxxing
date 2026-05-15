@@ -330,6 +330,11 @@ export default function AnnouncingView({
 
   useEffect(() => {
     if (!justRevealed) return;
+    // TODO #9 — the 12-point reveal is the climactic moment. Let the
+    // announcer dwell on it for as long as they like and dismiss
+    // explicitly via the "Pass the mic" button so the room sees a
+    // deliberate handoff, not a 4.5-second flash.
+    if (justRevealed.points === 12) return;
     const ts = justRevealed.timestamp;
     const timer = setTimeout(() => {
       setJustRevealed((prev) => (prev?.timestamp === ts ? null : prev));
@@ -601,6 +606,26 @@ export default function AnnouncingView({
                 {flashContestant?.country ?? justRevealed.contestantId}
               </span>
             </p>
+            {/* TODO #9 — climactic 12-point reveal: stays until the
+             * announcer deliberately passes the mic to the next person.
+             * The server has already rotated the announcement pointer
+             * by this point, so `announcement.announcingDisplayName` is
+             * already the *next* announcer's name when present. */}
+            {justRevealed.points === 12 ? (
+              <button
+                type="button"
+                data-testid="pass-the-mic-button"
+                onClick={() => setJustRevealed(null)}
+                className="mt-4 w-full rounded-xl bg-primary px-5 py-3 text-base font-semibold text-primary-foreground transition-all hover:scale-[1.01] active:scale-[0.99]"
+              >
+                {announcement?.announcingDisplayName &&
+                announcement.announcingUserId !== currentUserId
+                  ? t("justRevealed.passTheMicTo", {
+                      name: announcement.announcingDisplayName,
+                    })
+                  : t("justRevealed.passTheMicGeneric")}
+              </button>
+            ) : null}
           </div>
         ) : null}
 
@@ -632,6 +657,14 @@ export default function AnnouncingView({
             announcerName={announcerName}
             handoffState={handoffState}
             onHandoffBack={() => handleTakeControl(false)}
+            isJustRevealedTwelve={justRevealed?.points === 12}
+            nextAnnouncerName={
+              announcement?.announcingUserId &&
+              announcement.announcingUserId !== currentUserId
+                ? announcement.announcingDisplayName
+                : null
+            }
+            onPassTheMic={() => setJustRevealed(null)}
           />
         ) : isActiveDriver && announcement?.pendingReveal ? (
           <div
@@ -926,6 +959,9 @@ function ShortStyleRevealCard({
   announcerName,
   handoffState,
   onHandoffBack,
+  isJustRevealedTwelve,
+  nextAnnouncerName,
+  onPassTheMic,
 }: {
   onReveal: () => void;
   submitting: boolean;
@@ -936,6 +972,14 @@ function ShortStyleRevealCard({
   announcerName: string;
   handoffState: { kind: "idle" | "submitting"; error?: string };
   onHandoffBack: () => void;
+  // TODO #9 — when the announcer has just revealed their 12, render
+  // a "Pass the mic" button so the dwell is deliberate, not a 4.5 s
+  // flash. `nextAnnouncerName` is non-null when there's actually a
+  // next announcer (room shows in short style typically have only one
+  // reveal per announcer, so the next announcer follows immediately).
+  isJustRevealedTwelve?: boolean;
+  nextAnnouncerName?: string | null;
+  onPassTheMic?: () => void;
 }) {
   const t = useTranslations();
 
@@ -946,6 +990,18 @@ function ShortStyleRevealCard({
           {t("announce.shortReveal.revealed")}
         </p>
         <TwelvePointSplash contestant={justRevealedContestant} size="card" />
+        {isJustRevealedTwelve && onPassTheMic ? (
+          <button
+            type="button"
+            data-testid="pass-the-mic-button-short"
+            onClick={onPassTheMic}
+            className="w-full rounded-xl bg-primary px-5 py-3 text-base font-semibold text-primary-foreground transition-all hover:scale-[1.01] active:scale-[0.99]"
+          >
+            {nextAnnouncerName
+              ? t("justRevealed.passTheMicTo", { name: nextAnnouncerName })
+              : t("justRevealed.passTheMicGeneric")}
+          </button>
+        ) : null}
       </div>
     );
   }

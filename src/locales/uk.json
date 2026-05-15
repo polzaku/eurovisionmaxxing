@@ -318,7 +318,9 @@
     },
     "justRevealed": {
       "label": "Щойно розкрито",
-      "pointsLabel": "{points, plural, =1 {# бал іде до} other {# балів ідуть до}}"
+      "pointsLabel": "{points, plural, =1 {# бал іде до} other {# балів ідуть до}}",
+      "passTheMicTo": "Передай мікрофон {name} →",
+      "passTheMicGeneric": "Передай мікрофон →"
     },
     "upNext": {
       "label": "Наступний",

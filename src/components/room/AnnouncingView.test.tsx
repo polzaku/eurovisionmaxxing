@@ -93,6 +93,10 @@ vi.mock("next-intl", () => ({
       "announcing.justRevealed.pointsLabel": params?.points
         ? `${params.points} points`
         : "points",
+      "announcing.justRevealed.passTheMicTo": params?.name
+        ? `Pass the mic to ${params.name} →`
+        : "Pass the mic →",
+      "announcing.justRevealed.passTheMicGeneric": "Pass the mic →",
       // Short-reveal keys (used without namespace by ShortStyleRevealCard which uses useTranslations())
       "announce.shortReveal.cta": "Reveal 12 points",
       "announce.shortReveal.ctaMicrocopy": "Tap when you say it",
@@ -1277,6 +1281,102 @@ describe("AnnouncingView — short style (SPEC §10.2.2)", () => {
     // The CTA button should not be visible (splash replaced it)
     expect(
       screen.queryByRole("button", { name: /reveal 12 points/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  // TODO #9 — Case C.2: 12-point splash on the announcer's phone (short
+  // style) now renders a "Pass the mic" button instead of auto-
+  // dismissing after 4.5s. Lets the announcer hold the climactic
+  // moment until they deliberately hand off.
+  it("Case C.2 — 12-point splash (short style) renders the Pass the mic button", async () => {
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={ANNOUNCER_ID}
+        announcement={ANNOUNCEMENT_STATE}
+        announcementStyle="short"
+      />,
+    );
+    await waitFor(() => expect(capturedRoomEventHandler).not.toBeNull());
+    fireRoomEvent({
+      type: "announce_next",
+      contestantId: "2026-AT",
+      points: 12,
+      announcingUserId: ANNOUNCER_ID,
+    });
+    const button = await screen.findByTestId("pass-the-mic-button-short");
+    expect(button).toBeInTheDocument();
+    // Splash + button coexist while waiting for the explicit handoff.
+    expect(screen.getByTestId("twelve-point-splash")).toBeInTheDocument();
+
+    // Tapping the button dismisses the splash + button (server-side
+    // rotation already happened; this is the deliberate UX moment).
+    await userEvent.click(button);
+    await waitFor(() =>
+      expect(screen.queryByTestId("twelve-point-splash")).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByTestId("pass-the-mic-button-short"),
+    ).not.toBeInTheDocument();
+  });
+
+  // TODO #9 — Case C.3: full-style 12-point reveal flash also gets the
+  // Pass the mic button (the announcer's small flash card, not the
+  // fullscreen splash). Same dwell-then-deliberate-handoff behaviour.
+  it("Case C.3 — 12-point flash (full style) renders the Pass the mic button", async () => {
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={ANNOUNCER_ID}
+        announcement={ANNOUNCEMENT_STATE}
+        announcementStyle="full"
+      />,
+    );
+    await waitFor(() => expect(capturedRoomEventHandler).not.toBeNull());
+    fireRoomEvent({
+      type: "announce_next",
+      contestantId: "2026-AT",
+      points: 12,
+      announcingUserId: ANNOUNCER_ID,
+    });
+    const button = await screen.findByTestId("pass-the-mic-button");
+    expect(button).toBeInTheDocument();
+    expect(screen.getByTestId("just-revealed-flash")).toBeInTheDocument();
+
+    await userEvent.click(button);
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId("just-revealed-flash"),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  // TODO #9 — non-12 reveals keep the existing auto-dismiss flow; no
+  // Pass the mic button. Regression guard.
+  it("Case C.4 — non-12 reveal does NOT render the Pass the mic button", async () => {
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={ANNOUNCER_ID}
+        announcement={ANNOUNCEMENT_STATE}
+        announcementStyle="full"
+      />,
+    );
+    await waitFor(() => expect(capturedRoomEventHandler).not.toBeNull());
+    fireRoomEvent({
+      type: "announce_next",
+      contestantId: "2026-AT",
+      points: 8,
+      announcingUserId: ANNOUNCER_ID,
+    });
+    expect(
+      await screen.findByTestId("just-revealed-flash"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("pass-the-mic-button"),
     ).not.toBeInTheDocument();
   });
 
