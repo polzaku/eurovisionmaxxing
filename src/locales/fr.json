@@ -557,6 +557,11 @@
     "done": {
       "title": "Résultats finaux"
     },
+    "announcerPicks": {
+      "title": "Points de {name}",
+      "empty": "En attente des points…",
+      "pendingTwelve": "+12 points arrivent ✨"
+    },
     "cascadeExhausted": {
       "title": "En attente qu'un admin continue…",
       "subtitle": "Tous les annonceurs sont absents. L'hôte reprendra à son retour."

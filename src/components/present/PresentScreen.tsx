@@ -7,6 +7,8 @@ import type { LeaderboardEntry } from "@/lib/results/formatRoomSummary";
 import SkipBannerQueue, { type SkipEvent } from "@/components/room/SkipBannerQueue";
 import TwelvePointSplash from "@/components/room/TwelvePointSplash";
 import QrCode from "@/components/ui/QrCode";
+import AnnouncerPicksPanel from "@/components/present/AnnouncerPicksPanel";
+import type { AnnouncerPick } from "@/lib/present/announcerBatch";
 
 export type PresentStatus =
   | "lobby"
@@ -63,6 +65,15 @@ interface PresentScreenProps {
    * state, renders a QR code alongside the PIN so guests can scan from
    * the TV without typing. */
   shareUrl?: string;
+  /**
+   * TODO #8 + #11 — the current announcer's per-pick contribution
+   * (live − committed snapshot), derived in the parent page. When
+   * defined while `status === "announcing"`, renders the
+   * `<AnnouncerPicksPanel>` aside next to the (frozen) leaderboard so
+   * the room can see the composition of this batch before the
+   * room leaderboard commits the changes.
+   */
+  announcerPicks?: AnnouncerPick[];
 }
 
 const RANK_MEDAL: Record<number, string> = {
@@ -104,6 +115,7 @@ export default function PresentScreen({
   skipEvents,
   roomId,
   shareUrl,
+  announcerPicks,
 }: PresentScreenProps) {
   const t = useTranslations();
   const contestantById = new Map(contestants.map((c) => [c.id, c]));
@@ -233,6 +245,14 @@ export default function PresentScreen({
     ? contestantById.get(pendingReveal.contestantId)
     : null;
 
+  // TODO #8 + #11 — render the per-announcer picks aside only when
+  // we're actually mid-batch (status=announcing, named announcer, and
+  // the parent page has wired the picks-delta computation).
+  const showPicksPanel =
+    status === "announcing" &&
+    Boolean(announcerDisplayName) &&
+    announcerPicks !== undefined;
+
   return (
     <>
       {showOverlay && roomId ? (
@@ -287,7 +307,20 @@ export default function PresentScreen({
         }
         isBatchReveal={batchRevealMode === true}
         overlaid={Boolean(showOverlay && roomId)}
+        withPicksPanel={showPicksPanel}
       />
+      {showPicksPanel ? (
+        <aside
+          className="fixed right-4 top-24 z-30 hidden w-[22rem] lg:block"
+          data-testid="present-announcer-picks-anchor"
+        >
+          <AnnouncerPicksPanel
+            announcerDisplayName={announcerDisplayName!}
+            picks={announcerPicks ?? []}
+            pendingTwelve={pendingReveal?.points === 12}
+          />
+        </aside>
+      ) : null}
       {announcementStyle === "short" && splashEvent
         ? <ShortStyleSplash
             key={splashEvent.triggerKey}
@@ -421,6 +454,12 @@ interface PresentLeaderboardProps {
    * `<main>`'s top padding so the leaderboard rows stay clear of it.
    */
   overlaid?: boolean;
+  /**
+   * TODO #8 + #11 — when the AnnouncerPicksPanel is rendered on the
+   * right side (lg breakpoint and up), reserve right-side padding on
+   * `<main>` so the leaderboard rows don't run under the panel.
+   */
+  withPicksPanel?: boolean;
 }
 
 /**
@@ -448,6 +487,7 @@ function PresentLeaderboard({
   pendingReveal,
   isBatchReveal,
   overlaid,
+  withPicksPanel,
 }: PresentLeaderboardProps) {
   const t = useTranslations();
   const rowRefs = useRef<Map<string, HTMLLIElement>>(new Map());
@@ -477,7 +517,7 @@ function PresentLeaderboard({
     <main
       data-testid="present-screen"
       data-status={status}
-      className={`flex min-h-screen flex-col px-8 sm:px-12 pb-8 ${overlaid ? "pt-32" : "pt-8"}`}
+      className={`flex min-h-screen flex-col pl-8 sm:pl-12 pb-8 ${overlaid ? "pt-32" : "pt-8"} ${withPicksPanel ? "pr-8 lg:pr-[24rem]" : "pr-8 sm:pr-12"}`}
     >
       <header className="mb-6 flex items-baseline justify-between gap-6">
         <h1 className="text-4xl font-bold tracking-tight">

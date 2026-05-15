@@ -390,6 +390,84 @@ describe("PresentScreen — announcing", () => {
       /present\.announcing\.upNextDetailMystery/,
     );
   });
+
+  // TODO #8 + #11 — when the page wires `announcerPicks`, the TV
+  // renders the per-announcer picks aside alongside the (frozen)
+  // leaderboard.
+  it("renders the AnnouncerPicksPanel when announcerPicks is provided and an announcer is active", () => {
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={LEADERBOARD}
+        announcerDisplayName="Alice"
+        announcerPicks={[
+          {
+            contestantId: "2026-se",
+            country: "Sweden",
+            flagEmoji: "🇸🇪",
+            points: 5,
+          },
+        ]}
+      />,
+    );
+    expect(
+      screen.getByTestId("present-announcer-picks-anchor"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("present-announcer-picks")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("present-pick-2026-se"),
+    ).toHaveTextContent("+5");
+  });
+
+  it("suppresses the panel when announcerPicks is undefined (page hasn't wired it)", () => {
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={LEADERBOARD}
+        announcerDisplayName="Alice"
+      />,
+    );
+    expect(
+      screen.queryByTestId("present-announcer-picks-anchor"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("suppresses the panel in 'done' status even with picks provided", () => {
+    render(
+      <PresentScreen
+        status="done"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={LEADERBOARD}
+        announcerDisplayName="Alice"
+        announcerPicks={[]}
+      />,
+    );
+    expect(
+      screen.queryByTestId("present-announcer-picks-anchor"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("surfaces the +12 teaser when pendingReveal.points === 12", () => {
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={LEADERBOARD}
+        announcerDisplayName="Alice"
+        announcerPicks={[]}
+        pendingReveal={{ contestantId: "2026-se", points: 12 }}
+      />,
+    );
+    expect(
+      screen.getByTestId("present-announcer-picks-pending-twelve"),
+    ).toBeInTheDocument();
+  });
 });
 
 describe("PresentScreen — cascade-exhausted (R4 #3)", () => {
