@@ -1,18 +1,16 @@
 # 2026 contestant data — pre-show status
 
-**As of 2026-05-04** (12 days before the Grand Final on 2026-05-16):
+**As of 2026-05-15** (1 day before the Grand Final on 2026-05-16):
 
 | File | Status | Source |
 |---|---|---|
-| `semi1.json` | ✅ populated (17 entries, full running order) | eurovisionworld.com — Semi-Final 1 running order, drawn before this date |
-| `semi2.json` | ✅ populated (18 entries, full running order) | eurovisionworld.com — Semi-Final 2 running order, drawn before this date |
-| `final.json` | 🚧 **EMPTY — must be populated by 2026-05-14 evening** | Grand Final running order isn't drawn until after both semis conclude |
+| `semi1.json` | ✅ populated (17 entries, full running order) | eurovisionworld.com — Semi-Final 1 running order, drawn before 2026-05-04 |
+| `semi2.json` | ✅ populated (18 entries, full running order) | eurovisionworld.com — Semi-Final 2 running order, drawn before 2026-05-04 |
+| `final.json` | ✅ populated (25 entries, full running order) | eurovision.com — drawn 2026-05-15 02:08 CEST, immediately after SF2 |
 
-## Operator action — 2026-05-14 evening
+## Operator action — completed 2026-05-15
 
-Once Semi-Final 2 wraps (approx 22:30 UTC on 2026-05-14), the EBU draws the Grand Final running order from the 25 qualified countries (10 from each semi + 5 Big-5 + host = 26 maximum, with one qualifier sometimes withdrawing). Within ~30 minutes of SF2 ending, the running order is published on eurovisionworld.com and Wikipedia.
-
-**Action:** populate `data/contestants/2026/final.json` with the full lineup before midnight UTC on 2026-05-14, then commit and deploy.
+The EBU drew the Grand Final running order in the early hours after SF2 wrapped. The 25-entry lineup (20 qualifiers + Big-4 [Germany / France / UK / Italy] + host Austria — Spain withdrew from the 2026 contest) was published at <https://www.eurovision.com/stories/running-order-eurovision-2026-grand-final-vienna/>. Artist + song values use the same spelling as `semi1.json` / `semi2.json` so the country join in `src/lib/contestants.ts` is consistent across files.
 
 The file shape — same as `2025/final.json` — is a JSON array of objects:
 
