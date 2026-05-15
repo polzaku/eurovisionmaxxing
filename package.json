@@ -12,7 +12,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium",
-    "pre-push": "npm run type-check && npm run lint && npm run test",
+    "pre-push": "npm run type-check && npm run lint && npm run test && npm run build",
     "prepare": "git config core.hooksPath .githooks || true",
     "seed:room": "tsx --env-file=.env.local scripts/seed-room.ts",
     "seed:cleanup": "tsx --env-file=.env.local scripts/cleanup-seed-rooms.ts",
