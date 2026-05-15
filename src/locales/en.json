@@ -109,8 +109,8 @@
   },
   "voting": {
     "scoredChip": {
-      "partial": "scored",
-      "all": "all scored"
+      "partial": "people scored",
+      "all": "everyone scored"
     },
     "missed": {
       "button": "I missed this",
