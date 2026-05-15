@@ -710,6 +710,32 @@ describe("PresentScreen — short-style first-load overlay (R4 §10.2.2)", () =>
     );
   });
 
+  // TODO #6 — the overlay was rendering as a full-screen modal
+  // (`fixed inset-0 ... bg-background/95`) and covered the leaderboard
+  // for up to 5 seconds. SPEC §1028 calls for a banner, not a modal.
+  // Guard the rendered chrome: the overlay must be a top-banner and the
+  // leaderboard must remain in the DOM beside it (so it shows through).
+  it("Case A.2 — overlay is a top banner that does not cover the leaderboard", () => {
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={LEADERBOARD}
+        announcementStyle="short"
+        roomId="test-room"
+      />,
+    );
+    const overlay = screen.getByTestId("present-short-overlay");
+    // Not a fullscreen modal — the table needs to be visible behind it.
+    expect(overlay.className).not.toMatch(/\binset-0\b/);
+    expect(overlay.className).not.toMatch(/\bbg-background\/95\b/);
+    // Pinned to the top edge so it stays clear of the table rows.
+    expect(overlay.className).toMatch(/\btop-\d/);
+    // Leaderboard renders alongside the overlay (same DOM tree).
+    expect(screen.getByTestId("present-screen")).toBeInTheDocument();
+  });
+
   it("Case B — Suppressed when sessionStorage flag is already set", () => {
     window.sessionStorage.setItem("emx_short_overlay_test-room", "1");
     render(

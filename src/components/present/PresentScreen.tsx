@@ -277,6 +277,7 @@ export default function PresentScreen({
             : null
         }
         isBatchReveal={batchRevealMode === true}
+        overlaid={Boolean(showOverlay && roomId)}
       />
       {announcementStyle === "short" && splashEvent
         ? <ShortStyleSplash
@@ -349,23 +350,28 @@ function ShortStyleOverlay({
     return () => clearTimeout(timer);
   }, [storageKey, onDismiss]);
 
+  // SPEC §1028 — a 5-second dismissible *banner*, not a fullscreen
+  // modal. Previously rendered as `fixed inset-0 bg-background/95` and
+  // blocked the leaderboard on the TV for up to 5 s (TODO #6).
   return (
     <div
-      role="dialog"
+      role="status"
       aria-label={t("announcementStyle.short.presentOverlay.title")}
       data-testid="present-short-overlay"
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/95 px-12 py-12 text-center motion-safe:animate-fade-in"
+      className="fixed inset-x-0 top-4 z-50 mx-auto flex max-w-3xl flex-col items-center gap-3 rounded-2xl border border-border bg-card/95 px-6 py-4 text-center shadow-lg sm:flex-row sm:gap-6 sm:text-left motion-safe:animate-fade-in"
     >
-      <p className="text-6xl font-bold">
-        {t("announcementStyle.short.presentOverlay.title")}
-      </p>
-      <p className="mt-6 max-w-3xl text-2xl text-muted-foreground">
-        {t("announcementStyle.short.presentOverlay.body")}
-      </p>
+      <div className="flex-1">
+        <p className="text-lg font-semibold sm:text-xl">
+          {t("announcementStyle.short.presentOverlay.title")}
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground sm:text-base">
+          {t("announcementStyle.short.presentOverlay.body")}
+        </p>
+      </div>
       <button
         type="button"
         onClick={onDismiss}
-        className="mt-10 rounded-full bg-primary px-8 py-3 text-lg font-semibold text-primary-foreground transition-all hover:scale-[1.02] active:scale-[0.98]"
+        className="flex-shrink-0 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-all hover:scale-[1.02] active:scale-[0.98]"
       >
         {t("announcementStyle.short.presentOverlay.dismiss")}
       </button>
@@ -398,6 +404,12 @@ interface PresentLeaderboardProps {
         hasReveal: boolean;
       }
     | null;
+  /**
+   * TODO #6 — when the short-mode first-load banner is visible, the
+   * fixed-position banner overlaps the top of the page. Bump the
+   * `<main>`'s top padding so the leaderboard rows stay clear of it.
+   */
+  overlaid?: boolean;
 }
 
 /**
@@ -424,6 +436,7 @@ function PresentLeaderboard({
   positionLabel,
   pendingReveal,
   isBatchReveal,
+  overlaid,
 }: PresentLeaderboardProps) {
   const t = useTranslations();
   const rowRefs = useRef<Map<string, HTMLLIElement>>(new Map());
@@ -453,7 +466,7 @@ function PresentLeaderboard({
     <main
       data-testid="present-screen"
       data-status={status}
-      className="flex min-h-screen flex-col px-8 py-8 sm:px-12"
+      className={`flex min-h-screen flex-col px-8 sm:px-12 pb-8 ${overlaid ? "pt-32" : "pt-8"}`}
     >
       <header className="mb-6 flex items-baseline justify-between gap-6">
         <h1 className="text-4xl font-bold tracking-tight">
