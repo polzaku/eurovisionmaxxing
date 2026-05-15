@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchRoomData } from "@/lib/room/api";
 import { useRoomRealtime } from "@/hooks/useRoomRealtime";
 import { useWakeLock } from "@/hooks/useWakeLock";
@@ -12,6 +12,22 @@ import FullscreenPrompt from "@/components/present/FullscreenPrompt";
 import type { Contestant } from "@/types";
 import type { LeaderboardEntry } from "@/lib/results/formatRoomSummary";
 import type { SkipEvent } from "@/components/room/SkipBannerQueue";
+import { derivePicks } from "@/lib/present/announcerBatch";
+
+// Stable empty fallback so the contestants useMemo upstream of the
+// `ready` gate doesn't allocate a new array every render (which would
+// thrash the memo when phase is loading/error).
+const EMPTY_CONTESTANTS: Contestant[] = [];
+
+// TODO #8 + #11 — committed-leaderboard snapshot persisted at module
+// scope (not in a useRef) so React StrictMode's mount-unmount-mount
+// cycle in dev doesn't reset it and re-capture a later live value.
+// Keyed by roomId so multiple tabs to different rooms stay isolated.
+interface SnapshotState {
+  announcerId: string | null;
+  leaderboard: LeaderboardEntry[];
+}
+const _snapshotByRoom = new Map<string, SnapshotState>();
 
 interface RoomShape {
   id: string;
@@ -75,6 +91,21 @@ export default function PresentPage({ params }: { params: { id: string } }) {
     contestantId: string;
     triggerKey: number;
   } | null>(null);
+
+  // TODO #8 + #11 — freeze the room leaderboard for the duration of an
+  // announcer's batch (their 1→12 reveal sequence). The committed
+  // snapshot is what the TV table displays so the totals don't tick up
+  // incrementally; the delta vs the live leaderboard surfaces in the
+  // AnnouncerPicksPanel. When the next announcer takes over
+  // (announcingUserId changes), we snapshot the now-current state,
+  // which both commits the previous batch into the displayed totals AND
+  // fires the FLIP rerank animation once for the whole batch.
+  //
+  // Initial value reads from the module-level map so StrictMode's
+  // remount in dev doesn't reset the snapshot to a later live value.
+  const [committedLeaderboard, setCommittedLeaderboard] = useState<
+    LeaderboardEntry[] | undefined
+  >(() => _snapshotByRoom.get(roomId)?.leaderboard);
 
   // Force-dark — restore prior theme on unmount so the user's theme
   // toggle pick is honoured back on /room/{id} or /results/{id}.
@@ -147,6 +178,45 @@ export default function PresentPage({ params }: { params: { id: string } }) {
     };
   }, [phase, roomId]);
 
+  // TODO #8 + #11 — leaderboard snapshot + picks panel state.
+  //
+  // Hooks must run unconditionally on every render; we read from
+  // `phase` / `results` defensively below and gate the actual snapshot
+  // work on the ready state inside the effect body. The contestant
+  // lookup falls back to an empty list when phase isn't ready yet so
+  // useMemo also runs every render.
+  const phaseReady = phase.kind === "ready";
+  const announcingUserIdSafe =
+    phase.kind === "ready" ? phase.room.announcingUserId ?? null : null;
+  const liveLeaderboard = results?.leaderboard;
+  useEffect(() => {
+    // Wait for room data — snapshotting while phase=loading can race
+    // the room fetch and capture a later live than intended (the
+    // loading→ready transition would look like an announcer change).
+    if (!phaseReady) return;
+    if (!liveLeaderboard) return;
+    const stored = _snapshotByRoom.get(roomId);
+    // Same announcer (or both null) → keep the frozen snapshot.
+    if (stored && stored.announcerId === announcingUserIdSafe) return;
+    _snapshotByRoom.set(roomId, {
+      announcerId: announcingUserIdSafe,
+      leaderboard: liveLeaderboard,
+    });
+    setCommittedLeaderboard(liveLeaderboard);
+  }, [phaseReady, liveLeaderboard, announcingUserIdSafe, roomId]);
+
+  const contestantsSafe =
+    phase.kind === "ready" ? phase.contestants : EMPTY_CONTESTANTS;
+  const contestantById = useMemo(
+    () => new Map(contestantsSafe.map((c) => [c.id, c])),
+    [contestantsSafe],
+  );
+  const announcerPicks = derivePicks(
+    committedLeaderboard,
+    liveLeaderboard,
+    contestantById,
+  );
+
   // Status_changed broadcasts trigger an immediate refetch.
   useRoomRealtime(roomId, (event) => {
     if (event.type === "status_changed" || event.type === "voting_ending") {
@@ -203,7 +273,10 @@ export default function PresentPage({ params }: { params: { id: string } }) {
         status={phase.room.status as PresentStatus}
         pin={phase.room.pin}
         contestants={phase.contestants}
-        leaderboard={results?.leaderboard}
+        leaderboard={committedLeaderboard ?? results?.leaderboard}
+        announcerPicks={
+          phase.room.announcingUserId ? announcerPicks : undefined
+        }
         announcerDisplayName={announcerDisplayName}
         roomMemberTotal={phase.memberships.length}
         pendingReveal={
