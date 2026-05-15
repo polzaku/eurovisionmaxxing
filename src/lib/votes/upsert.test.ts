@@ -209,7 +209,7 @@ describe("upsertVote — body shape validation", () => {
     expect(mock.upsertPayloads).toEqual([]);
   });
 
-  it.each([0, 11, 5.5, -1, "7", null, NaN])(
+  it.each([0, 11, 5.5, -1, "7", NaN])(
     "rejects score value %s with INVALID_BODY",
     async (bad) => {
       const mock = makeSupabaseMock();
@@ -225,6 +225,22 @@ describe("upsertVote — body shape validation", () => {
       expect(mock.upsertPayloads).toEqual([]);
     }
   );
+
+  // TODO #1 — the ScoreRow reducer (`nextScore`) treats a re-tap on the
+  // currently-selected score button as a retract → emits `null`. The
+  // Autosaver forwards that through the wire as `scores: { Cat: null }`.
+  // The server previously rejected null with INVALID_BODY → the voting
+  // card flashed "Save failed" on every retract. Null is now a valid
+  // retract signal: the server accepts it and the merge step deletes
+  // that category from the existing JSONB row.
+  it("accepts null score value (retract) — does not return INVALID_BODY", async () => {
+    const mock = makeSupabaseMock();
+    const result = await upsertVote(
+      { ...baseInput, scores: { Vocals: null } },
+      makeDeps(mock)
+    );
+    expect(result.ok).toBe(true);
+  });
 
   it("rejects score key not present in rooms.categories with INVALID_CATEGORY", async () => {
     const mock = makeSupabaseMock();
@@ -384,6 +400,91 @@ describe("upsertVote — happy path", () => {
       status: 500,
       error: { code: "INTERNAL_ERROR" },
     });
+  });
+
+  it("retract: scores: { X: null } removes X from existing merged scores", async () => {
+    // TODO #1 — the autosave round-trip when the user re-taps the
+    // selected score button must drop that category from the persisted
+    // JSONB and update scoredCount accordingly. Other categories stay.
+    const existing = {
+      scores: { Vocals: 7, Staging: 5 },
+      missed: false,
+      hot_take: null,
+    };
+    const persisted = {
+      id: "ffffffff-1111-4222-8333-444444444444",
+      room_id: VALID_ROOM_ID,
+      user_id: VALID_USER_ID,
+      contestant_id: VALID_CONTESTANT_ID,
+      scores: { Staging: 5 },
+      missed: false,
+      hot_take: null,
+      updated_at: "2026-05-15T12:00:00Z",
+    };
+    const mock = makeSupabaseMock({
+      existingVoteSelectResult: { data: existing, error: null },
+      voteUpsertResult: { data: persisted, error: null },
+    });
+    const broadcast = vi.fn().mockResolvedValue(undefined);
+    const result = await upsertVote(
+      {
+        roomId: VALID_ROOM_ID,
+        userId: VALID_USER_ID,
+        contestantId: VALID_CONTESTANT_ID,
+        scores: { Vocals: null },
+      },
+      makeDeps(mock, { broadcastRoomEvent: broadcast })
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(mock.upsertPayloads[0]).toMatchObject({
+      // Vocals is *gone*, not present-with-null.
+      scores: { Staging: 5 },
+    });
+    expect((mock.upsertPayloads[0].scores as Record<string, unknown>).Vocals)
+      .toBeUndefined();
+    expect(result.scoredCount).toBe(1);
+    expect(broadcast).toHaveBeenCalledWith(VALID_ROOM_ID, {
+      type: "voting_progress",
+      userId: VALID_USER_ID,
+      contestantId: VALID_CONTESTANT_ID,
+      scoredCount: 1,
+    });
+  });
+
+  it("retract: retracting the last remaining score leaves an empty scores object", async () => {
+    const existing = {
+      scores: { Vocals: 7 },
+      missed: false,
+      hot_take: null,
+    };
+    const persisted = {
+      id: "ffffffff-2222-4333-8444-555555555555",
+      room_id: VALID_ROOM_ID,
+      user_id: VALID_USER_ID,
+      contestant_id: VALID_CONTESTANT_ID,
+      scores: {},
+      missed: false,
+      hot_take: null,
+      updated_at: "2026-05-15T12:00:00Z",
+    };
+    const mock = makeSupabaseMock({
+      existingVoteSelectResult: { data: existing, error: null },
+      voteUpsertResult: { data: persisted, error: null },
+    });
+    const result = await upsertVote(
+      {
+        roomId: VALID_ROOM_ID,
+        userId: VALID_USER_ID,
+        contestantId: VALID_CONTESTANT_ID,
+        scores: { Vocals: null },
+      },
+      makeDeps(mock)
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(mock.upsertPayloads[0]).toMatchObject({ scores: {} });
+    expect(result.scoredCount).toBe(0);
   });
 
   it("merges partial scores into existing row (preserves untouched categories)", async () => {
