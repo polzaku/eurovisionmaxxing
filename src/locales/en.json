@@ -499,18 +499,18 @@
       "errorGeneric": "Couldn't re-shuffle. Try again?"
     }
   },
+  "tvMode": {
+    "chooser": {
+      "title": "Cast the show on a TV?",
+      "body": "Open this room on a TV so everyone watches the reveals together, or stay on your phone and we'll keep it compact. You can switch later.",
+      "openButton": "📺 Open TV mode",
+      "openButtonAria": "Open TV mode in a new tab",
+      "skipButton": "Continue on phone"
+    }
+  },
   "scoring": {
     "title": "Tallying results…",
-    "subtitle": "Hold tight — we're crunching the numbers.",
-    "tvMode": {
-      "title": "Cast the show on a TV",
-      "bullet1": "Open this on your TV (AirPlay, Chromecast, or just a big screen).",
-      "bullet2": "Each announcer's 12 points pop up there — the room watches together.",
-      "openButton": "Open TV mode",
-      "openButtonAria": "Open TV mode in a new tab",
-      "copyButton": "Copy TV link",
-      "copyConfirm": "Link copied!"
-    }
+    "subtitle": "Hold tight — we're crunching the numbers."
   },
   "room": {
     "catchingUp": "Catching up…",

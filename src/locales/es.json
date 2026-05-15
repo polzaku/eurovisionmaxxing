@@ -499,18 +499,18 @@
       "errorGeneric": "No se pudo reordenar. ¿Intentarlo de nuevo?"
     }
   },
+  "tvMode": {
+    "chooser": {
+      "title": "¿Pasar el show a la tele?",
+      "body": "Abre esta sala en una TV para que todos vean las revelaciones juntos, o sigue en el móvil y lo mantendremos compacto. Puedes cambiar más tarde.",
+      "openButton": "📺 Abrir modo TV",
+      "openButtonAria": "Abrir modo TV en una pestaña nueva",
+      "skipButton": "Seguir en el móvil"
+    }
+  },
   "scoring": {
     "title": "Calculando resultados…",
-    "subtitle": "Aguanta — estamos haciendo los cálculos.",
-    "tvMode": {
-      "title": "Lanza el show en la tele",
-      "bullet1": "Abre esto en tu tele (AirPlay, Chromecast o una pantalla grande).",
-      "bullet2": "Los 12 puntos de cada portavoz aparecerán ahí — la sala lo mira junta.",
-      "openButton": "Abrir modo TV",
-      "openButtonAria": "Abrir modo TV en una pestaña nueva",
-      "copyButton": "Copiar enlace TV",
-      "copyConfirm": "¡Enlace copiado!"
-    }
+    "subtitle": "Aguanta — estamos haciendo los cálculos."
   },
   "room": {
     "catchingUp": "Poniéndote al día…",

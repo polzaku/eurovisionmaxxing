@@ -1604,3 +1604,103 @@ describe("<AnnouncingView> — final reveal dwell", () => {
     );
   });
 });
+
+// ─── TV-mode chooser overlay (2026-05-15 follow-up) ────────────────────────
+// The host needs an explicit, unmissable choice between TV mode and
+// staying on phone — the original Fix 6 flashed by during the sub-second
+// scoring transition. The chooser overlay solves that for the owner.
+
+describe("<AnnouncingView> — host TV-mode chooser overlay", () => {
+  beforeEach(() => {
+    postAnnounceNextMock.mockReset();
+    postAnnounceHandoffMock.mockReset();
+    postAnnounceSkipMock.mockReset();
+    mockResultsFetch();
+    window.sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    window.sessionStorage.clear();
+  });
+
+  it("renders the TV-mode chooser for the owner when no choice persisted", async () => {
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={OWNER_ID}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("tv-mode-chooser")).toBeInTheDocument(),
+    );
+  });
+
+  it("does NOT render the chooser for non-owner viewers", async () => {
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={ANNOUNCER_ID}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getAllByText("Austria").length).toBeGreaterThan(0),
+    );
+    expect(screen.queryByTestId("tv-mode-chooser")).toBeNull();
+  });
+
+  it("does NOT render the chooser when a 'tv' choice is already persisted", async () => {
+    window.sessionStorage.setItem(`emx_tv_choice_${ROOM_ID}`, "tv");
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={OWNER_ID}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getAllByText(/bob is announcing/i).length).toBeGreaterThan(0),
+    );
+    expect(screen.queryByTestId("tv-mode-chooser")).toBeNull();
+  });
+
+  it("does NOT render the chooser when a 'skip' choice is already persisted", async () => {
+    window.sessionStorage.setItem(`emx_tv_choice_${ROOM_ID}`, "skip");
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={OWNER_ID}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getAllByText(/bob is announcing/i).length).toBeGreaterThan(0),
+    );
+    expect(screen.queryByTestId("tv-mode-chooser")).toBeNull();
+  });
+
+  it("dismisses the chooser when the skip button is clicked + persists 'skip'", async () => {
+    render(
+      <AnnouncingView
+        room={ROOM}
+        contestants={CONTESTANTS}
+        currentUserId={OWNER_ID}
+      />,
+    );
+    const chooser = await screen.findByTestId("tv-mode-chooser");
+    expect(chooser).toBeInTheDocument();
+
+    // The AnnouncingView test mock falls through to the bare key when no
+    // translation entry exists (chooser.skipButton, not tvMode.chooser.…).
+    await userEvent.click(
+      screen.getByRole("button", { name: /chooser\.skipButton/ }),
+    );
+
+    expect(screen.queryByTestId("tv-mode-chooser")).toBeNull();
+    expect(window.sessionStorage.getItem(`emx_tv_choice_${ROOM_ID}`)).toBe(
+      "skip",
+    );
+  });
+});

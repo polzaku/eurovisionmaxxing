@@ -499,18 +499,18 @@
       "errorGeneric": "Impossible de remélanger. Réessaie ?"
     }
   },
+  "tvMode": {
+    "chooser": {
+      "title": "Diffuser le show sur une TV ?",
+      "body": "Ouvre ce salon sur une TV pour que tout le monde regarde les révélations ensemble, ou reste sur ton téléphone — on garde tout compact. Tu peux changer plus tard.",
+      "openButton": "📺 Ouvrir le mode TV",
+      "openButtonAria": "Ouvrir le mode TV dans un nouvel onglet",
+      "skipButton": "Continuer sur le téléphone"
+    }
+  },
   "scoring": {
     "title": "Calcul des résultats…",
-    "subtitle": "Patiente — on fait les comptes.",
-    "tvMode": {
-      "title": "Diffuse le show sur une TV",
-      "bullet1": "Ouvre cette page sur ta télé (AirPlay, Chromecast ou simplement un grand écran).",
-      "bullet2": "Les 12 points de chaque porte-parole apparaissent là — la salle regarde ensemble.",
-      "openButton": "Ouvrir le mode TV",
-      "openButtonAria": "Ouvrir le mode TV dans un nouvel onglet",
-      "copyButton": "Copier le lien TV",
-      "copyConfirm": "Lien copié !"
-    }
+    "subtitle": "Patiente — on fait les comptes."
   },
   "room": {
     "catchingUp": "Mise à jour…",

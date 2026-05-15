@@ -499,18 +499,18 @@
       "errorGeneric": "Konnte nicht neu gemischt werden. Nochmal versuchen?"
     }
   },
+  "tvMode": {
+    "chooser": {
+      "title": "Show auf den Fernseher übertragen?",
+      "body": "Öffne diesen Raum auf einem TV, damit alle die Enthüllungen gemeinsam sehen, oder bleib auf dem Handy — dann halten wir es kompakt. Du kannst später wechseln.",
+      "openButton": "📺 TV-Modus öffnen",
+      "openButtonAria": "TV-Modus in neuem Tab öffnen",
+      "skipButton": "Auf dem Handy weitermachen"
+    }
+  },
   "scoring": {
     "title": "Ergebnisse werden ermittelt…",
-    "subtitle": "Moment — wir rechnen gerade alles zusammen.",
-    "tvMode": {
-      "title": "Übertrag die Show auf einen TV",
-      "bullet1": "Öffne diese Seite auf deinem Fernseher (AirPlay, Chromecast oder einfach ein großer Bildschirm).",
-      "bullet2": "Die 12 Punkte jedes Sprechers erscheinen dort — der Raum schaut gemeinsam zu.",
-      "openButton": "TV-Modus öffnen",
-      "openButtonAria": "TV-Modus in neuem Tab öffnen",
-      "copyButton": "TV-Link kopieren",
-      "copyConfirm": "Link kopiert!"
-    }
+    "subtitle": "Moment — wir rechnen gerade alles zusammen."
   },
   "room": {
     "catchingUp": "Wird synchronisiert…",
