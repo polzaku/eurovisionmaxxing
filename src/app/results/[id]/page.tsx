@@ -195,7 +195,7 @@ async function AnnouncingBody({
 
 // ─── done ────────────────────────────────────────────────────────────────────
 
-async function DoneBody({
+export async function DoneBody({
   data,
   roomId,
 }: {
@@ -269,7 +269,7 @@ async function DoneBody({
       {data.hotTakes.length > 0 ? (
         <HotTakesSection
           title={t("headings.hotTakes")}
-          editedLabel={t("results.hotTake.edited")}
+          editedLabel={t("hotTake.edited")}
           hotTakes={data.hotTakes}
           contestants={data.contestants}
           roomId={roomId}
