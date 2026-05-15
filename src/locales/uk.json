@@ -551,6 +551,7 @@
       "position": "Ведучий {position} з {total}",
       "upNext": "Наступний",
       "upNextDetail": "{points} балів → {country}",
+      "upNextDetailMystery": "douze points coming up ✨",
       "queueExhausted": "Розкриття завершено — передаємо далі…"
     },
     "done": {

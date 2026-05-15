@@ -339,11 +339,56 @@ describe("PresentScreen — announcing", () => {
         pin="ABCDEF"
         contestants={[]}
         leaderboard={LEADERBOARD}
-        pendingReveal={{ contestantId: "2026-xx", points: 12 }}
+        // Use a non-12 value — the 12-point branch is the mystery branch
+        // and intentionally suppresses the country (TODO #7).
+        pendingReveal={{ contestantId: "2026-xx", points: 8 }}
       />,
     );
     const card = screen.getByTestId("present-pending-reveal");
     expect(card.textContent).toContain('"country":"2026-xx"');
+  });
+
+  // TODO #7 — the climactic 12-point reveal must stay a surprise. The
+  // "Up next" card used to leak the destination country + flag for the
+  // 12-pointer, killing the drama. Now: when points === 12, render a
+  // mystery card that names the points only.
+  it("12-point pendingReveal hides the country + flag (mystery card)", () => {
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={LEADERBOARD}
+        pendingReveal={{ contestantId: "2026-se", points: 12 }}
+      />,
+    );
+    const card = screen.getByTestId("present-pending-reveal");
+    expect(card).toHaveAttribute("data-has-reveal", "true");
+    // Mystery copy is used; the country/flag escape never appears.
+    expect(card.textContent).toMatch(/present\.announcing\.upNextDetailMystery/);
+    expect(card.textContent).not.toContain("Sweden");
+    expect(card.textContent).not.toContain("🇸🇪");
+    // The country flag's placeholder ("🏳️") also must not appear — we
+    // skip rendering the flag node entirely.
+    expect(card.textContent).not.toContain("🏳️");
+  });
+
+  it("non-12 pendingReveal still shows the country + flag (drama intact only for 12)", () => {
+    render(
+      <PresentScreen
+        status="announcing"
+        pin="ABCDEF"
+        contestants={CONTESTANTS}
+        leaderboard={LEADERBOARD}
+        pendingReveal={{ contestantId: "2026-se", points: 10 }}
+      />,
+    );
+    const card = screen.getByTestId("present-pending-reveal");
+    expect(card.textContent).toContain("Sweden");
+    expect(card.textContent).toContain('"points":10');
+    expect(card.textContent).not.toMatch(
+      /present\.announcing\.upNextDetailMystery/,
+    );
   });
 });
 

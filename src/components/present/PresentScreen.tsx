@@ -266,12 +266,21 @@ export default function PresentScreen({
             ? {
                 upNext: t("present.announcing.upNext"),
                 detail: pendingReveal
-                  ? t("present.announcing.upNextDetail", {
-                      points: pendingReveal.points,
-                      country: pendingContestant?.country ?? pendingReveal.contestantId,
-                    })
+                  ? pendingReveal.points === 12
+                    ? // TODO #7 — preserve the climactic 12-point reveal.
+                      // The mystery copy intentionally omits the country.
+                      t("present.announcing.upNextDetailMystery", {
+                        points: pendingReveal.points,
+                      })
+                    : t("present.announcing.upNextDetail", {
+                        points: pendingReveal.points,
+                        country: pendingContestant?.country ?? pendingReveal.contestantId,
+                      })
                   : t("present.announcing.queueExhausted"),
-                flagEmoji: pendingContestant?.flagEmoji ?? "🏳️",
+                flagEmoji:
+                  pendingReveal?.points === 12
+                    ? null
+                    : pendingContestant?.flagEmoji ?? "🏳️",
                 hasReveal: pendingReveal !== null,
               }
             : null
@@ -400,7 +409,9 @@ interface PresentLeaderboardProps {
     | {
         upNext: string;
         detail: string;
-        flagEmoji: string;
+        // TODO #7 — null when the next reveal is 12 points, so the
+        // mystery card hides the country flag too.
+        flagEmoji: string | null;
         hasReveal: boolean;
       }
     | null;
@@ -509,9 +520,11 @@ function PresentLeaderboard({
           </span>
           {pendingReveal.hasReveal ? (
             <span className="flex items-center gap-4 text-3xl font-semibold">
-              <span className="text-5xl" aria-hidden>
-                {pendingReveal.flagEmoji}
-              </span>
+              {pendingReveal.flagEmoji ? (
+                <span className="text-5xl" aria-hidden>
+                  {pendingReveal.flagEmoji}
+                </span>
+              ) : null}
               <span>{pendingReveal.detail}</span>
             </span>
           ) : (

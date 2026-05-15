@@ -551,6 +551,7 @@
       "position": "Presentador {position} de {total}",
       "upNext": "El siguiente",
       "upNextDetail": "{points} pts → {country}",
+      "upNextDetailMystery": "douze points coming up ✨",
       "queueExhausted": "Revelaciones completas — pasando el turno…"
     },
     "done": {
