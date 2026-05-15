@@ -853,18 +853,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
   }
 
   if (phase.room.status === "scoring") {
-    return (
-      <ScoringScreen
-        roomId={phase.room.id}
-        isAdmin={isAdmin}
-        announcementMode={
-          phase.room.announcementMode === "live" ||
-          phase.room.announcementMode === "instant"
-            ? phase.room.announcementMode
-            : undefined
-        }
-      />
-    );
+    return <ScoringScreen />;
   }
 
   return <StatusStub status={phase.room.status} />;

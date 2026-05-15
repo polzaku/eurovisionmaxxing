@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import Avatar from "@/components/ui/Avatar";
 import DoneCard from "@/components/room/DoneCard";
+import TvModeChooser from "@/components/room/TvModeChooser";
+import { readTvModeChoice } from "@/lib/room/tvModeChoice";
 import SkipBannerQueue, {
   type SkipEvent,
 } from "@/components/room/SkipBannerQueue";
@@ -174,6 +176,14 @@ export default function AnnouncingView({
   const [toastEvents, setToastEvents] = useState<ToastEvent[]>([]);
 
   const [finishingShow, setFinishingShow] = useState(false);
+
+  // Host-only TV-mode chooser gate. Initialises from sessionStorage on
+  // mount so a refresh mid-show doesn't re-prompt; non-owners and viewers
+  // who already chose see `null`, which suppresses the overlay.
+  const [tvChoice, setTvChoice] = useState<"tv" | "skip" | null>(null);
+  useEffect(() => {
+    setTvChoice(readTvModeChoice(room.id));
+  }, [room.id]);
 
   const t = useTranslations("announcing");
 
@@ -525,6 +535,12 @@ export default function AnnouncingView({
       <SkipBannerQueue events={skipEvents} />
       <RevealToast events={toastEvents} />
       <div className="max-w-xl w-full space-y-6 motion-safe:animate-fade-in">
+        {isOwner && tvChoice === null ? (
+          <TvModeChooser
+            roomId={room.id}
+            onChosen={(choice) => setTvChoice(choice)}
+          />
+        ) : null}
         <header className="space-y-3 text-center">
           <h1 className="text-xl font-bold tracking-tight emx-wordmark">
             {t("title")}
