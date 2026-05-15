@@ -118,8 +118,10 @@ export async function upsertVote(
     );
   }
 
-  // Body-shape validation (runs after room load so we can check category names)
-  let scoresIn: Record<string, number> | undefined;
+  // Body-shape validation (runs after room load so we can check category
+  // names). `null` is a first-class retract signal — see TODO #1 (the
+  // ScoreRow re-tap reducer emits null when the user deselects a score).
+  let scoresIn: Record<string, number | null> | undefined;
   if (input.scores !== undefined) {
     if (
       typeof input.scores !== "object" ||
@@ -128,13 +130,13 @@ export async function upsertVote(
     ) {
       return fail(
         "INVALID_BODY",
-        "scores must be an object mapping category names to integers 1-10.",
+        "scores must be an object mapping category names to integers 1-10 (or null to retract).",
         400,
         "scores"
       );
     }
     const categoryNames = new Set(roomRow.categories.map((c) => c.name));
-    const parsed: Record<string, number> = {};
+    const parsed: Record<string, number | null> = {};
     for (const [key, value] of Object.entries(
       input.scores as Record<string, unknown>
     )) {
@@ -146,6 +148,10 @@ export async function upsertVote(
           `scores.${key}`
         );
       }
+      if (value === null) {
+        parsed[key] = null;
+        continue;
+      }
       if (
         typeof value !== "number" ||
         !Number.isInteger(value) ||
@@ -154,7 +160,7 @@ export async function upsertVote(
       ) {
         return fail(
           "INVALID_BODY",
-          `Score for '${key}' must be an integer between 1 and 10.`,
+          `Score for '${key}' must be an integer between 1 and 10 (or null to retract).`,
           400,
           `scores.${key}`
         );
@@ -203,11 +209,22 @@ export async function upsertVote(
     hot_take_edited_at: string | null;
   } | null;
 
-  // Merge per design §4
+  // Merge per design §4 — entries with a null value in `scoresIn` are
+  // retractions: delete the key from the merged JSONB rather than store
+  // null (the column type is `Record<string, number>`, and storing null
+  // would also leak through `scoredCount = Object.keys(scores).length`).
   const mergedScores: Record<string, number> = {
     ...(existing?.scores ?? {}),
-    ...(scoresIn ?? {}),
   };
+  if (scoresIn) {
+    for (const [key, value] of Object.entries(scoresIn)) {
+      if (value === null) {
+        delete mergedScores[key];
+      } else {
+        mergedScores[key] = value;
+      }
+    }
+  }
   const mergedMissed =
     typeof input.missed === "boolean" ? input.missed : (existing?.missed ?? false);
 
