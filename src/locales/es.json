@@ -318,7 +318,9 @@
     },
     "justRevealed": {
       "label": "Acaba de revelar",
-      "pointsLabel": "{points, plural, one {# punto va para} other {# puntos van para}}"
+      "pointsLabel": "{points, plural, one {# punto va para} other {# puntos van para}}",
+      "passTheMicTo": "Pasa el micrófono a {name} →",
+      "passTheMicGeneric": "Pasa el micrófono →"
     },
     "upNext": {
       "label": "El siguiente",
