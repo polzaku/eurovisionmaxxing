@@ -34,6 +34,10 @@ export type RoomStatus =
   | "voting"
   | "voting_ending"
   | "scoring"
+  // TODO #10 slice B — between scoring and announcing, every member
+  // can review their own 1→12 picks; the room owner advances to
+  // 'announcing' when ready.
+  | "calibration"
   | "announcing"
   | "done";
 export type AnnouncementMode = "live" | "instant";

@@ -846,7 +846,10 @@ describe("runScoring — live-mode announcement order initialisation", () => {
     expect(mock.roomUpdatePatches).toHaveLength(2);
     expect(mock.roomUpdatePatches[0]).toEqual({ status: "scoring", voting_ended_at: expect.any(String) });
     expect(mock.roomUpdatePatches[1]).toEqual({
-      status: "announcing",
+      // TODO #10 slice B — live mode transitions to 'calibration'
+      // (not 'announcing' directly) so members can peek at their picks
+      // before the owner kicks off live reveals.
+      status: "calibration",
       announcement_order: [U1, U2], // identity shuffle preserves member order
       announcing_user_id: U1,
       current_announce_idx: 0,
@@ -868,7 +871,7 @@ describe("runScoring — live-mode announcement order initialisation", () => {
     );
     expect(result.ok).toBe(true);
     expect(mock.roomUpdatePatches[1]).toEqual({
-      status: "announcing",
+      status: "calibration",
       announcement_order: [U2, U1],
       announcing_user_id: U2,
       current_announce_idx: 0,
@@ -905,7 +908,7 @@ describe("runScoring — live-mode announcement order initialisation", () => {
     expect(result.ok).toBe(true);
     // U3 had no votes → no results rows → not eligible.
     expect(mock.roomUpdatePatches[1]).toEqual({
-      status: "announcing",
+      status: "calibration",
       announcement_order: [U1, U2],
       announcing_user_id: U1,
       current_announce_idx: 0,
@@ -946,7 +949,7 @@ describe("runScoring — live-mode announcement order initialisation", () => {
     );
     expect(result.ok).toBe(true);
     expect(mock.roomUpdatePatches[1]).toEqual({
-      status: "announcing",
+      status: "calibration",
       announcement_order: [],
       announcing_user_id: null,
       current_announce_idx: 0,
@@ -1154,7 +1157,7 @@ describe("runScoring — pre-cascade skips absent users at scoring→announcing"
     // Last rooms UPDATE must reflect the cascade result.
     const announcingPatch = mock.roomUpdatePatches[1];
     expect(announcingPatch).toMatchObject({
-      status: "announcing",
+      status: "calibration",
       announcing_user_id: U3,
       announce_skipped_user_ids: [U1, U2],
       current_announce_idx: 0,
@@ -1171,11 +1174,13 @@ describe("runScoring — pre-cascade skips absent users at scoring→announcing"
     expect(skipBroadcasts[0][1]).toMatchObject({ type: "announce_skip", userId: U1 });
     expect(skipBroadcasts[1][1]).toMatchObject({ type: "announce_skip", userId: U2 });
 
-    // status_changed:announcing broadcast still fires.
+    // status_changed:calibration broadcast fires (live mode lands on
+    // calibration first, then the owner advances to announcing via
+    // /api/rooms/{id}/start-announcing).
     const statusBroadcasts = broadcastSpy.mock.calls.filter(
       ([, e]) => e.type === "status_changed",
     );
-    expect(statusBroadcasts.some(([, e]) => e.status === "announcing")).toBe(true);
+    expect(statusBroadcasts.some(([, e]) => e.status === "calibration")).toBe(true);
   });
 
   /**
@@ -1217,7 +1222,7 @@ describe("runScoring — pre-cascade skips absent users at scoring→announcing"
 
     const announcingPatch = mock.roomUpdatePatches[1];
     expect(announcingPatch).toMatchObject({
-      status: "announcing",
+      status: "calibration",
       announcing_user_id: null,
       announce_skipped_user_ids: [U1, U2],
       current_announce_idx: 0,
@@ -1266,7 +1271,7 @@ describe("runScoring — pre-cascade skips absent users at scoring→announcing"
 
     const announcingPatch = mock.roomUpdatePatches[1];
     expect(announcingPatch).toMatchObject({
-      status: "announcing",
+      status: "calibration",
       announcing_user_id: U1,
       current_announce_idx: 0,
     });
@@ -1324,7 +1329,7 @@ describe("runScoring — pre-cascade skips absent users at scoring→announcing"
 
     const finalRoomUpdate = mock.roomUpdatePatches[1];
     expect(finalRoomUpdate?.announcing_user_id).toBeNull();
-    expect(finalRoomUpdate?.status).toBe("announcing");
+    expect(finalRoomUpdate?.status).toBe("calibration");
     expect(finalRoomUpdate?.announce_skipped_user_ids).toEqual([U1, U2]);
 
     // announce_skip broadcasts MUST fire even on cascade-exhaust path.
@@ -1499,11 +1504,12 @@ describe("runScoring — short-style auto-batch (SPEC §10.2.2)", () => {
     );
     expect(batchBroadcasts).toHaveLength(0);
 
-    // status_changed:announcing still fires.
+    // status_changed:calibration still fires (live mode lands on
+    // calibration first; owner advances to announcing manually).
     const statusBroadcasts = broadcastSpy.mock.calls.filter(
       ([, e]) => e.type === "status_changed",
     );
-    expect(statusBroadcasts.some(([, e]) => e.status === "announcing")).toBe(true);
+    expect(statusBroadcasts.some(([, e]) => e.status === "calibration")).toBe(true);
 
     // announce_skip broadcasts still fire for absent users.
     const skipBroadcasts = broadcastSpy.mock.calls.filter(

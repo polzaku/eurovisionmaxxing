@@ -15,6 +15,7 @@ export type PresentStatus =
   | "voting"
   | "voting_ending"
   | "scoring"
+  | "calibration"
   | "announcing"
   | "done";
 
@@ -208,6 +209,30 @@ export default function PresentScreen({
           {status === "voting_ending"
             ? t("present.votingEnding.title")
             : t("present.voting.title")}
+        </p>
+      </main>
+    );
+  }
+
+  if (status === "calibration") {
+    // TODO #10 slice B — TV waits patiently while members peek at their
+    // own picks on their phones. The owner triggers the transition to
+    // announcing via the CalibrationView CTA on their phone; the
+    // status_changed broadcast flips this screen automatically.
+    return (
+      <main
+        data-testid="present-screen"
+        data-status="calibration"
+        className="flex min-h-screen flex-col items-center justify-center px-12 py-12 text-center"
+      >
+        <p className="text-2xl text-muted-foreground">
+          {t("present.calibration.eyebrow")}
+        </p>
+        <p className="mt-6 text-7xl font-bold motion-safe:animate-shimmer">
+          {t("present.calibration.title")}
+        </p>
+        <p className="mt-8 text-xl text-muted-foreground">
+          {t("present.calibration.subtitle")}
         </p>
       </main>
     );

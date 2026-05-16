@@ -27,7 +27,7 @@ CREATE TABLE rooms (
   categories            JSONB NOT NULL,         -- [{name, weight, hint}]
   owner_user_id         UUID REFERENCES users(id),
   status                VARCHAR(14) NOT NULL DEFAULT 'lobby'
-                          CHECK (status IN ('lobby','voting','voting_ending','scoring','announcing','done')),
+                          CHECK (status IN ('lobby','voting','voting_ending','scoring','calibration','announcing','done')),
   announcement_mode     VARCHAR(7) NOT NULL DEFAULT 'instant'
                           CHECK (announcement_mode IN ('live','instant')),
   announcement_style    VARCHAR(5) NOT NULL DEFAULT 'full'
@@ -50,6 +50,14 @@ CREATE TABLE rooms (
 --   ALTER TABLE rooms ADD COLUMN IF NOT EXISTS announce_skipped_user_ids UUID[] NOT NULL DEFAULT '{}';
 --   ALTER TABLE rooms ADD COLUMN IF NOT EXISTS batch_reveal_mode BOOLEAN NOT NULL DEFAULT FALSE;
 --   ALTER TABLE rooms ADD COLUMN IF NOT EXISTS announcement_style VARCHAR(5) NOT NULL DEFAULT 'full' CHECK (announcement_style IN ('full','short'));
+--
+--   -- TODO #10 (slice B) — add 'calibration' to the room.status enum
+--   -- so the new pre-announce review phase can persist. The status
+--   -- column is also referenced by RLS policies on results +
+--   -- room_awards; drop those policies before changing the constraint
+--   -- and recreate after (mirror the §6.3.1 pattern).
+--   ALTER TABLE rooms DROP CONSTRAINT IF EXISTS rooms_status_check;
+--   ALTER TABLE rooms ADD CONSTRAINT rooms_status_check CHECK (status IN ('lobby','voting','voting_ending','scoring','calibration','announcing','done'));
 --   ALTER TABLE room_memberships ADD COLUMN IF NOT EXISTS scores_locked_at TIMESTAMPTZ;
 --   ALTER TABLE room_memberships ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
 --

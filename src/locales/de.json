@@ -310,6 +310,17 @@
     },
     "footer": "Generated {timestamp} · {hostname}/results/{roomId}"
   },
+  "calibration": {
+    "title": "Kalibrierung",
+    "subtitle": "Schau dir kurz deine Punkte an, bevor die Live-Enthüllungen starten.",
+    "firstAnnouncer": "{name} sagt als Erste/r an.",
+    "yourPicksHeading": "Deine Punkte",
+    "noPicks": "Du hast in diesem Raum niemanden bewertet.",
+    "startButton": "Mit dem Ansagen beginnen",
+    "startBusy": "Wird gestartet…",
+    "startError": "Konnte nicht starten. Versuch es nochmal?",
+    "waitingForOwner": "Warten auf den Host, der mit dem Ansagen beginnt…"
+  },
   "announcing": {
     "noAnnouncer": "Warte auf eine/n Ansagende/n…",
     "title": "Live-Ansage",
@@ -555,6 +566,11 @@
     },
     "votingEnding": {
       "title": "Abstimmung endet gleich…"
+    },
+    "calibration": {
+      "eyebrow": "Kalibrierung",
+      "title": "Alle prüfen gerade ihre Punkte…",
+      "subtitle": "Hosts: Tippe auf \"Mit dem Ansagen beginnen\", wenn ihr bereit seid."
     },
     "announcing": {
       "title": "Live-Rangliste",
