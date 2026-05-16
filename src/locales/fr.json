@@ -649,6 +649,7 @@
     "startVotingBusy": "Lancement\u2026",
     "startVotingHelper": "Lance le vote pour tout le monde dans le salon \u2014 attends que tes invit\u00e9s soient l\u00e0.",
     "waitingForHost": "En attente que l\u2019h\u00f4te lance le vote\u2026",
+    "waitingForHostNamed": "En attente que {name} lance le vote\u2026",
     "votingTemplateLabel": "Mod\u00e8le de vote",
     "templateCategoryCount": "{count, plural, one {# cat\u00e9gorie} other {# cat\u00e9gories}}",
     "templateCustomNote": "Cat\u00e9gories personnalis\u00e9es \u2014 choisis un mod\u00e8le pour changer ou garde le jeu actuel.",

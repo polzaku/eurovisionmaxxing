@@ -138,6 +138,12 @@ export default function LobbyView({
 
   const presenceUserIds = useRoomPresence(roomId, currentUserId);
 
+  const hostDisplayName = useMemo(
+    () =>
+      memberships.find((m) => m.userId === ownerUserId)?.displayName ?? null,
+    [memberships, ownerUserId],
+  );
+
   const currentNameSet = useMemo(
     () => categoryNameSet(categories),
     [categories],
@@ -479,7 +485,9 @@ export default function LobbyView({
             </>
           ) : (
             <p className="text-center text-muted-foreground text-sm">
-              {t("lobby.waitingForHost")}
+              {hostDisplayName !== null
+                ? t("lobby.waitingForHostNamed", { name: hostDisplayName })
+                : t("lobby.waitingForHost")}
             </p>
           )}
         </section>
