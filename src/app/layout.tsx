@@ -15,12 +15,53 @@ import "./globals.css";
  */
 const THEME_BOOTSTRAP_SCRIPT = `(function(){try{var t=localStorage.getItem('emx_theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t}}catch(e){}})();`;
 
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("common");
+  const name = t("app.name");
+  const tagline = t("app.tagline");
+  const description = t("app.metaDescription");
   return {
-    title: t("app.name"),
-    description: t("app.metaDescription"),
+    metadataBase: new URL(SITE_URL),
+    title: {
+      default: `${name} — ${tagline}`,
+      template: `%s · ${name}`,
+    },
+    description,
     manifest: "/manifest.json",
+    applicationName: name,
+    keywords: [
+      "Eurovision",
+      "Eurovision 2026",
+      "watch party",
+      "voting app",
+      "Eurovision voting",
+      "12 points",
+      "scorecard",
+      "group chat",
+    ],
+    alternates: {
+      canonical: "/",
+    },
+    openGraph: {
+      type: "website",
+      url: "/",
+      siteName: name,
+      title: `${name} — ${tagline}`,
+      description,
+      images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: name }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${name} — ${tagline}`,
+      description,
+      images: ["/opengraph-image"],
+    },
+    robots: {
+      index: true,
+      follow: true,
+    },
   };
 }
 
