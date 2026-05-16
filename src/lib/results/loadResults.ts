@@ -95,6 +95,13 @@ export type ResultsData =
       leaderboard: LeaderboardEntry[];
       contestants: Contestant[];
       announcement: AnnouncementState | null;
+      /**
+       * TODO #10 (slice A) — the active announcer's own 1→12 picks,
+       * sorted desc by points. Populated only when `LoadResultsInput
+       * .callerUserId === room.announcing_user_id` so the spoiler stays
+       * scoped to the announcer's own phone. Null for everyone else.
+       */
+      announcerOwnBreakdown: UserBreakdown | null;
     }
   | {
       status: "done";
@@ -152,6 +159,14 @@ export type ResultsData =
 
 export interface LoadResultsInput {
   roomId: unknown;
+  /**
+   * TODO #10 (slice A) — optional caller userId, used to gate
+   * spoiler-sensitive payload fields (notably `announcerOwnBreakdown`
+   * on the `announcing` shape). The API routes derive it from a
+   * trusted-but-not-authoritative `?asUser=` query param. Treat as a
+   * hint, not an auth signal — never use it to authorise mutations.
+   */
+  callerUserId?: unknown;
 }
 
 export interface LoadResultsDeps {
@@ -321,7 +336,7 @@ export async function loadResults(
     case "scoring":
       return { ok: true, data: { status: "scoring" } };
     case "announcing":
-      return loadAnnouncing(room, event, deps);
+      return loadAnnouncing(room, event, deps, input);
     case "done":
       return loadDone(room, event, deps);
     default:
@@ -337,6 +352,7 @@ async function loadAnnouncing(
   room: RoomBase,
   event: EventType,
   deps: LoadResultsDeps,
+  input: LoadResultsInput,
 ): Promise<LoadResultsResult> {
   const resultsQuery = await deps.supabase
     .from("results")
@@ -363,6 +379,7 @@ async function loadAnnouncing(
 
   // Load announcer state — name + avatar + pending reveal queue.
   let announcement: AnnouncementState | null = null;
+  let announcerOwnBreakdown: UserBreakdown | null = null;
   if (room.announcing_user_id) {
     const announcerId = room.announcing_user_id;
     const userQuery = await deps.supabase
@@ -412,6 +429,25 @@ async function loadAnnouncing(
       announcerCount: order.length || 1,
       skippedUserIds: room.announce_skipped_user_ids ?? [],
     };
+
+    // TODO #10 (slice A) — surface the announcer's full 1→12 ranking to
+    // the announcer themselves so they can peek before reveals. Gated
+    // on caller match to keep the spoiler scoped to that user. Reuses
+    // the announcerRowsQuery already loaded for the pending-reveal
+    // computation; no extra DB round-trip.
+    const callerId =
+      typeof input.callerUserId === "string" ? input.callerUserId : null;
+    if (callerId && callerId === announcerId) {
+      announcerOwnBreakdown = {
+        userId: announcerId,
+        displayName: announcerUser?.display_name ?? "",
+        avatarSeed: announcerUser?.avatar_seed ?? "",
+        picks: announcerRows.map((r) => ({
+          contestantId: r.contestant_id,
+          pointsAwarded: r.points_awarded,
+        })),
+      };
+    }
   }
 
   return {
@@ -424,6 +460,7 @@ async function loadAnnouncing(
       leaderboard,
       contestants,
       announcement,
+      announcerOwnBreakdown,
     },
   };
 }

@@ -11,11 +11,12 @@ import { fetchContestants, fetchContestantsMeta } from "@/lib/contestants";
  * can diverge without touching the public share URL.
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } },
 ) {
+  const asUser = request.nextUrl.searchParams.get("asUser") ?? undefined;
   const result = await loadResults(
-    { roomId: params.id },
+    { roomId: params.id, callerUserId: asUser },
     {
       supabase: createServiceClient(),
       fetchContestants,

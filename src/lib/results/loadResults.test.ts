@@ -451,6 +451,111 @@ describe("loadResults — announcing", () => {
     });
   });
 
+  // TODO #10 (slice A) — announcerOwnBreakdown gating.
+  it("populates announcerOwnBreakdown when callerUserId matches the active announcer", async () => {
+    const announcerUserId = "30000000-0000-4000-8000-000000000003";
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          ...announcingRoom.data,
+          announcing_user_id: announcerUserId,
+          current_announce_idx: 0,
+          announcement_order: [announcerUserId],
+        },
+        error: null,
+      },
+      announcerUser: {
+        data: { display_name: "Alice", avatar_seed: "alice-seed" },
+        error: null,
+      },
+      announcerQueue: {
+        data: [
+          { contestant_id: "2026-cr", points_awarded: 6 },
+          { contestant_id: "2026-be", points_awarded: 8 },
+          { contestant_id: "2026-al", points_awarded: 12 },
+        ],
+        error: null,
+      },
+    });
+    const result = await loadResults(
+      { roomId: VALID_ROOM_ID, callerUserId: announcerUserId },
+      makeDeps(mock),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.data.status !== "announcing") return;
+    expect(result.data.announcerOwnBreakdown).toEqual({
+      userId: announcerUserId,
+      displayName: "Alice",
+      avatarSeed: "alice-seed",
+      picks: [
+        { contestantId: "2026-cr", pointsAwarded: 6 },
+        { contestantId: "2026-be", pointsAwarded: 8 },
+        { contestantId: "2026-al", pointsAwarded: 12 },
+      ],
+    });
+  });
+
+  it("omits announcerOwnBreakdown (null) when callerUserId does not match the announcer (spoiler-safe)", async () => {
+    const announcerUserId = "30000000-0000-4000-8000-000000000003";
+    const watcherUserId = "40000000-0000-4000-8000-000000000004";
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          ...announcingRoom.data,
+          announcing_user_id: announcerUserId,
+          current_announce_idx: 0,
+          announcement_order: [announcerUserId],
+        },
+        error: null,
+      },
+      announcerUser: {
+        data: { display_name: "Alice", avatar_seed: "alice-seed" },
+        error: null,
+      },
+      announcerQueue: {
+        data: [{ contestant_id: "2026-al", points_awarded: 12 }],
+        error: null,
+      },
+    });
+    const result = await loadResults(
+      { roomId: VALID_ROOM_ID, callerUserId: watcherUserId },
+      makeDeps(mock),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.data.status !== "announcing") return;
+    expect(result.data.announcerOwnBreakdown).toBeNull();
+  });
+
+  it("omits announcerOwnBreakdown when callerUserId is not provided (default safe)", async () => {
+    const announcerUserId = "30000000-0000-4000-8000-000000000003";
+    const mock = makeSupabaseMock({
+      roomSelect: {
+        data: {
+          ...announcingRoom.data,
+          announcing_user_id: announcerUserId,
+          current_announce_idx: 0,
+          announcement_order: [announcerUserId],
+        },
+        error: null,
+      },
+      announcerUser: {
+        data: { display_name: "Alice", avatar_seed: "alice-seed" },
+        error: null,
+      },
+      announcerQueue: {
+        data: [{ contestant_id: "2026-al", points_awarded: 12 }],
+        error: null,
+      },
+    });
+    const result = await loadResults(
+      { roomId: VALID_ROOM_ID }, // no callerUserId
+      makeDeps(mock),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.data.status !== "announcing") return;
+    expect(result.data.announcerOwnBreakdown).toBeNull();
+  });
+
   it("computes announcerPosition + announcerCount from announcement_order", async () => {
     const ANN_1 = "30000000-0000-4000-8000-000000000003";
     const ANN_2 = "30000000-0000-4000-8000-000000000004";
