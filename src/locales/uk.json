@@ -778,5 +778,15 @@
       "fashion_stan": { "name": "Фанат моди", "stat": "{value}/10 за образ" },
       "the_enabler": { "name": "Помічник переможця", "stat": "12 балів переможцю" }
     }
+  },
+  "footer": {
+    "links": {
+      "about": "Про нас",
+      "privacy": "Конфіденційність",
+      "terms": "Умови",
+      "source": "Вихідний код"
+    },
+    "disclaimer": "Незалежний фанатський проєкт. Eurovision® та Eurovision Song Contest® є торговими марками Європейської мовної спілки.",
+    "copyright": "© {year} Valeriia Kulynych. Вихідний код під ліцензією BUSL-1.1."
   }
 }

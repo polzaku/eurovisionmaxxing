@@ -778,5 +778,15 @@
       "fashion_stan": { "name": "Fashion stan", "stat": "{value}/10 in fashion" },
       "the_enabler": { "name": "The enabler", "stat": "12 points to the winner" }
     }
+  },
+  "footer": {
+    "links": {
+      "about": "About",
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "source": "Source"
+    },
+    "disclaimer": "Unaffiliated fan project. Eurovision® and the Eurovision Song Contest® are trademarks of the European Broadcasting Union.",
+    "copyright": "© {year} Valeriia Kulynych. Source under BUSL-1.1."
   }
 }

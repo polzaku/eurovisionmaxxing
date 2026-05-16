@@ -778,5 +778,15 @@
       "fashion_stan": { "name": "Fan del estilismo", "stat": "{value}/10 en estilismo" },
       "the_enabler": { "name": "El cómplice", "stat": "12 puntos al ganador" }
     }
+  },
+  "footer": {
+    "links": {
+      "about": "Acerca de",
+      "privacy": "Privacidad",
+      "terms": "Términos",
+      "source": "Código fuente"
+    },
+    "disclaimer": "Proyecto de fans no afiliado. Eurovision® y el Festival de la Canción de Eurovisión® son marcas de la Unión Europea de Radiodifusión.",
+    "copyright": "© {year} Valeriia Kulynych. Código bajo BUSL-1.1."
   }
 }
