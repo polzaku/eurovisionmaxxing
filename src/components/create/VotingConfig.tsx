@@ -41,14 +41,14 @@ export default function VotingConfig({
   customCategories,
   announcementMode,
   announcementStyle,
-  allowNowPerforming,
+  // allowNowPerforming, — checkbox hidden; prop still accepted, see commented JSX below
   submitState,
   onChange,
   onBack,
   onSubmit,
 }: VotingConfigProps) {
   const t = useTranslations();
-  const [infoOpen, setInfoOpen] = useState(false);
+  // const [infoOpen, setInfoOpen] = useState(false); — paired with the hidden checkbox below
   const [expandedTemplateId, setExpandedTemplateId] =
     useState<TemplateId | null>(null);
   const [expandedMode, setExpandedMode] = useState<Mode | null>(null);
@@ -123,7 +123,14 @@ export default function VotingConfig({
         ) : null}
       </div>
 
-      <div className="space-y-2">
+      {/*
+        "Sync everyone to the performing act" toggle — hidden for now.
+        The host-side `allowNowPerforming` flag still flows through the
+        wizard (default false) so the API contract is unchanged, but we
+        don't surface it to users until the voting-state sync feature
+        actually ships. Re-enable when the feature lands.
+      */}
+      {/* <div className="space-y-2">
         <label className="flex items-start gap-3 cursor-pointer">
           <input
             type="checkbox"
@@ -155,7 +162,7 @@ export default function VotingConfig({
             )}
           </span>
         </label>
-      </div>
+      </div> */}
 
       {submitState.kind === "error" && (
         <p role="alert" className="text-sm text-destructive">

@@ -112,6 +112,9 @@
       "partial": "people scored",
       "all": "everyone scored"
     },
+    "skipped": {
+      "pill": "Skipped {skipped} of {total}"
+    },
     "missed": {
       "button": "I missed this",
       "buttonAria": "Mark this contestant as missed",

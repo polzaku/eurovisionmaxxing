@@ -112,6 +112,9 @@
       "partial": "noté",
       "all": "tout noté"
     },
+    "skipped": {
+      "pill": "{skipped} sur {total} ignorées"
+    },
     "missed": {
       "button": "J'ai raté ça",
       "buttonAria": "Marquer ce candidat comme raté",
