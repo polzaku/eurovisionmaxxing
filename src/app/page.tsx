@@ -2,10 +2,30 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import Logo from "@/components/ui/Logo";
 
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
 export default async function HomePage() {
   const t = await getTranslations("common");
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: t("app.name"),
+    description: t("app.description"),
+    url: SITE_URL,
+    applicationCategory: "EntertainmentApplication",
+    operatingSystem: "Web",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+    },
+  };
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div className="max-w-md w-full text-center space-y-10 animate-fade-in">
         {/* Logo + wordmark */}
         <div className="space-y-6">
