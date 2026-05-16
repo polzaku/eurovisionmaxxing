@@ -112,6 +112,9 @@
       "partial": "bewertet",
       "all": "alle bewertet"
     },
+    "skipped": {
+      "pill": "{skipped} von {total} ausgelassen"
+    },
     "missed": {
       "button": "Hab ich verpasst",
       "buttonAria": "Diese/n Teilnehmende/n als verpasst markieren",

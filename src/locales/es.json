@@ -112,6 +112,9 @@
       "partial": "puntuado",
       "all": "todo puntuado"
     },
+    "skipped": {
+      "pill": "{skipped} de {total} omitidas"
+    },
     "missed": {
       "button": "Me lo perdí",
       "buttonAria": "Marcar este concursante como perdido",

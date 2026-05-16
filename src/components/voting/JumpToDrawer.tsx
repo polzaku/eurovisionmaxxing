@@ -8,6 +8,7 @@ import {
   type ContestantStatus,
 } from "@/lib/voting/contestantStatus";
 import ScoredByChip from "@/components/voting/ScoredByChip";
+import SkippedCategoriesPill from "@/components/voting/SkippedCategoriesPill";
 
 export interface JumpToDrawerProps {
   isOpen: boolean;
@@ -128,6 +129,17 @@ export default function JumpToDrawer({
                       size="sm"
                     />
                   ) : null}
+                  {/* TODO #3 — partial-row signal in the drawer. */}
+                  <SkippedCategoriesPill
+                    skipped={
+                      categoryNames.length -
+                      Object.values(scoresByContestant[c.id] ?? {}).filter(
+                        (v) => v != null,
+                      ).length
+                    }
+                    total={categoryNames.length}
+                    size="sm"
+                  />
                 </button>
               </li>
             );
