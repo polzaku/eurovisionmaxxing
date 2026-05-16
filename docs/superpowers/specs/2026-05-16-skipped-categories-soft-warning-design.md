@@ -29,6 +29,15 @@ The lightest-touch fix is to make the gap **visible**: users see they've
 skipped a category, decide whether to fix it, and accept the trade-off
 explicitly. Same scoring math; better-informed users.
 
+## Scope note (added at implementation time)
+
+The aggregate end-of-voting note is **deferred to a follow-up**.
+`EndOfVotingCard` has multiple variants and shoehorning a global
+"skipped categories on N contestants" footer touches every variant
+plus the underlying `endOfVotingCardVariant` reducer. Per-contestant
+pill alone covers the user complaint ("how do we handle missing
+category") and ships safely tonight.
+
 ## Surfaces
 
 ### Per-contestant pill

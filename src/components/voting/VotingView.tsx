@@ -19,6 +19,7 @@ import { useMissedUndo } from "@/hooks/useMissedUndo";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { scoredCount } from "@/components/voting/scoredCount";
 import SaveChip, { type DisplaySaveStatus } from "@/components/voting/SaveChip";
+import SkippedCategoriesPill from "@/components/voting/SkippedCategoriesPill";
 import ScoredByChip from "@/components/voting/ScoredByChip";
 import OfflineBanner from "@/components/voting/OfflineBanner";
 import DrainNotice from "@/components/voting/DrainNotice";
@@ -388,6 +389,19 @@ export default function VotingView({
                 total={roomMemberTotal}
               />
             ) : null}
+            {/* TODO #3 — surfaces a soft warning when this contestant has
+             * been *partially* scored (≥1 category set, ≥1 unset). The
+             * server still renormalises silently; the pill just makes
+             * the gap visible so the user can decide whether to fill it. */}
+            <SkippedCategoriesPill
+              skipped={
+                categories.length -
+                Object.values(scoresByContestant[contestant.id] ?? {}).filter(
+                  (v) => v != null,
+                ).length
+              }
+              total={categories.length}
+            />
             <div
               data-testid="progress-cluster"
               className="flex flex-col items-end leading-tight"
