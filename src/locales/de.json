@@ -655,6 +655,7 @@
     "startVotingBusy": "Wird gestartet\u2026",
     "startVotingHelper": "Startet die Abstimmung f\u00fcr alle im Raum \u2014 warte, bis deine G\u00e4ste da sind.",
     "waitingForHost": "Warte darauf, dass der Host die Abstimmung startet\u2026",
+    "waitingForHostNamed": "Warte darauf, dass {name} die Abstimmung startet\u2026",
     "votingTemplateLabel": "Abstimmungsvorlage",
     "templateCategoryCount": "{count, plural, one {# Kategorie} other {# Kategorien}}",
     "templateCustomNote": "Eigene Kategorien \u2014 w\u00e4hle eine Vorlage zum Wechseln oder behalte das aktuelle Set.",

@@ -655,6 +655,7 @@
     "startVotingBusy": "Iniciando\u2026",
     "startVotingHelper": "Inicia la votaci\u00f3n para todos en la sala \u2014 espera a que lleguen tus invitados.",
     "waitingForHost": "Esperando a que el anfitri\u00f3n inicie la votaci\u00f3n\u2026",
+    "waitingForHostNamed": "Esperando a que {name} inicie la votaci\u00f3n\u2026",
     "votingTemplateLabel": "Plantilla de votaci\u00f3n",
     "templateCategoryCount": "{count, plural, one {# categor\u00eda} other {# categor\u00edas}}",
     "templateCustomNote": "Categor\u00edas personalizadas \u2014 elige una plantilla para cambiar o mant\u00e9n el conjunto actual.",

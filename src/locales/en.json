@@ -655,6 +655,7 @@
     "startVotingBusy": "Starting\u2026",
     "startVotingHelper": "Starts voting for everyone in the room \u2014 wait until your guests are here.",
     "waitingForHost": "Waiting for the host to start voting\u2026",
+    "waitingForHostNamed": "Waiting for {name} to start voting\u2026",
     "votingTemplateLabel": "Voting template",
     "templateCategoryCount": "{count, plural, one {# category} other {# categories}}",
     "templateCustomNote": "Custom categories \u2014 pick a template to swap, or keep the current set.",

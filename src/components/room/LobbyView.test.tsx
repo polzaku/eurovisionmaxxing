@@ -145,14 +145,34 @@ describe("<LobbyView>", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("hides Start-voting CTA for non-admin guests and shows waiting copy", () => {
-    renderLobby({ isAdmin: false });
+  it("hides Start-voting CTA for non-admin guests and names the host in the waiting copy", () => {
+    renderLobby({ isAdmin: false, ownerUserId: ALICE.userId });
     expect(
       screen.queryByRole("button", { name: /lobby\.startVoting/i }),
     ).not.toBeInTheDocument();
+    // Owner is in memberships -> named copy with {name: "Alice"}
     expect(
-      screen.getByText(/lobby\.waitingForHost/i),
+      screen.getByText(/lobby\.waitingForHostNamed:\{"name":"Alice"\}/),
     ).toBeInTheDocument();
+    // Generic fallback is suppressed when we have a name
+    expect(
+      screen.queryByText(/^lobby\.waitingForHost$/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("falls back to the generic waiting copy when the owner is not in memberships", () => {
+    renderLobby({
+      isAdmin: false,
+      ownerUserId: "u-missing",
+      memberships: [BOB],
+      currentUserId: BOB.userId,
+    });
+    expect(
+      screen.getByText(/^lobby\.waitingForHost$/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/lobby\.waitingForHostNamed/),
+    ).not.toBeInTheDocument();
   });
 
   it("fires onCopyPin and shows transient 'Copied!' label", async () => {
