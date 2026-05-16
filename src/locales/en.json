@@ -310,6 +310,17 @@
     },
     "footer": "Generated {timestamp} · {hostname}/results/{roomId}"
   },
+  "calibration": {
+    "title": "Calibration",
+    "subtitle": "Take a moment to review your picks before the live reveals start.",
+    "firstAnnouncer": "{name} will announce first.",
+    "yourPicksHeading": "Your picks",
+    "noPicks": "You didn't score any contestants in this room.",
+    "startButton": "Start announcing",
+    "startBusy": "Starting…",
+    "startError": "Couldn't start announcing. Try again?",
+    "waitingForOwner": "Waiting for the host to start announcing…"
+  },
   "announcing": {
     "noAnnouncer": "Waiting for an announcer…",
     "title": "Live announcement",
@@ -555,6 +566,11 @@
     },
     "votingEnding": {
       "title": "Voting ends in a moment…"
+    },
+    "calibration": {
+      "eyebrow": "Calibration",
+      "title": "Everyone's reviewing their picks…",
+      "subtitle": "Hosts: tap \"Start announcing\" on your phone when ready."
     },
     "announcing": {
       "title": "Live leaderboard",

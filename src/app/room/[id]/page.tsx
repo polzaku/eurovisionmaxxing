@@ -36,6 +36,7 @@ import StatusStub from "@/components/room/StatusStub";
 import ScoringScreen from "@/components/room/ScoringScreen";
 import CatchingUpPill from "@/components/room/CatchingUpPill";
 import AnnouncingView from "@/components/room/AnnouncingView";
+import CalibrationView from "@/components/room/CalibrationView";
 import DoneCeremony from "@/components/room/DoneCeremony";
 import VotingView from "@/components/voting/VotingView";
 import EndVotingModal from "@/components/voting/EndVotingModal";
@@ -854,6 +855,19 @@ export default function RoomPage({ params }: { params: { id: string } }) {
 
   if (phase.room.status === "scoring") {
     return <ScoringScreen />;
+  }
+
+  if (phase.room.status === "calibration") {
+    const session = getSession();
+    if (!session) return <StatusStub status={phase.room.status} />;
+    return (
+      <CalibrationView
+        roomId={phase.room.id}
+        currentUserId={session.userId}
+        isOwner={session.userId === phase.room.ownerUserId}
+        onCalibrationEnded={() => void loadRoom()}
+      />
+    );
   }
 
   return <StatusStub status={phase.room.status} />;

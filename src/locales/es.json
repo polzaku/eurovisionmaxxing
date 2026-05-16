@@ -310,6 +310,17 @@
     },
     "footer": "Generated {timestamp} · {hostname}/results/{roomId}"
   },
+  "calibration": {
+    "title": "Calibración",
+    "subtitle": "Tómate un momento para revisar tus puntos antes de que empiecen las revelaciones en directo.",
+    "firstAnnouncer": "{name} anunciará primero.",
+    "yourPicksHeading": "Tus puntos",
+    "noPicks": "No puntuaste a nadie en esta sala.",
+    "startButton": "Empezar a anunciar",
+    "startBusy": "Empezando…",
+    "startError": "No se pudo empezar. ¿Probar de nuevo?",
+    "waitingForOwner": "Esperando a que el anfitrión empiece a anunciar…"
+  },
   "announcing": {
     "noAnnouncer": "Esperando a un presentador…",
     "title": "Anuncio en directo",
@@ -555,6 +566,11 @@
     },
     "votingEnding": {
       "title": "La votación termina en un momento…"
+    },
+    "calibration": {
+      "eyebrow": "Calibración",
+      "title": "Todos están revisando sus puntos…",
+      "subtitle": "Anfitriones: toca \"Empezar a anunciar\" en tu teléfono cuando estéis listos."
     },
     "announcing": {
       "title": "Clasificación en directo",

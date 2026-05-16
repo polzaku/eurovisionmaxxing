@@ -88,6 +88,22 @@ export type ResultsData =
   | { status: "voting" | "voting_ending"; pin: string }
   | { status: "scoring" }
   | {
+      /**
+       * TODO #10 slice B — pre-announce review phase. Every member's
+       * phone can render their own 1→12 ranking before the owner
+       * triggers the live reveals. `ownBreakdown` is scoped to the
+       * caller via `callerUserId` so other members' picks stay hidden.
+       */
+      status: "calibration";
+      year: number;
+      event: EventType;
+      pin: string;
+      contestants: Contestant[];
+      ownBreakdown: UserBreakdown | null;
+      /** Display name of the first announcer in the order (or null when none). */
+      firstAnnouncerName: string | null;
+    }
+  | {
       status: "announcing";
       year: number;
       event: EventType;
@@ -335,6 +351,8 @@ export async function loadResults(
       };
     case "scoring":
       return { ok: true, data: { status: "scoring" } };
+    case "calibration":
+      return loadCalibration(room, event, deps, input);
     case "announcing":
       return loadAnnouncing(room, event, deps, input);
     case "done":
@@ -346,6 +364,96 @@ export async function loadResults(
         data: { status: "voting", pin: room.pin },
       };
   }
+}
+
+async function loadCalibration(
+  room: RoomBase,
+  event: EventType,
+  deps: LoadResultsDeps,
+  input: LoadResultsInput,
+): Promise<LoadResultsResult> {
+  let contestants: Contestant[];
+  try {
+    contestants = await deps.fetchContestants(room.year, event);
+  } catch (err) {
+    if (err instanceof ContestDataError) {
+      return fail("INTERNAL_ERROR", "Could not load contestants.", 500);
+    }
+    throw err;
+  }
+
+  // Caller's own 1→12 ranking — same shape as `announcerOwnBreakdown`
+  // on the announcing payload, but available to every member during
+  // calibration. Gated on callerUserId so cross-user spoilers stay
+  // impossible.
+  let ownBreakdown: UserBreakdown | null = null;
+  const callerId =
+    typeof input.callerUserId === "string" ? input.callerUserId : null;
+  if (callerId) {
+    const myResultsQuery = await deps.supabase
+      .from("results")
+      .select("contestant_id, points_awarded")
+      .eq("room_id", room.id)
+      .eq("user_id", callerId)
+      .gt("points_awarded", 0)
+      .order("rank", { ascending: false });
+    if (myResultsQuery.error) {
+      return fail("INTERNAL_ERROR", "Could not load your picks.", 500);
+    }
+    const myRows = (myResultsQuery.data ?? []) as Array<{
+      contestant_id: string;
+      points_awarded: number;
+    }>;
+
+    if (myRows.length > 0) {
+      const myUserQuery = await deps.supabase
+        .from("users")
+        .select("display_name, avatar_seed")
+        .eq("id", callerId)
+        .maybeSingle();
+      const me = (myUserQuery.data ?? null) as
+        | { display_name: string; avatar_seed: string }
+        | null;
+      ownBreakdown = {
+        userId: callerId,
+        displayName: me?.display_name ?? "",
+        avatarSeed: me?.avatar_seed ?? "",
+        picks: myRows.map((r) => ({
+          contestantId: r.contestant_id,
+          pointsAwarded: r.points_awarded,
+        })),
+      };
+    }
+  }
+
+  // First announcer's display name — for "Bob will announce first" copy.
+  let firstAnnouncerName: string | null = null;
+  const order = room.announcement_order ?? [];
+  if (order.length > 0) {
+    const firstId = order[0];
+    const firstQuery = await deps.supabase
+      .from("users")
+      .select("display_name")
+      .eq("id", firstId)
+      .maybeSingle();
+    if (firstQuery.data) {
+      firstAnnouncerName =
+        (firstQuery.data as { display_name: string }).display_name ?? null;
+    }
+  }
+
+  return {
+    ok: true,
+    data: {
+      status: "calibration",
+      year: room.year,
+      event,
+      pin: room.pin,
+      contestants,
+      ownBreakdown,
+      firstAnnouncerName,
+    },
+  };
 }
 
 async function loadAnnouncing(

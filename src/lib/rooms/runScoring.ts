@@ -347,16 +347,23 @@ export async function runScoring(
     }
   }
 
-  // 9. Transition scoring → announcing (conditional). For live mode, also
-  // initialise the announcement order so the announce state machine has
-  // something to walk on its first tick.
+  // 9. Transition scoring → calibration (live) or scoring → announcing
+  // (instant). Calibration is a pre-announce review phase where every
+  // member can peek at their own 1→12 picks before the owner triggers
+  // the live reveals (TODO #10 slice B). Instant mode has no per-user
+  // reveal to prep for, so it skips calibration. The announcement_order
+  // (live only) is initialised here either way — it's persisted with
+  // the calibration status and read by the calibration UI to show
+  // "Bob will announce first".
+  const nextStatus: "calibration" | "announcing" =
+    room.announcement_mode === "live" ? "calibration" : "announcing";
   const announcingPatch: {
-    status: "announcing";
+    status: "calibration" | "announcing";
     announcement_order?: string[];
     announcing_user_id?: string | null;
     current_announce_idx?: number;
     announce_skipped_user_ids?: string[];
-  } = { status: "announcing" };
+  } = { status: nextStatus };
 
   // Pre-cascade skipped list — populated below in live mode only.
   const preSkipped: string[] = [];
@@ -602,11 +609,11 @@ export async function runScoring(
   try {
     await deps.broadcastRoomEvent(roomId, {
       type: "status_changed",
-      status: "announcing",
+      status: nextStatus,
     });
   } catch (err) {
     console.warn(
-      `broadcast 'status_changed:announcing' failed for room ${roomId}; state committed regardless:`,
+      `broadcast 'status_changed:${nextStatus}' failed for room ${roomId}; state committed regardless:`,
       err,
     );
   }
