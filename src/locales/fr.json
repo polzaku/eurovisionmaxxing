@@ -777,5 +777,15 @@
       "fashion_stan": { "name": "Fan de mode", "stat": "{value}/10 en mode" },
       "the_enabler": { "name": "Le complice", "stat": "12 points au gagnant" }
     }
+  },
+  "footer": {
+    "links": {
+      "about": "À propos",
+      "privacy": "Confidentialité",
+      "terms": "Conditions",
+      "source": "Code source"
+    },
+    "disclaimer": "Projet de fans non affilié. Eurovision® et le Concours Eurovision de la chanson® sont des marques de l'Union européenne de radio-télévision.",
+    "copyright": "© {year} Valeriia Kulynych. Code source sous BUSL-1.1."
   }
 }

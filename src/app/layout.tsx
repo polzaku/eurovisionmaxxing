@@ -4,6 +4,7 @@ import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import I18nProvider from "@/i18n/provider";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import LocaleSwitcher from "@/components/ui/LocaleSwitcher";
+import Footer from "@/components/ui/Footer";
 import "./globals.css";
 
 /**
@@ -53,6 +54,7 @@ export default async function RootLayout({
           <ThemeToggle />
           <LocaleSwitcher />
           {children}
+          <Footer />
         </I18nProvider>
       </body>
     </html>

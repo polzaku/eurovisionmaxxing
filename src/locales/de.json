@@ -777,5 +777,15 @@
       "fashion_stan": { "name": "Fashion-Fan", "stat": "{value}/10 in Mode" },
       "the_enabler": { "name": "Der Ermöglicher", "stat": "12 Punkte an den Sieger" }
     }
+  },
+  "footer": {
+    "links": {
+      "about": "Über uns",
+      "privacy": "Datenschutz",
+      "terms": "Nutzungsbedingungen",
+      "source": "Quellcode"
+    },
+    "disclaimer": "Nicht offizielles Fan-Projekt. Eurovision® und Eurovision Song Contest® sind Marken der Europäischen Rundfunkunion.",
+    "copyright": "© {year} Valeriia Kulynych. Quellcode unter BUSL-1.1."
   }
 }
