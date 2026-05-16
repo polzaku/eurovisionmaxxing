@@ -10,11 +10,14 @@ import { fetchContestants, fetchContestantsMeta } from "@/lib/contestants";
  * SPEC §12.5 — never 404s when the room is valid but pre-`done`.
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } },
 ) {
+  // TODO #10 (slice A) — `asUser` is a hint for spoiler-gating
+  // (`announcerOwnBreakdown`); never used to authorise writes.
+  const asUser = request.nextUrl.searchParams.get("asUser") ?? undefined;
   const result = await loadResults(
-    { roomId: params.id },
+    { roomId: params.id, callerUserId: asUser },
     {
       supabase: createServiceClient(),
       fetchContestants,

@@ -322,6 +322,12 @@
       "passTheMicTo": "Передай мікрофон {name} →",
       "passTheMicGeneric": "Передай мікрофон →"
     },
+    "peek": {
+      "button": "Подивитися свої бали",
+      "sheetTitle": "Твої бали",
+      "closeAria": "Закрити",
+      "privacyNote": "Це бачиш лише ти."
+    },
     "upNext": {
       "label": "Наступний",
       "pointsHint": "{points, plural, =1 {# бал — натисни будь-де, щоб розкрити} other {# балів — натисни будь-де, щоб розкрити}}"

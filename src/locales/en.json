@@ -322,6 +322,12 @@
       "passTheMicTo": "Pass the mic to {name} →",
       "passTheMicGeneric": "Pass the mic →"
     },
+    "peek": {
+      "button": "Peek your picks",
+      "sheetTitle": "Your picks",
+      "closeAria": "Close",
+      "privacyNote": "Only you can see this."
+    },
     "upNext": {
       "label": "Up next",
       "pointsHint": "{points, plural, one {# point — tap anywhere to reveal} other {# points — tap anywhere to reveal}}"

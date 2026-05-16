@@ -322,6 +322,12 @@
       "passTheMicTo": "Gib das Mikro an {name} weiter →",
       "passTheMicGeneric": "Mikro weitergeben →"
     },
+    "peek": {
+      "button": "Deine Punkte ansehen",
+      "sheetTitle": "Deine Punkte",
+      "closeAria": "Schließen",
+      "privacyNote": "Nur du siehst das."
+    },
     "upNext": {
       "label": "Als nächstes",
       "pointsHint": "{points, plural, one {# Punkt — überall tippen zum Enthüllen} other {# Punkte — überall tippen zum Enthüllen}}"

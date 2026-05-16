@@ -13,6 +13,7 @@ import AnnouncerRoster, {
   type RosterMember,
 } from "@/components/room/AnnouncerRoster";
 import TwelvePointSplash from "@/components/room/TwelvePointSplash";
+import PeekPicksButton from "@/components/room/PeekPicksButton";
 import RevealToast, {
   type ToastEvent,
 } from "@/components/room/RevealToast";
@@ -89,10 +90,19 @@ interface LeaderboardEntry {
   rank: number;
 }
 
+interface AnnouncerOwnBreakdown {
+  userId: string;
+  displayName: string;
+  avatarSeed: string;
+  picks: Array<{ contestantId: string; pointsAwarded: number }>;
+}
+
 interface ResultsResponse {
   status?: string;
   leaderboard?: LeaderboardEntry[];
   announcement?: AnnouncementState | null;
+  /** TODO #10 (slice A) — populated only when asUser matches the announcer. */
+  announcerOwnBreakdown?: AnnouncerOwnBreakdown | null;
 }
 
 interface JustRevealedFlash {
@@ -151,6 +161,11 @@ export default function AnnouncingView({
   const [announcement, setAnnouncement] = useState<AnnouncementState | null>(
     announcementSeed,
   );
+  // TODO #10 (slice A) — populated when the caller is the active
+  // announcer (gated server-side via `?asUser=` query). Powers the
+  // <PeekPicksButton>.
+  const [announcerOwnBreakdown, setAnnouncerOwnBreakdown] =
+    useState<AnnouncerOwnBreakdown | null>(null);
   const [advanceState, setAdvanceState] = useState<{
     kind: "idle" | "submitting";
     error?: string;
@@ -229,9 +244,10 @@ export default function AnnouncingView({
 
   const refetch = useCallback(async () => {
     try {
-      const res = await fetch(`/api/results/${encodeURIComponent(roomId)}`, {
-        cache: "no-store",
-      });
+      const url = currentUserId
+        ? `/api/results/${encodeURIComponent(roomId)}?asUser=${encodeURIComponent(currentUserId)}`
+        : `/api/results/${encodeURIComponent(roomId)}`;
+      const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) return;
       const body = (await res.json()) as ResultsResponse;
       // Detect end-of-show before propagating other state. Non-announcer
@@ -243,10 +259,15 @@ export default function AnnouncingView({
       }
       if (body.leaderboard) setLeaderboard(body.leaderboard);
       if (body.announcement !== undefined) setAnnouncement(body.announcement);
+      // null is meaningful — clears stale data when the caller is no
+      // longer the active announcer (e.g. after handoff).
+      if (body.announcerOwnBreakdown !== undefined) {
+        setAnnouncerOwnBreakdown(body.announcerOwnBreakdown);
+      }
     } catch {
       // ignore — next event will retry.
     }
-  }, [roomId, onAnnouncementEnded]);
+  }, [roomId, currentUserId, onAnnouncementEnded]);
 
   useEffect(() => {
     void refetch();
@@ -578,6 +599,19 @@ export default function AnnouncingView({
             </div>
           ) : null}
         </header>
+
+        {/* TODO #10 (slice A) — active announcer's "peek your picks"
+         * button. Gated on the breakdown being available (which the
+         * server only ships when the caller is the announcer). Works
+         * in both full and short styles. */}
+        {isActiveDriver && announcerOwnBreakdown ? (
+          <div className="flex justify-end">
+            <PeekPicksButton
+              picks={announcerOwnBreakdown.picks}
+              contestants={contestants}
+            />
+          </div>
+        ) : null}
 
         {isActiveDriver &&
         announcementStyle === "full" &&
