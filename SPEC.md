@@ -2079,3 +2079,52 @@ Roughly half a day each:
 4. **E4** — Text summary + HTML/PDF export integration (depends on §12.3 / §12.4 if those ship; otherwise just text summary).
 5. **E5** — Operator runbook: when to run `npm run fetch-europe-results 2026 final` on show night. Document expected timing window.
 
+---
+
+## 24. Legal pages, footer & source licence
+
+The Service is a non-commercial fan project but it still touches personal data and lives on a public domain. This section pins down what the user sees in the chrome and what we're willing to commit to in writing.
+
+### 24.1 Footer (`src/components/ui/Footer.tsx`)
+
+Persistent across the app, suppressed only on the TV `/present` surface (matches `ThemeToggle` and `LocaleSwitcher` — anything in the page chrome would burn into an OBS broadcast). Renders:
+
+1. Four inline links — **About** (`/about`), **Privacy** (`/privacy`), **Terms** (`/terms`), **Source** (GitHub repo, `target="_blank"` `rel="noreferrer noopener"`).
+2. An EBU disclaimer line: *"Unaffiliated fan project. Eurovision® and the Eurovision Song Contest® are trademarks of the European Broadcasting Union."*
+3. A copyright + licence line: *"© {year} Valeriia Kulynych. Source under BUSL-1.1."*
+
+The pathname check is `pathname?.endsWith("/present") || pathname?.includes("/present/")`. Any new TV/broadcast surface added later must be either under `/present`, or this rule must be widened to include it explicitly.
+
+### 24.2 Static pages
+
+All three pages are server components, English-only in body (see §24.3), with a `Last updated: YYYY-MM-DD` line and section-numbered headings.
+
+- **`/about`** — short fan-project explainer, links to GitHub repo + issues. No legal content; tone-setting only.
+- **`/privacy`** — UK-GDPR-shaped policy. Mandatory contents: who runs the service (operator name, country, contact email), what data is stored (display name, votes, hot takes, session/locale cookies, server logs from sub-processors), legal basis (Art. 6(1)(b) performance + 6(1)(f) legitimate interest), sub-processors (currently Vercel, Supabase, Cloudflare — must stay in sync with §2 if that list changes), retention, user rights + ICO complaint route, international-transfer note. The contact email is the operator's published domain alias (`contact@eurovisionmaxxing.com`, forwarded via Cloudflare Email Routing) — never a personal address.
+- **`/terms`** — non-commercial-fan-project terms. Mandatory clauses: who you're dealing with, what the Service is + EBU non-affiliation, acceptable use, your-content licence (storage-only, no marketing use), source-licence reference (BUSL-1.1 — see §24.5), AS-IS disclaimer, **limitation of liability capped at GBP 10** in aggregate (deliberately a token-but-non-zero figure to stay enforceable under the Consumer Rights Act 2015 / Unfair Contract Terms Act 1977 — chosen at the low end of the defensible range because the Service is free), governing law **England & Wales**, contact.
+
+Sub-processor list, governing-law jurisdiction, and the liability cap are contract-grade — changing any of them is a SPEC change, not a content tweak.
+
+### 24.3 i18n
+
+A `footer` namespace exists in all 5 locale bundles (en/es/uk/fr/de) covering the four labels, the disclaimer, and the copyright string (with `{year}` ICU param). Page bodies are English-only by policy: legal copy may only be published in languages the operator can certify, and we don't currently have certified DE/FR/ES/UK translations of the policy text. If a locale gains a translated body, route to a per-locale page (e.g. `/de/datenschutz`) rather than swapping the body in place.
+
+### 24.4 Intentionally absent
+
+- **Imprint / Impressum.** Operator has no business address and will not publish a home address. This leaves a strict-reading TMG §5 gap for DACH visitors. Acceptable risk while non-commercial; **must be revisited before any monetisation step** (paid tier, donations, advertising). Documenting absence here so the gap doesn't get re-discovered as a "missing piece" later.
+- **Cookie consent banner.** Only `NEXT_LOCALE` (preference) and the auth/session cookie are set, both strictly necessary under ePrivacy Art. 5(3). No banner is required and we deliberately don't ship one. **Adding any analytics, advertising, or cross-site tracker triggers a banner** — that's not a content change, it's a SPEC change to this section.
+
+### 24.5 Source licence
+
+The repository ships under **Business Source License 1.1** (`/LICENSE`). Parameters:
+
+- **Licensor:** Valeriia Kulynych
+- **Licensed Work:** eurovisionmaxxing © 2026
+- **Change Date:** 2030-05-16 (4 years from initial public release of v1)
+- **Change License:** Apache License, Version 2.0
+- **Additional Use Grant:** production use of the code is permitted, **except** offering it to third parties as a hosted, managed, or embedded service that competes with the Licensor's paid offerings.
+
+Why BUSL rather than MIT/Apache or AGPL: the project may carry a paid hosted tier in the future. BUSL keeps the source visible and welcomes contributions/forks for personal use, but blocks the "0-cost SaaS competitor" failure mode that pure permissive licences allow. AGPL was rejected because requiring derivative-deployment source release deters casual self-hosters more than it deters competitors. The 4-year auto-conversion to Apache-2.0 means the restriction has a hard sunset — by the Change Date the project is effectively permissively licensed.
+
+`package.json` carries `"license": "BUSL-1.1"` to match. This SPDX identifier is recognised by GitHub's licence detector.
+
