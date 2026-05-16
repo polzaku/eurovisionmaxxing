@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback, useRef } from "react";
+import { useMemo, useState, useCallback } from "react";
 import type { Contestant, VotingCategory } from "@/types";
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
@@ -14,7 +14,6 @@ import HotTakeField from "@/components/voting/HotTakeField";
 import JumpToDrawer from "@/components/voting/JumpToDrawer";
 import EndOfVotingCard from "@/components/voting/EndOfVotingCard";
 import { endOfVotingCardVariant } from "@/lib/voting/endOfVotingCardVariant";
-import { nextIdxFromSwipe } from "@/lib/voting/nextIdxFromSwipe";
 import { useMissedUndo } from "@/hooks/useMissedUndo";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { scoredCount } from "@/components/voting/scoredCount";
@@ -176,7 +175,6 @@ export default function VotingView({
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [scaleSheetOpen, setScaleSheetOpen] = useState(false);
   const t = useTranslations();
-  const swipeStartXRef = useRef<number | null>(null);
 
   useWakeLock(true);
 
@@ -185,34 +183,6 @@ export default function VotingView({
   const fallbackContestantId =
     sortedContestants[Math.min(idx, Math.max(0, sortedContestants.length - 1))]?.id ?? "";
   const hintExpansion = useHintExpansion(roomId, fallbackContestantId, categoryNames);
-
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length !== 1) {
-      swipeStartXRef.current = null;
-      return;
-    }
-    const target = e.target as HTMLElement;
-    if (target.closest("[data-no-swipe]")) {
-      swipeStartXRef.current = null;
-      return;
-    }
-    swipeStartXRef.current = e.touches[0].clientX;
-  }, []);
-
-  const handleTouchEnd = useCallback(
-    (e: React.TouchEvent) => {
-      const startX = swipeStartXRef.current;
-      swipeStartXRef.current = null;
-      if (startX === null) return;
-      const endX = e.changedTouches[0]?.clientX ?? startX;
-      const next = nextIdxFromSwipe(idx, sortedContestants.length, endX - startX);
-      if (next !== null) {
-        hintExpansion.onNavigated();
-        setIdx(next);
-      }
-    },
-    [idx, sortedContestants.length, hintExpansion]
-  );
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -356,11 +326,7 @@ export default function VotingView({
         notice={drainNotice ?? null}
         onDismiss={onDismissDrainNotice ?? (() => {})}
       />
-      <div
-        className="w-full max-w-xl space-y-6 animate-fade-in"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
+      <div className="w-full max-w-xl space-y-6 animate-fade-in">
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <p className="text-3xl leading-none" aria-hidden="true">
